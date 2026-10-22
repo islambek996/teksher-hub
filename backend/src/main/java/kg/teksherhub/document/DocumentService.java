@@ -15,12 +15,15 @@ public class DocumentService {
     private final DocumentVersionRepository versions;
     private final DocumentFileRepository files;
     private final FileStorageService storage;
+    private final DocumentLinkRepository links;
 
-    public DocumentService(DocumentRepository documents, DocumentVersionRepository versions, DocumentFileRepository files, FileStorageService storage) {
+    public DocumentService(DocumentRepository documents, DocumentVersionRepository versions, DocumentFileRepository files,
+                           FileStorageService storage, DocumentLinkRepository links) {
         this.documents = documents;
         this.versions = versions;
         this.files = files;
         this.storage = storage;
+        this.links = links;
     }
 
     @Transactional(readOnly = true)
@@ -49,6 +52,7 @@ public class DocumentService {
         d.setUpdatedAt(Instant.now());
         d.setVersionNumber(1);
         d = documents.save(d);
+        saveLinks(d, request.relatedDocumentIds());
         versions.save(DocumentVersion.snapshot(d, username, text(request.changeNote(), "Создание карточки")));
         return toResponse(d);
     }
@@ -62,6 +66,7 @@ public class DocumentService {
         d.setUpdatedAt(Instant.now());
         d.setVersionNumber(d.getVersionNumber() + 1);
         d = documents.save(d);
+        saveLinks(d, request.relatedDocumentIds());
         versions.save(DocumentVersion.snapshot(d, username, text(request.changeNote(), "Обновление карточки")));
         return toResponse(d);
     }
@@ -124,12 +129,35 @@ public class DocumentService {
     }
 
     private DocumentResponse toResponse(DocumentRecord d) {
-        return DocumentResponse.from(d, files.countByDocumentId(d.getId()));
+        return DocumentResponse.from(d, files.countByDocumentId(d.getId()), links.findRelatedIdsByDocumentId(d.getId()));
+    }
+
+
+    private void saveLinks(DocumentRecord document, List<UUID> requestedIds) {
+        links.deleteAllByDocumentId(document.getId());
+        if (requestedIds == null || requestedIds.isEmpty()) return;
+        List<UUID> uniqueIds = requestedIds.stream().filter(java.util.Objects::nonNull).distinct().toList();
+        if (uniqueIds.contains(document.getId())) {
+            throw new IllegalArgumentException("Документ не может быть связан сам с собой");
+        }
+        List<DocumentRecord> relatedDocuments = documents.findAllById(uniqueIds);
+        if (relatedDocuments.size() != uniqueIds.size()) {
+            throw new IllegalArgumentException("Один или несколько связанных документов не найдены");
+        }
+        for (DocumentRecord related : relatedDocuments) {
+            DocumentLink link = new DocumentLink();
+            link.setId(new DocumentLinkId(document.getId(), related.getId()));
+            link.setDocument(document);
+            link.setRelatedDocument(related);
+            link.setCreatedAt(Instant.now());
+            links.save(link);
+        }
     }
 
     private static String searchable(DocumentRecord d) {
         return (d.getTitle() + " " + d.getDescription() + " " + d.getArea() + " " + d.getKind() + " "
-                + d.getJurisdiction() + " " + value(d.getDocumentNumber()) + " " + value(d.getSourceUrl())).toLowerCase();
+                + d.getJurisdiction() + " " + value(d.getProductGroup()) + " " + value(d.getKeywords()) + " "
+                + value(d.getDocumentNumber()) + " " + value(d.getSourceUrl())).toLowerCase();
     }
 
     private static void apply(DocumentRecord d, DocumentRequest r, boolean creating) {
@@ -137,6 +165,8 @@ public class DocumentService {
         d.setJurisdiction(r.jurisdiction());
         d.setKind(r.kind().trim());
         d.setArea(r.area().trim());
+        d.setProductGroup(clean(r.productGroup()));
+        d.setKeywords(clean(r.keywords()));
         d.setDocumentNumber(clean(r.documentNumber()));
         d.setDocumentDate(r.documentDate());
         d.setEffectiveFrom(r.effectiveFrom());
