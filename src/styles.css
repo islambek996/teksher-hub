@@ -137,3 +137,12 @@
 
 .user-actions{display:flex;gap:6px;flex-wrap:wrap}
 .user-actions .secondary-button{font-size:9px;padding:7px 8px}
+
+.related-select{min-height:126px!important;padding:8px!important}
+.form-help{font-size:9px;color:#8493a5;line-height:1.5;font-weight:400}
+.related-document-list{display:flex;flex-direction:column;gap:7px}
+.related-document{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:11px;border:1px solid #e3eaf3;background:#fff;border-radius:8px;color:#617b99}
+.related-document>span{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1}
+.related-document b{font-size:10px;color:#2e4761;line-height:1.5}
+.related-document small{font-size:9px;color:#8393a6}
+.related-document:hover{background:#f7faff;border-color:#c6d7eb}
