@@ -27,6 +27,10 @@ public class DocumentVersion {
     private String kind;
     @Column(nullable = false, length = 120)
     private String area;
+    @Column(name = "product_group", length = 160)
+    private String productGroup;
+    @Column(length = 1000)
+    private String keywords;
     @Column(name = "document_number", length = 120)
     private String documentNumber;
     @Column(name = "document_date")
@@ -57,6 +61,8 @@ public class DocumentVersion {
         v.setJurisdiction(doc.getJurisdiction());
         v.setKind(doc.getKind());
         v.setArea(doc.getArea());
+        v.setProductGroup(doc.getProductGroup());
+        v.setKeywords(doc.getKeywords());
         v.setDocumentNumber(doc.getDocumentNumber());
         v.setDocumentDate(doc.getDocumentDate());
         v.setEffectiveFrom(doc.getEffectiveFrom());
