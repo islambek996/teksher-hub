@@ -439,8 +439,8 @@ function App() {
       </main>
 
       {showCreateModal && <CreateDocumentModal initialDoc={editingDoc} onClose={closeDocumentModal} onSubmit={handleSaveDocument} apiEnabled={API_ENABLED} saving={isSaving} error={actionError} />}
-      {monitorModalOpen && <MonitorModal onClose={() => setMonitorModalOpen(false)} onSubmit={handleSaveMonitor} saving={isSaving} />}
-      {userModalOpen && <UserModal onClose={() => setUserModalOpen(false)} onSubmit={handleSaveUser} saving={isSaving} />}
+      {monitorModalOpen && <MonitorModal onClose={() => setMonitorModalOpen(false)} onSubmit={handleSaveMonitor} saving={isSaving} error={actionError} />}
+      {userModalOpen && <UserModal onClose={() => setUserModalOpen(false)} onSubmit={handleSaveUser} saving={isSaving} error={actionError} />}
     </div>
   )
 }
@@ -611,7 +611,7 @@ function formatDateTime(value) {
   return Number.isNaN(date.getTime()) ? '–' : date.toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-function MonitorModal({ onClose, onSubmit, saving }) {
+function MonitorModal({ onClose, onSubmit, saving, error }) {
   return <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !saving) onClose() }}>
     <section className="create-modal compact-modal" role="dialog" aria-modal="true" aria-labelledby="monitor-modal-title">
       <header className="modal-header"><div><div className="section-kicker">МОНИТОРИНГ</div><h2 id="monitor-modal-title">Добавить официальный источник</h2><p>Адрес должен принадлежать разрешённому доверенному домену.</p></div><button className="icon-button" type="button" onClick={onClose} disabled={saving}><X size={20} /></button></header>
@@ -622,6 +622,7 @@ function MonitorModal({ onClose, onSubmit, saving }) {
         <label className="form-field full-field"><span>URL сайта или страницы *</span><input name="sourceUrl" type="url" required maxLength="2000" placeholder="https://official.gov.kg/..." /></label>
         <label className="monitor-enable"><input name="enabled" type="checkbox" defaultChecked /> Включить автоматическую проверку</label>
       </div>
+        {error && <div className="feedback feedback-error"><CircleHelp size={16} /><span>{error}</span></div>}
         <div className="form-note"><CircleHelp size={16} /><span>Система сравнивает контрольную сумму ответа до 2 МБ. Динамическая вёрстка может вызывать ложные срабатывания. Изменение проверяет сотрудник.</span></div>
         <div className="modal-actions"><button className="secondary-button" type="button" onClick={onClose}>Отмена</button><button className="primary-button" type="submit" disabled={saving}>{saving ? 'Сохранение…' : 'Сохранить источник'}</button></div>
       </form>
@@ -638,7 +639,7 @@ function UsersSection({ users, onAdd, onToggle }) {
   </section>
 }
 
-function UserModal({ onClose, onSubmit, saving }) {
+function UserModal({ onClose, onSubmit, saving, error }) {
   return <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !saving) onClose() }}>
     <section className="create-modal compact-modal" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
       <header className="modal-header"><div><div className="section-kicker">УПРАВЛЕНИЕ ДОСТУПОМ</div><h2 id="user-modal-title">Новый пользователь</h2><p>Пароль должен содержать минимум 12 символов. Передай его сотруднику безопасным способом.</p></div><button className="icon-button" type="button" onClick={onClose} disabled={saving}><X size={20} /></button></header>
@@ -648,6 +649,7 @@ function UserModal({ onClose, onSubmit, saving }) {
         <label className="form-field full-field"><span>Временный пароль *</span><input name="password" type="password" minLength="12" required autoComplete="new-password" maxLength="200" /></label>
         <label className="form-field full-field"><span>Роль *</span><select name="role" defaultValue="READER"><option value="READER">READER – чтение</option><option value="EDITOR">EDITOR – редактирование</option><option value="ADMIN">ADMIN – администратор</option></select></label>
       </div>
+      {error && <div className="feedback feedback-error"><CircleHelp size={16} /><span>{error}</span></div>}
       <div className="modal-actions"><button className="secondary-button" type="button" onClick={onClose}>Отмена</button><button className="primary-button" type="submit" disabled={saving}>{saving ? 'Создание…' : 'Создать пользователя'}</button></div>
       </form>
     </section>
