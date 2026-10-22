@@ -30,8 +30,8 @@ public class BootstrapAdminRunner implements CommandLineRunner {
             log.warn("Bootstrap admin not configured. Set BOOTSTRAP_ADMIN_USERNAME and BOOTSTRAP_ADMIN_PASSWORD before first login.");
             return;
         }
-        if (password.length() < 12) {
-            throw new IllegalStateException("BOOTSTRAP_ADMIN_PASSWORD must be at least 12 characters");
+        if (password.length() < 12 || password.toLowerCase().contains("replace-with")) {
+            throw new IllegalStateException("Set a unique BOOTSTRAP_ADMIN_PASSWORD of at least 12 characters; do not use the template placeholder");
         }
         if (users.existsByUsernameIgnoreCase(username)) {
             log.info("Bootstrap admin '{}' already exists; leaving stored account unchanged.", username);
