@@ -472,6 +472,7 @@ function App() {
               canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'}
               canReview={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)}
               files={apiFiles} versions={documentVersions} documents={documents} onOpenRelated={docId => { const related = documents.find(item => item.id === docId); if (related) setSelectedDoc(related) }} onDownload={handleDownloadFile} onReview={handleReviewDocument} />
+            : active === 'groups' ? <ProductGroupsSection onOpen={openSection} />
             : active === 'monitoring' ? <MonitorSection monitors={monitors} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
                 onAdd={() => { setActionError(''); setMonitorModalOpen(true) }} onCheck={handleCheckMonitor} onDelete={handleDeleteMonitor} />
             : active === 'users' ? <UsersSection users={users} onAdd={() => { setActionError(''); setUserModalOpen(true) }} onToggle={handleToggleUser} onReset={user => { setActionError(''); setPasswordResetTarget(user) }} />
@@ -498,6 +499,30 @@ function App() {
       {passwordResetTarget && <UserPasswordModal user={passwordResetTarget} onClose={() => setPasswordResetTarget(null)} onSubmit={handleResetPassword} saving={isSaving} error={actionError} />}
     </div>
   )
+}
+
+function ProductGroupsSection({ onOpen }) {
+  const groups = [
+    { id: 'external', title: 'Внешний контур – МЗКМ «Текшер»', code: 'ВНЕШКА · РФ', jurisdiction: 'RU', tone: 'external', subtitle: 'Маркировка и нормативные требования Российской Федерации', description: 'Для товаров, которые маркируются в российской системе «Честный ЗНАК» и проходят внешний контур взаимодействия. Работа с кодами и карточками организуется через МЗКМ «Текшер». Применяются российские НПА и специальные правила по каждой товарной группе.', items: ['Обувь и товары лёгкой промышленности', 'Парфюмерия и шины', 'Табачная и никотинсодержащая продукция', 'Упакованная вода и безалкогольные напитки', 'Другие группы из действующего российского перечня'], checklist: ['Проверить код ТН ВЭД / ОКПД2 и применимость маркировки', 'Проверить сроки и правила конкретной группы', 'Оформить карточку товара и заказать коды через МЗКМ', 'Обеспечить корректную передачу сведений и трансграничные документы'] },
+    { id: 'internal', title: 'Внутренний контур – ГАИС МТ', code: 'ВНУТРЕННЯЯ · КР', jurisdiction: 'KG', tone: 'internal', subtitle: 'Национальная маркировка и учёт товаров в Кыргызской Республике', description: 'Для товаров и операций, подпадающих под национальное регулирование Кыргызской Республики. Основные источники – постановления Кабинета Министров КР, налоговое законодательство, правила маркировки и документы оператора ГАИС МТ. Не следует автоматически переносить сюда российские требования.', items: ['Товары из действующего национального перечня маркировки', 'Упакованная вода и учетно-контрольные марки – в пределах применимых требований', 'Национальные операции маркировки и учёта', 'Внутренние регламенты, инструкции и документы оператора'], checklist: ['Сверить товар с действующим перечнем КР', 'Определить тип маркировки и применимые сроки', 'Выполнить операции в ГАИС МТ по утверждённому процессу', 'Сохранить документы и проверить отражение операций в системе'] },
+  ]
+  return <div className="product-groups-page">
+    <div className="page-heading"><div><div className="section-kicker">СПРАВОЧНИК / ДВА КОНТУРА</div><h1>Товарные группы</h1><p>Разделение по нормативной юрисдикции и системе работы. Наличие группы в списке не означает, что маркировка обязательна для любого товара внутри неё: сверяйте код товара, даты и действующую редакцию НПА.</p></div><div className="record-count">2 контура</div></div>
+    <div className="notice"><CircleHelp size={17}/><div><b>Важно: контуры регулируются разными правилами</b><span>Внешний контур относится к российской системе МЗКМ и правилам РФ. Внутренний контур относится к национальной системе ГАИС МТ и законодательству КР. Акты ЕАЭС применяются отдельно в пределах их предмета регулирования.</span></div></div>
+    <div className="product-contour-grid">{groups.map(group => <section className={'contour-card ' + group.tone} key={group.id}>
+      <div className="contour-card-top"><span className="contour-icon"><Boxes size={23}/></span><span className="contour-code">{group.code}</span></div>
+      <h2>{group.title}</h2><p className="contour-subtitle">{group.subtitle}</p><p className="contour-description">{group.description}</p>
+      <div className="contour-section"><b>Основные категории</b><ul>{group.items.map(item => <li key={item}>{item}</li>)}</ul></div>
+      <div className="contour-section"><b>Рабочий порядок</b><ol>{group.checklist.map(item => <li key={item}>{item}</li>)}</ol></div>
+      <button className="primary-button" onClick={() => onOpen(group.jurisdiction)}>Открыть нормативные документы <ArrowUpRight size={15}/></button>
+    </section>)}</div>
+    <section className="contour-reference"><div className="section-kicker">ОФИЦИАЛЬНЫЕ СПРАВОЧНИКИ</div><h2>Где проверять перечни и действующие редакции</h2><div className="reference-links">
+      <a href="https://cbd.minjust.gov.kg/search-docs/ru" target="_blank" rel="noreferrer"><b>ЦБД правовой информации Минюста КР</b><span>Национальные НПА, редакции и статус документов</span><ExternalLink size={16}/></a>
+      <a href="https://www.gov.kg/ru/npa" target="_blank" rel="noreferrer"><b>НПА Кабинета Министров КР</b><span>Официальные постановления и распоряжения</span><ExternalLink size={16}/></a>
+      <a href="https://eec.eaeunion.org/" target="_blank" rel="noreferrer"><b>Евразийская экономическая комиссия</b><span>Соглашения и решения по маркировке в ЕАЭС</span><ExternalLink size={16}/></a>
+      <a href="https://pravo.gov.ru/" target="_blank" rel="noreferrer"><b>Официальный портал правовой информации РФ</b><span>Официальное опубликование российских НПА</span><ExternalLink size={16}/></a>
+    </div></section>
+  </div>
 }
 
 function JurisdictionCard({ code, title, subtitle, description, count, onClick }) {
