@@ -134,3 +134,6 @@
 .monitor-enable input{accent-color:#244a75}
 @media(max-width:900px){.monitor-card{flex-wrap:wrap}.monitor-actions{flex-direction:row;margin-left:51px}.monitor-title-row{align-items:flex-start}.management-page .page-heading{align-items:flex-start}}
 @media(max-width:760px){.auth-card{padding:23px}.auth-brand{margin-bottom:29px}.auth-card h1{font-size:22px}.logout-button{padding:7px}.logout-button span{display:none}.review-actions{align-items:stretch}.review-actions>span{width:100%;margin-bottom:3px}.review-actions button{flex:1;font-size:9px}.detail-meta{grid-template-columns:1fr}.monitor-card{padding:12px}.monitor-actions{margin-left:0;width:100%}.monitor-actions button{flex:1}.monitor-title-row{gap:7px}.management-page .page-heading .primary-button{max-width:135px;white-space:normal}.source-link small{font-size:9px}}
+
+.user-actions{display:flex;gap:6px;flex-wrap:wrap}
+.user-actions .secondary-button{font-size:9px;padding:7px 8px}
