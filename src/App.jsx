@@ -1,17 +1,17 @@
 import { useMemo, useState } from 'react'
 import {
-  Archive, ArrowDownRight, ArrowUpRight, BookOpen, Boxes, ChevronDown,
-  CircleHelp, Clock3, ExternalLink, FileCheck2, FileText, Globe2, Home,
+  ArrowDownRight, ArrowUpRight, BookOpen, Boxes, CalendarDays, ChevronDown,
+  CircleHelp, ExternalLink, FileCheck2, FilePlus2, FileText, Globe2, Home,
   Landmark, Layers3, LibraryBig, Link2, Search, ShieldCheck, SlidersHorizontal,
-  Sparkles, Tag, Workflow
+  Sparkles, Workflow, X
 } from 'lucide-react'
 
-const documents = [
-  { id: 1, title: 'Нормативная база маркировки товаров в Российской Федерации', kind: 'Обзор', jurisdiction: 'RU', area: 'МЗКМ', description: 'Подборка основных нормативных документов РФ и материалов системы «Честный ЗНАК».', status: 'Демонстрационная запись' },
-  { id: 2, title: 'Нормативные документы Кыргызской Республики по маркировке', kind: 'Обзор', jurisdiction: 'KG', area: 'ГАИС МТ', description: 'Раздел для законов, постановлений и положений, регулирующих национальную систему маркировки.', status: 'Демонстрационная запись' },
-  { id: 3, title: 'Наднациональные документы ЕАЭС', kind: 'Обзор', jurisdiction: 'EAEU', area: 'Общие процессы', description: 'Соглашения и решения ЕАЭС, применимые к маркировке и трансграничному взаимодействию.', status: 'Демонстрационная запись' },
-  { id: 4, title: 'Инструкция по работе с карточками товаров в МЗКМ', kind: 'Инструкция', jurisdiction: 'RU', area: 'Карточки товаров', description: 'Место для проверенных инструкций, связанных с внешним контуром МЗКМ.', status: 'Демонстрационная запись' },
-  { id: 5, title: 'Порядок работы с ГАИС МТ', kind: 'Внутренний документ', jurisdiction: 'KG', area: 'ГАИС МТ', description: 'Место для внутренних регламентов и инструкций национальной системы.', status: 'Демонстрационная запись' },
+const demoDocuments = [
+  { id: 'demo-1', title: 'Нормативная база маркировки товаров в Российской Федерации', kind: 'Обзор', jurisdiction: 'RU', area: 'Нормативная база', description: 'Демонстрационная карточка для подборки нормативных документов РФ и материалов системы «Честный ЗНАК».', status: 'Демонстрационная запись', isDemo: true },
+  { id: 'demo-2', title: 'Нормативные документы Кыргызской Республики по маркировке', kind: 'Обзор', jurisdiction: 'KG', area: 'Нормативная база', description: 'Демонстрационная карточка для законов, постановлений и положений национальной системы маркировки.', status: 'Демонстрационная запись', isDemo: true },
+  { id: 'demo-3', title: 'Наднациональные документы ЕАЭС', kind: 'Обзор', jurisdiction: 'EAEU', area: 'Нормативная база', description: 'Демонстрационная карточка для соглашений и решений ЕАЭС, применимых к маркировке и трансграничному взаимодействию.', status: 'Демонстрационная запись', isDemo: true },
+  { id: 'demo-4', title: 'Инструкция по работе с карточками товаров в МЗКМ', kind: 'Инструкция', jurisdiction: 'RU', area: 'Карточки товаров', description: 'Пример категории для проверенных инструкций, связанных с внешним контуром МЗКМ.', status: 'Демонстрационная запись', isDemo: true },
+  { id: 'demo-5', title: 'Порядок работы с ГАИС МТ', kind: 'Внутренний документ', jurisdiction: 'KG', area: 'ГАИС МТ', description: 'Пример категории для внутренних регламентов и инструкций национальной системы.', status: 'Демонстрационная запись', isDemo: true },
 ]
 
 const jurisdictions = {
@@ -37,23 +37,77 @@ const navGroups = [
   ]},
 ]
 
+const STORAGE_KEY = 'teksher-hub-user-documents'
+
+function loadUserDocuments() {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
 function App() {
   const [active, setActive] = useState('home')
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('Все типы')
+  const [statusFilter, setStatusFilter] = useState('Все статусы')
   const [selectedDoc, setSelectedDoc] = useState(null)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [userDocuments, setUserDocuments] = useState(loadUserDocuments)
+
+  const documents = useMemo(() => [...userDocuments, ...demoDocuments], [userDocuments])
 
   const filteredDocuments = useMemo(() => documents.filter((doc) => {
     const matchesJurisdiction = ['RU', 'KG', 'EAEU'].includes(active) ? doc.jurisdiction === active : true
-    const matchesQuery = [doc.title, doc.description, doc.area, doc.kind].join(' ').toLowerCase().includes(query.toLowerCase())
+    const matchesQuery = [doc.title, doc.description, doc.area, doc.kind, doc.documentNumber || ''].join(' ').toLowerCase().includes(query.toLowerCase())
     const matchesFilter = filter === 'Все типы' || doc.kind === filter
-    return matchesJurisdiction && matchesQuery && matchesFilter
-  }), [active, query, filter])
+    const matchesStatus = statusFilter === 'Все статусы' || doc.status === statusFilter
+    const matchesSection = active === 'groups' ? doc.area === 'Товарные группы'
+      : active === 'processes' ? doc.kind === 'Бизнес-процесс'
+      : active === 'knowledge' ? ['Инструкция', 'Внутренний документ'].includes(doc.kind)
+      : true
+    return matchesJurisdiction && matchesQuery && matchesFilter && matchesStatus && matchesSection
+  }), [documents, active, query, filter, statusFilter])
 
   const pageTitle = active === 'home' ? 'База знаний оператора маркировки'
     : jurisdictions[active]?.label || ({ documents: 'Все документы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний' }[active] || 'TEKSHER HUB')
 
-  const openSection = (id) => { setActive(id); setSelectedDoc(null) }
+  const openSection = (id) => { setActive(id); setSelectedDoc(null); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы') }
+
+  const handleCreateDocument = (event) => {
+    event.preventDefault()
+    const data = new FormData(event.currentTarget)
+    const sourceUrl = String(data.get('sourceUrl') || '').trim()
+    const doc = {
+      id: `user-${Date.now()}`,
+      title: String(data.get('title') || '').trim(),
+      jurisdiction: String(data.get('jurisdiction') || 'KG'),
+      kind: String(data.get('kind') || 'Нормативный акт'),
+      area: String(data.get('area') || '').trim(),
+      documentNumber: String(data.get('documentNumber') || '').trim(),
+      documentDate: String(data.get('documentDate') || ''),
+      sourceUrl,
+      description: String(data.get('description') || '').trim(),
+      status: sourceUrl ? 'Источник указан' : 'Черновик',
+      isDemo: false,
+      createdAt: new Date().toISOString(),
+    }
+    const nextDocuments = [doc, ...userDocuments]
+    setUserDocuments(nextDocuments)
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDocuments))
+    } catch {
+      // Keep the record in the current session if browser storage is unavailable.
+    }
+    setActive('documents')
+    setSelectedDoc(doc)
+    setShowCreateModal(false)
+    setQuery('')
+    setFilter('Все типы')
+    setStatusFilter('Все статусы')
+  }
 
   return (
     <div className="app-shell">
@@ -71,13 +125,13 @@ function App() {
         </div>)}
         <div className="sidebar-bottom">
           <div className="status-indicator"><span /> Платформа в разработке</div>
-          <div className="sidebar-version">Версия 0.1 · MVP</div>
+          <div className="sidebar-version">Версия 0.2 · MVP</div>
         </div>
       </aside>
 
       <main className="main-area">
         <header className="topbar">
-          <div className="breadcrumbs"><span>TEKSHER HUB</span><span className="crumb-slash">/</span><strong>{pageTitle}</strong></div>
+          <div className="breadcrumbs"><span>TEKSHER HUB</span><span className="crumb-slash">/</span><strong>{selectedDoc ? 'Карточка документа' : pageTitle}</strong></div>
           <div className="topbar-right"><span className="internal-badge"><ShieldCheck size={14} /> Внутренний портал</span><div className="avatar">ОП</div></div>
         </header>
 
@@ -108,20 +162,26 @@ function App() {
             <div className="section-title-row compact"><div><div className="section-kicker">НАВИГАЦИЯ</div><h2>Рабочие системы</h2></div></div>
             <section className="system-grid">
               <a className="system-card" href="https://label.teksher.kg" target="_blank" rel="noreferrer"><span className="system-icon blue"><ExternalLink size={20} /></span><span className="system-copy"><b>МЗКМ «Текшер»</b><small>Внешний контур · РФ</small></span><ArrowUpRight size={17} className="system-arrow" /></a>
-              <a className="system-card" href="https://main.teksher.kg" target="_blank" rel="noreferrer"><span className="system-icon green"><Link2 size={20} /></span><span className="system-copy"><b>ГАИС МТ</b><small>Внутренний контур · КР</small></span><ArrowUpRight size={17} className="system-arrow" /></a>
+              <a className="system-card" href="https://main.teksher.kg" target="_blank" rel="noreferrer"><span className="system-icon green"><ExternalLink size={20} /></span><span className="system-copy"><b>ГАИС МТ</b><small>Внутренний контур · КР</small></span><ArrowUpRight size={17} className="system-arrow" /></a>
             </section>
           </> : selectedDoc ? <DocumentDetail doc={selectedDoc} onBack={() => setSelectedDoc(null)} /> : <>
-            <div className="page-heading"><div><div className="section-kicker">БАЗА ЗНАНИЙ / {jurisdictions[active]?.short || 'TEKSHER HUB'}</div><h1>{pageTitle}</h1><p>{jurisdictions[active] ? `Документы и материалы: ${jurisdictions[active].label}. ` : 'Поиск по нормативным актам и рабочим материалам платформы.'}Демонстрационные записи пока не являются официальной нормативной базой.</p></div><span className="record-count">{filteredDocuments.length} записей</span></div>
+            <div className="page-heading">
+              <div><div className="section-kicker">БАЗА ЗНАНИЙ / {jurisdictions[active]?.short || 'TEKSHER HUB'}</div><h1>{pageTitle}</h1><p>{jurisdictions[active] ? `Документы и материалы: ${jurisdictions[active].label}. ` : 'Поиск по нормативным актам и рабочим материалам платформы.'}Демонстрационные записи не являются официальной нормативной базой.</p></div>
+              <div className="heading-actions"><span className="record-count">{filteredDocuments.length} записей</span><button className="primary-button" onClick={() => setShowCreateModal(true)}><FilePlus2 size={16} /> Добавить запись</button></div>
+            </div>
             <div className="search-panel">
               <div className="search-input-wrap"><Search size={19} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск по названию, номеру или содержанию..." /></div>
-              <div className="filter-wrap"><SlidersHorizontal size={16} /><select value={filter} onChange={(e) => setFilter(e.target.value)}><option>Все типы</option><option>Обзор</option><option>Инструкция</option><option>Внутренний документ</option></select><ChevronDown size={14} /></div>
+              <div className="filter-wrap"><SlidersHorizontal size={16} /><select value={filter} onChange={(e) => setFilter(e.target.value)}><option>Все типы</option><option>Обзор</option><option>Нормативный акт</option><option>Инструкция</option><option>Внутренний документ</option><option>Бизнес-процесс</option></select><ChevronDown size={14} /></div>
+              <div className="filter-wrap status-select"><select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}><option>Все статусы</option><option>Демонстрационная запись</option><option>Черновик</option><option>Источник указан</option></select><ChevronDown size={14} /></div>
             </div>
-            <div className="notice"><CircleHelp size={17} /><div><b>Демонстрационный каталог</b><span>Реальные нормативные документы будут добавлены после настройки хранилища и проверки официальных источников.</span></div></div>
+            <div className="notice"><CircleHelp size={17} /><div><b>Каталог пока работает без серверного хранилища</b><span>Новые карточки сохраняются в локальном хранилище этого браузера. Для общего доступа, загрузки файлов и единой базы потребуется backend. Демонстрационные записи не являются официальными документами.</span></div></div>
             <div className="document-list">{filteredDocuments.length ? filteredDocuments.map(doc => <DocumentRow key={doc.id} doc={doc} onClick={() => setSelectedDoc(doc)} />) : <div className="empty-state"><Search size={28} /><b>Ничего не найдено</b><span>Измени поисковый запрос или фильтр.</span></div>}</div>
           </>}
-          <footer className="footer"><span>TEKSHER HUB <i>·</i> Информационная платформа оператора маркировки</span><span>Первая версия · 2026</span></footer>
+          <footer className="footer"><span>TEKSHER HUB <i>·</i> Информационная платформа оператора маркировки</span><span>Версия 0.2 · 2026</span></footer>
         </div>
       </main>
+
+      {showCreateModal && <CreateDocumentModal onClose={() => setShowCreateModal(false)} onSubmit={handleCreateDocument} />}
     </div>
   )
 }
@@ -139,8 +199,8 @@ function DocumentRow({ doc, onClick }) {
   const jurisdiction = jurisdictions[doc.jurisdiction]
   return <button className="document-row" onClick={onClick}>
     <span className={`doc-icon ${jurisdiction.className}`}><FileText size={20} /></span>
-    <span className="doc-main"><b>{doc.title}</b><span>{doc.description}</span><small><span className={`tag ${jurisdiction.className}`}>{jurisdiction.short}</span><span>{doc.kind}</span><span>·</span><span>{doc.area}</span></small></span>
-    <span className="doc-status">{doc.status}</span><ArrowDownRight size={17} className="doc-arrow" />
+    <span className="doc-main"><b>{doc.title}</b><span>{doc.description}</span><small><span className={`tag ${jurisdiction.className}`}>{jurisdiction.short}</span>{doc.documentNumber && <span>№ {doc.documentNumber}</span>}<span>{doc.kind}</span><span>·</span><span>{doc.area}</span></small></span>
+    <span className={`doc-status ${doc.isDemo ? 'demo-status' : doc.sourceUrl ? 'source-status' : 'draft-status'}`}>{doc.status}</span><ArrowDownRight size={17} className="doc-arrow" />
   </button>
 }
 
@@ -151,11 +211,42 @@ function DocumentDetail({ doc, onBack }) {
     <div className="detail-card">
       <span className={`tag ${jurisdiction.className}`}>{jurisdiction.flag} {jurisdiction.label}</span>
       <div className="detail-icon"><FileCheck2 size={28} /></div>
+      <div className="detail-status-row"><span className={`status-pill ${doc.isDemo ? 'demo-status' : doc.sourceUrl ? 'source-status' : 'draft-status'}`}>{doc.status}</span>{doc.isDemo && <span className="detail-muted">Пример интерфейса, не официальный документ</span>}</div>
       <h1>{doc.title}</h1><p>{doc.description}</p>
-      <div className="detail-meta"><div><small>Тип материала</small><b>{doc.kind}</b></div><div><small>Область</small><b>{doc.area}</b></div><div><small>Статус записи</small><b>{doc.status}</b></div></div>
-      <div className="notice"><CircleHelp size={17} /><div><b>Это демонстрационная запись</b><span>Здесь будут реквизиты документа, официальный источник, файл, статус действия, редакции и связанные акты. Не используйте эту запись как юридическое основание.</span></div></div>
+      <div className="detail-meta">
+        <div><small>Тип материала</small><b>{doc.kind}</b></div>
+        <div><small>Юрисдикция</small><b>{jurisdiction.label}</b></div>
+        <div><small>Тематическая область</small><b>{doc.area || 'Не указана'}</b></div>
+        <div><small>Номер документа</small><b>{doc.documentNumber || 'Не указан'}</b></div>
+        <div><small>Дата документа</small><b>{doc.documentDate ? new Date(doc.documentDate + 'T00:00:00').toLocaleDateString('ru-RU') : 'Не указана'}</b></div>
+        <div><small>Запись добавлена</small><b>{doc.createdAt ? new Date(doc.createdAt).toLocaleDateString('ru-RU') : 'Демо-данные'}</b></div>
+      </div>
+      {doc.sourceUrl ? <a className="source-link" href={doc.sourceUrl} target="_blank" rel="noreferrer"><ExternalLink size={17} /><span><b>Открыть источник документа</b><small>{doc.sourceUrl}</small></span><ArrowUpRight size={16} /></a> : <div className="notice"><CircleHelp size={17} /><div><b>{doc.isDemo ? 'Это демонстрационная запись' : 'Официальный источник не указан'}</b><span>{doc.isDemo ? 'Не используйте эту запись как юридическое основание. Вместо неё нужно добавить проверенный документ с официальными реквизитами и ссылкой на источник.' : 'Укажите официальный URL в карточке записи при создании. Редактирование записи и прикрепление файла появятся после подключения серверного хранилища.'}</span></div></div>}
+      {!doc.isDemo && <p className="storage-note">Эта пользовательская карточка хранится только в локальном браузере. Она пока не видна другим сотрудникам.</p>}
     </div>
   </section>
+}
+
+function CreateDocumentModal({ onClose, onSubmit }) {
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+    <section className="create-modal" role="dialog" aria-modal="true" aria-labelledby="create-document-title">
+      <header className="modal-header"><div><div className="section-kicker">КАТАЛОГ / НОВАЯ КАРТОЧКА</div><h2 id="create-document-title">Добавить документ</h2><p>Заполните реквизиты и, при наличии, ссылку на официальный источник.</p></div><button type="button" className="icon-button" onClick={onClose} aria-label="Закрыть"><X size={20} /></button></header>
+      <form onSubmit={onSubmit}>
+        <label className="form-field full-field"><span>Название документа *</span><input name="title" required maxLength="240" placeholder="Например, постановление или инструкция" /></label>
+        <div className="form-grid">
+          <label className="form-field"><span>Юрисдикция *</span><select name="jurisdiction" defaultValue="KG" required><option value="KG">Кыргызская Республика</option><option value="RU">Российская Федерация</option><option value="EAEU">ЕАЭС</option></select></label>
+          <label className="form-field"><span>Тип материала *</span><select name="kind" defaultValue="Нормативный акт" required><option>Нормативный акт</option><option>Инструкция</option><option>Внутренний документ</option><option>Бизнес-процесс</option><option>Обзор</option></select></label>
+          <label className="form-field"><span>Номер документа</span><input name="documentNumber" maxLength="100" placeholder="№ / реквизиты" /></label>
+          <label className="form-field"><span>Дата документа</span><span className="date-input"><CalendarDays size={15} /><input name="documentDate" type="date" /></span></label>
+          <label className="form-field full-field"><span>Тематическая область *</span><input name="area" required maxLength="120" placeholder="Например, товарные группы, заказ КМ, нанесение" /></label>
+          <label className="form-field full-field"><span>Ссылка на официальный источник</span><input name="sourceUrl" type="url" placeholder="https://..." /></label>
+          <label className="form-field full-field"><span>Краткое описание *</span><textarea name="description" required rows="3" maxLength="1200" placeholder="Что регулирует документ и когда его использовать" /></label>
+        </div>
+        <div className="form-note"><CircleHelp size={16} /><span>Карточка сохраняется в этом браузере. Загрузка файлов, редактирование и общий доступ появятся после подключения backend.</span></div>
+        <div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose}>Отмена</button><button type="submit" className="primary-button"><FilePlus2 size={16} /> Сохранить карточку</button></div>
+      </form>
+    </section>
+  </div>
 }
 
 export default App
