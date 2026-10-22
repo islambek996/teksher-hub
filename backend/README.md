@@ -18,7 +18,7 @@ The initial admin is created only if `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_A
 
 - `POST /api/auth/login` – issue a JWT token.
 - `GET /api/auth/me` – current user.
-- `GET/POST /api/documents`, `GET/PUT/DELETE /api/documents/{id}`.
+- `GET/POST /api/documents`, `GET/PUT/DELETE /api/documents/{id}` – metadata, classification, keywords and related document links.
 - `GET /api/documents/{id}/versions` – document history.
 - `POST /api/documents/{id}/review` – record manual status/source review.
 - `GET/POST /api/documents/{id}/files`, `GET /api/documents/{id}/files/{fileId}/download`.
