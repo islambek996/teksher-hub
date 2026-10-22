@@ -202,10 +202,10 @@ function App() {
               <a className="system-card" href="https://label.teksher.kg" target="_blank" rel="noreferrer"><span className="system-icon blue"><ExternalLink size={20} /></span><span className="system-copy"><b>МЗКМ «Текшер»</b><small>Внешний контур · РФ</small></span><ArrowUpRight size={17} className="system-arrow" /></a>
               <a className="system-card" href="https://main.teksher.kg" target="_blank" rel="noreferrer"><span className="system-icon green"><ExternalLink size={20} /></span><span className="system-copy"><b>ГАИС МТ</b><small>Внутренний контур · КР</small></span><ArrowUpRight size={17} className="system-arrow" /></a>
             </section>
-          </> : selectedDoc ? <DocumentDetail doc={selectedDoc} onBack={() => setSelectedDoc(null)} /> : <>
+          </> : selectedDoc ? <DocumentDetail doc={selectedDoc} onBack={() => setSelectedDoc(null)} onEdit={() => { setEditingDoc(selectedDoc); setShowCreateModal(true) }} onDelete={() => handleDeleteDocument(selectedDoc)} /> : <>
             <div className="page-heading">
               <div><div className="section-kicker">БАЗА ЗНАНИЙ / {jurisdictions[active]?.short || 'TEKSHER HUB'}</div><h1>{pageTitle}</h1><p>{jurisdictions[active] ? `Документы и материалы: ${jurisdictions[active].label}. ` : 'Поиск по нормативным актам и рабочим материалам платформы.'}Демонстрационные записи не являются официальной нормативной базой.</p></div>
-              <div className="heading-actions"><span className="record-count">{filteredDocuments.length} записей</span><button className="primary-button" onClick={() => setShowCreateModal(true)}><FilePlus2 size={16} /> Добавить запись</button></div>
+              <div className="heading-actions"><span className="record-count">{filteredDocuments.length} записей</span><button className="primary-button" onClick={openNewDocumentModal}><FilePlus2 size={16} /> Добавить запись</button></div>
             </div>
             <div className="search-panel">
               <div className="search-input-wrap"><Search size={19} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск по названию, номеру или содержанию..." /></div>
@@ -213,13 +213,13 @@ function App() {
               <div className="filter-wrap status-select"><select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}><option>Все статусы</option><option>Демонстрационная запись</option><option>Черновик</option><option>Источник указан</option></select><ChevronDown size={14} /></div>
             </div>
             <div className="notice"><CircleHelp size={17} /><div><b>Каталог пока работает без серверного хранилища</b><span>Новые карточки сохраняются в локальном хранилище этого браузера. Для общего доступа, загрузки файлов и единой базы потребуется backend. Демонстрационные записи не являются официальными документами.</span></div></div>
-            <div className="document-list">{filteredDocuments.length ? filteredDocuments.map(doc => <DocumentRow key={doc.id} doc={doc} onClick={() => setSelectedDoc(doc)} />) : <div className="empty-state"><Search size={28} /><b>{active === 'groups' ? 'Справочник товарных групп пока пуст' : active === 'processes' ? 'Бизнес-процессы ещё не добавлены' : 'Ничего не найдено'}</b><span>{['groups', 'processes'].includes(active) ? 'Добавь первую карточку через форму. Она сохранится в этом браузере.' : 'Измени поисковый запрос или фильтр.'}</span>{['groups', 'processes'].includes(active) && <button className="secondary-button" onClick={() => setShowCreateModal(true)}>Добавить первую запись</button>}</div>}</div>
+            <div className="document-list">{filteredDocuments.length ? filteredDocuments.map(doc => <DocumentRow key={doc.id} doc={doc} onClick={() => setSelectedDoc(doc)} />) : <div className="empty-state"><Search size={28} /><b>{active === 'groups' ? 'Справочник товарных групп пока пуст' : active === 'processes' ? 'Бизнес-процессы ещё не добавлены' : 'Ничего не найдено'}</b><span>{['groups', 'processes'].includes(active) ? 'Добавь первую карточку через форму. Она сохранится в этом браузере.' : 'Измени поисковый запрос или фильтр.'}</span>{['groups', 'processes'].includes(active) && <button className="secondary-button" onClick={openNewDocumentModal}>Добавить первую запись</button>}</div>}</div>
           </>}
           <footer className="footer"><span>TEKSHER HUB <i>·</i> Информационная платформа оператора маркировки</span><span>Версия 0.2 · 2026</span></footer>
         </div>
       </main>
 
-      {showCreateModal && <CreateDocumentModal onClose={() => setShowCreateModal(false)} onSubmit={handleCreateDocument} />}
+      {showCreateModal && <CreateDocumentModal initialDoc={editingDoc} onClose={closeDocumentModal} onSubmit={handleSaveDocument} />}
     </div>
   )
 }
@@ -242,7 +242,7 @@ function DocumentRow({ doc, onClick }) {
   </button>
 }
 
-function DocumentDetail({ doc, onBack }) {
+function DocumentDetail({ doc, onBack, onEdit, onDelete }) {
   const jurisdiction = jurisdictions[doc.jurisdiction]
   return <section className="detail-page">
     <button className="back-button" onClick={onBack}>← Назад к списку</button>
@@ -251,6 +251,7 @@ function DocumentDetail({ doc, onBack }) {
       <div className="detail-icon"><FileCheck2 size={28} /></div>
       <div className="detail-status-row"><span className={`status-pill ${doc.isDemo ? 'demo-status' : doc.sourceUrl ? 'source-status' : 'draft-status'}`}>{doc.status}</span>{doc.isDemo && <span className="detail-muted">Пример интерфейса, не официальный документ</span>}</div>
       <h1>{doc.title}</h1><p>{doc.description}</p>
+      {!doc.isDemo && <div className="detail-actions"><button type="button" className="secondary-button" onClick={onEdit}><Pencil size={15} /> Редактировать</button><button type="button" className="danger-button" onClick={onDelete}><Trash2 size={15} /> Удалить карточку</button></div>}
       <div className="detail-meta">
         <div><small>Тип материала</small><b>{doc.kind}</b></div>
         <div><small>Юрисдикция</small><b>{jurisdiction.label}</b></div>
@@ -265,23 +266,23 @@ function DocumentDetail({ doc, onBack }) {
   </section>
 }
 
-function CreateDocumentModal({ onClose, onSubmit }) {
+function CreateDocumentModal({ initialDoc, onClose, onSubmit }) {
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
     <section className="create-modal" role="dialog" aria-modal="true" aria-labelledby="create-document-title">
-      <header className="modal-header"><div><div className="section-kicker">КАТАЛОГ / НОВАЯ КАРТОЧКА</div><h2 id="create-document-title">Добавить документ</h2><p>Заполните реквизиты и, при наличии, ссылку на официальный источник.</p></div><button type="button" className="icon-button" onClick={onClose} aria-label="Закрыть"><X size={20} /></button></header>
+      <header className="modal-header"><div><div className="section-kicker">КАТАЛОГ / НОВАЯ КАРТОЧКА</div><h2 id="create-document-title">{initialDoc ? 'Редактировать карточку' : 'Добавить документ'}</h2><p>Заполните реквизиты и, при наличии, ссылку на официальный источник.</p></div><button type="button" className="icon-button" onClick={onClose} aria-label="Закрыть"><X size={20} /></button></header>
       <form onSubmit={onSubmit}>
-        <label className="form-field full-field"><span>Название документа *</span><input name="title" required maxLength="240" placeholder="Например, постановление или инструкция" /></label>
+        <label className="form-field full-field"><span>Название документа *</span><input name="title" required maxLength="240" defaultValue={initialDoc?.title || ''} placeholder="Например, постановление или инструкция" /></label>
         <div className="form-grid">
-          <label className="form-field"><span>Юрисдикция *</span><select name="jurisdiction" defaultValue="KG" required><option value="KG">Кыргызская Республика</option><option value="RU">Российская Федерация</option><option value="EAEU">ЕАЭС</option></select></label>
-          <label className="form-field"><span>Тип материала *</span><select name="kind" defaultValue="Нормативный акт" required><option>Нормативный акт</option><option>Товарная группа</option><option>Инструкция</option><option>Внутренний документ</option><option>Бизнес-процесс</option><option>Обзор</option></select></label>
-          <label className="form-field"><span>Номер документа</span><input name="documentNumber" maxLength="100" placeholder="№ / реквизиты" /></label>
-          <label className="form-field"><span>Дата документа</span><span className="date-input"><CalendarDays size={15} /><input name="documentDate" type="date" /></span></label>
-          <label className="form-field full-field"><span>Тематическая область *</span><input name="area" required maxLength="120" placeholder="Например, товарные группы, заказ КМ, нанесение" /></label>
-          <label className="form-field full-field"><span>Ссылка на официальный источник</span><input name="sourceUrl" type="url" placeholder="https://..." /></label>
-          <label className="form-field full-field"><span>Краткое описание *</span><textarea name="description" required rows="3" maxLength="1200" placeholder="Что регулирует документ и когда его использовать" /></label>
+          <label className="form-field"><span>Юрисдикция *</span><select name="jurisdiction" defaultValue={initialDoc?.jurisdiction || 'KG'} required><option value="KG">Кыргызская Республика</option><option value="RU">Российская Федерация</option><option value="EAEU">ЕАЭС</option></select></label>
+          <label className="form-field"><span>Тип материала *</span><select name="kind" defaultValue={initialDoc?.kind || 'Нормативный акт'} required><option>Нормативный акт</option><option>Товарная группа</option><option>Инструкция</option><option>Внутренний документ</option><option>Бизнес-процесс</option><option>Обзор</option></select></label>
+          <label className="form-field"><span>Номер документа</span><input name="documentNumber" maxLength="100" defaultValue={initialDoc?.documentNumber || ''} placeholder="№ / реквизиты" /></label>
+          <label className="form-field"><span>Дата документа</span><span className="date-input"><CalendarDays size={15} /><input name="documentDate" type="date" defaultValue={initialDoc?.documentDate || ''} /></span></label>
+          <label className="form-field full-field"><span>Тематическая область *</span><input name="area" required maxLength="120" defaultValue={initialDoc?.area || ''} placeholder="Например, товарные группы, заказ КМ, нанесение" /></label>
+          <label className="form-field full-field"><span>Ссылка на официальный источник</span><input name="sourceUrl" type="url" defaultValue={initialDoc?.sourceUrl || ''} placeholder="https://..." /></label>
+          <label className="form-field full-field"><span>Краткое описание *</span><textarea name="description" required rows="3" maxLength="1200" defaultValue={initialDoc?.description || ''} placeholder="Что регулирует документ и когда его использовать" /></label>
         </div>
         <div className="form-note"><CircleHelp size={16} /><span>Карточка сохраняется в этом браузере. Загрузка файлов, редактирование и общий доступ появятся после подключения backend.</span></div>
-        <div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose}>Отмена</button><button type="submit" className="primary-button"><FilePlus2 size={16} /> Сохранить карточку</button></div>
+        <div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose}>Отмена</button><button type="submit" className="primary-button"><FilePlus2 size={16} /> {initialDoc ? 'Сохранить изменения' : 'Сохранить карточку'}</button></div>
       </form>
     </section>
   </div>
