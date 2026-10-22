@@ -46,3 +46,7 @@
 .modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px;padding-top:16px;border-top:1px solid #edf0f5}
 @media(max-width:900px){.heading-actions{align-items:stretch;flex-direction:column}.heading-actions .record-count{text-align:center}.status-select{min-width:0}.search-panel{flex-wrap:wrap}.search-input-wrap{flex-basis:100%}}
 @media(max-width:760px){.heading-actions{width:100%;flex-direction:row;justify-content:space-between;align-items:center}.heading-actions .record-count{display:none}.primary-button,.secondary-button{padding:10px;font-size:10px}.form-grid{grid-template-columns:1fr}.full-field{grid-column:auto}.create-modal{padding:19px;max-height:94vh}.modal-backdrop{padding:10px}.modal-header h2{font-size:20px}.modal-actions .primary-button{flex:1}.doc-status{display:none}}
+
+.detail-actions{display:flex;gap:9px;flex-wrap:wrap;margin:18px 0 3px}
+.danger-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid #f0cccc;border-radius:8px;padding:10px 13px;background:#fff7f7;color:#a33c3c;font-size:11px;font-weight:700;white-space:nowrap}
+.danger-button:hover{background:#ffeded;border-color:#eab8b8}
