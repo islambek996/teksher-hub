@@ -23,6 +23,10 @@ public class DocumentRecord {
     private String kind;
     @Column(nullable = false, length = 120)
     private String area;
+    @Column(name = "product_group", length = 160)
+    private String productGroup;
+    @Column(length = 1000)
+    private String keywords;
     @Column(name = "document_number", length = 120)
     private String documentNumber;
     @Column(name = "document_date")
