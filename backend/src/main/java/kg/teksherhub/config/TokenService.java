@@ -19,8 +19,8 @@ public class TokenService {
 
     public TokenService(@Value("${app.jwt.secret}") String secret,
                         @Value("${app.jwt.expiration-minutes}") long expirationMinutes) {
-        if (secret.getBytes(StandardCharsets.UTF_8).length < 32) {
-            throw new IllegalArgumentException("JWT_SECRET must contain at least 32 bytes");
+        if (secret.getBytes(StandardCharsets.UTF_8).length < 32 || secret.toLowerCase().contains("replace-with")) {
+            throw new IllegalArgumentException("JWT_SECRET must be a real secret of at least 32 bytes; replace the sample value before starting");
         }
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expirationMinutes = expirationMinutes;
