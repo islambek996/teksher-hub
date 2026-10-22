@@ -53,7 +53,7 @@ public class DocumentService {
         d.setVersionNumber(1);
         d = documents.save(d);
         saveLinks(d, request.relatedDocumentIds());
-        versions.save(DocumentVersion.snapshot(d, username, text(request.changeNote(), "Создание карточки")));
+        recordVersion(d, username, text(request.changeNote(), "Создание карточки"));
         return toResponse(d);
     }
 
@@ -67,7 +67,7 @@ public class DocumentService {
         d.setVersionNumber(d.getVersionNumber() + 1);
         d = documents.save(d);
         saveLinks(d, request.relatedDocumentIds());
-        versions.save(DocumentVersion.snapshot(d, username, text(request.changeNote(), "Обновление карточки")));
+        recordVersion(d, username, text(request.changeNote(), "Обновление карточки"));
         return toResponse(d);
     }
 
@@ -91,7 +91,7 @@ public class DocumentService {
         d.setUpdatedAt(Instant.now());
         d.setVersionNumber(d.getVersionNumber() + 1);
         d = documents.save(d);
-        versions.save(DocumentVersion.snapshot(d, username, "Проверка актуальности: " + d.getStatus().label()));
+        recordVersion(d, username, "Проверка актуальности: " + d.getStatus().label());
         return toResponse(d);
     }
 
@@ -119,7 +119,7 @@ public class DocumentService {
             d.setUpdatedBy("system-expiry-job");
             d.setVersionNumber(d.getVersionNumber() + 1);
             documents.save(d);
-            versions.save(DocumentVersion.snapshot(d, "system-expiry-job", "Автоматически отмечено по дате окончания действия"));
+            recordVersion(d, "system-expiry-job", "Автоматически отмечено по дате окончания действия");
         }
         return due.size();
     }
@@ -132,6 +132,13 @@ public class DocumentService {
         return DocumentResponse.from(d, files.countByDocumentId(d.getId()), links.findRelatedIdsByDocumentId(d.getId()));
     }
 
+
+    private void recordVersion(DocumentRecord document, String username, String note) {
+        DocumentVersion version = DocumentVersion.snapshot(document, username, note);
+        version.setRelatedDocumentIds(links.findRelatedIdsByDocumentId(document.getId()).stream()
+                .map(UUID::toString).collect(java.util.stream.Collectors.joining(",")));
+        versions.save(version);
+    }
 
     private void saveLinks(DocumentRecord document, List<UUID> requestedIds) {
         links.deleteAllByDocumentId(document.getId());
