@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { API_ENABLED, API_BASE, apiRequest, clearStoredToken, getStoredToken, storeToken } from './lib/api.js'
 import {
   ArrowDownRight, ArrowUpRight, BookOpen, Boxes, CalendarDays, ChevronDown,
   CircleHelp, ExternalLink, FileCheck2, FilePlus2, FileText, Globe2, Home,
   Landmark, Layers3, LibraryBig, Link2, Search, ShieldCheck, SlidersHorizontal,
-  Sparkles, Workflow, X, Pencil, Trash2
+  Sparkles, Workflow, X, Pencil, Trash2, RefreshCw, UsersRound, LogOut, Paperclip, Download, History, CheckCircle2, UserPlus
 } from 'lucide-react'
 
 const demoDocuments = [
@@ -35,6 +36,10 @@ const navGroups = [
     { id: 'processes', label: 'Бизнес-процессы', icon: Workflow },
     { id: 'knowledge', label: 'Инструкции и база знаний', icon: BookOpen },
   ]},
+  { title: 'АДМИНИСТРИРОВАНИЕ', items: [
+    { id: 'monitoring', label: 'Источники и проверки', icon: RefreshCw },
+    { id: 'users', label: 'Пользователи', icon: UsersRound },
+  ]},
 ]
 
 const STORAGE_KEY = 'teksher-hub-user-documents'
@@ -57,14 +62,28 @@ function App() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [editingDoc, setEditingDoc] = useState(null)
   const [userDocuments, setUserDocuments] = useState(loadUserDocuments)
+  const [apiDocuments, setApiDocuments] = useState([])
+  const [apiFiles, setApiFiles] = useState([])
+  const [documentVersions, setDocumentVersions] = useState([])
+  const [monitors, setMonitors] = useState([])
+  const [users, setUsers] = useState([])
+  const [currentUser, setCurrentUser] = useState(null)
+  const [authInitializing, setAuthInitializing] = useState(API_ENABLED)
+  const [loginError, setLoginError] = useState('')
+  const [actionError, setActionError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const [monitorModalOpen, setMonitorModalOpen] = useState(false)
+  const [userModalOpen, setUserModalOpen] = useState(false)
 
-  const documents = useMemo(() => [...userDocuments, ...demoDocuments], [userDocuments])
+  const documents = useMemo(() => API_ENABLED ? apiDocuments : [...userDocuments, ...demoDocuments], [apiDocuments, userDocuments])
 
   const filteredDocuments = useMemo(() => documents.filter((doc) => {
     const matchesJurisdiction = ['RU', 'KG', 'EAEU'].includes(active) ? doc.jurisdiction === active : true
     const matchesQuery = [doc.title, doc.description, doc.area, doc.kind, doc.documentNumber || ''].join(' ').toLowerCase().includes(query.toLowerCase())
     const matchesFilter = filter === 'Все типы' || doc.kind === filter
-    const matchesStatus = statusFilter === 'Все статусы' || doc.status === statusFilter
+    const displayStatus = doc.statusLabel || doc.status
+    const matchesStatus = statusFilter === 'Все статусы' || displayStatus === statusFilter
     const matchesSection = active === 'groups' ? (doc.kind === 'Товарная группа' || doc.area === 'Товарные группы')
       : active === 'processes' ? doc.kind === 'Бизнес-процесс'
       : active === 'knowledge' ? ['Инструкция', 'Внутренний документ'].includes(doc.kind)
@@ -72,8 +91,41 @@ function App() {
     return matchesJurisdiction && matchesQuery && matchesFilter && matchesStatus && matchesSection
   }), [documents, active, query, filter, statusFilter])
 
+  useEffect(() => {
+    if (!API_ENABLED) { setAuthInitializing(false); return }
+    const token = getStoredToken()
+    if (!token) { setAuthInitializing(false); return }
+    apiRequest('/api/auth/me', { token }).then(setCurrentUser).catch(() => {
+      clearStoredToken()
+      setCurrentUser(null)
+    }).finally(() => setAuthInitializing(false))
+  }, [])
+
+  useEffect(() => {
+    if (!API_ENABLED || !currentUser) return
+    let cancelled = false
+    apiRequest('/api/documents').then(rows => { if (!cancelled) setApiDocuments(rows) }).catch(err => { if (!cancelled) setActionError(err.message) })
+    apiRequest('/api/monitors').then(rows => { if (!cancelled) setMonitors(rows) }).catch(err => { if (!cancelled) setActionError(err.message) })
+    if (currentUser.role === 'ADMIN') {
+      apiRequest('/api/users').then(rows => { if (!cancelled) setUsers(rows) }).catch(err => { if (!cancelled) setActionError(err.message) })
+    }
+    return () => { cancelled = true }
+  }, [currentUser])
+
+  useEffect(() => {
+    if (!API_ENABLED || !currentUser || !selectedDoc || selectedDoc.isDemo) {
+      setApiFiles([])
+      setDocumentVersions([])
+      return
+    }
+    let cancelled = false
+    apiRequest('/api/documents/' + selectedDoc.id + '/files').then(rows => { if (!cancelled) setApiFiles(rows) }).catch(() => { if (!cancelled) setApiFiles([]) })
+    apiRequest('/api/documents/' + selectedDoc.id + '/versions').then(rows => { if (!cancelled) setDocumentVersions(rows) }).catch(() => { if (!cancelled) setDocumentVersions([]) })
+    return () => { cancelled = true }
+  }, [currentUser, selectedDoc?.id])
+
   const pageTitle = active === 'home' ? 'База знаний оператора маркировки'
-    : jurisdictions[active]?.label || ({ documents: 'Все документы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний' }[active] || 'TEKSHER HUB')
+    : jurisdictions[active]?.label || ({ documents: 'Все документы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний', monitoring: 'Мониторинг официальных источников', users: 'Управление пользователями' }[active] || 'TEKSHER HUB')
 
   const openSection = (id) => { setActive(id); setSelectedDoc(null); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы') }
 
