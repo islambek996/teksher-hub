@@ -3,7 +3,7 @@ import {
   ArrowDownRight, ArrowUpRight, BookOpen, Boxes, CalendarDays, ChevronDown,
   CircleHelp, ExternalLink, FileCheck2, FilePlus2, FileText, Globe2, Home,
   Landmark, Layers3, LibraryBig, Link2, Search, ShieldCheck, SlidersHorizontal,
-  Sparkles, Workflow, X
+  Sparkles, Workflow, X, Pencil, Trash2
 } from 'lucide-react'
 
 const demoDocuments = [
@@ -55,6 +55,7 @@ function App() {
   const [statusFilter, setStatusFilter] = useState('Все статусы')
   const [selectedDoc, setSelectedDoc] = useState(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [editingDoc, setEditingDoc] = useState(null)
   const [userDocuments, setUserDocuments] = useState(loadUserDocuments)
 
   const documents = useMemo(() => [...userDocuments, ...demoDocuments], [userDocuments])
@@ -76,7 +77,7 @@ function App() {
 
   const openSection = (id) => { setActive(id); setSelectedDoc(null); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы') }
 
-  const handleCreateDocument = (event) => {
+  const handleSaveDocument = (event) => {
     event.preventDefault()
     const data = new FormData(event.currentTarget)
     const sourceValue = String(data.get('sourceUrl') || '').trim()
@@ -90,7 +91,8 @@ function App() {
       }
     }
     const doc = {
-      id: `user-${Date.now()}`,
+      ...(editingDoc || {}),
+      id: editingDoc?.id || 'user-' + Date.now(),
       title: String(data.get('title') || '').trim(),
       jurisdiction: String(data.get('jurisdiction') || 'KG'),
       kind: String(data.get('kind') || 'Нормативный акт'),
@@ -101,9 +103,12 @@ function App() {
       description: String(data.get('description') || '').trim(),
       status: sourceUrl ? 'Источник указан' : 'Черновик',
       isDemo: false,
-      createdAt: new Date().toISOString(),
+      createdAt: editingDoc?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     }
-    const nextDocuments = [doc, ...userDocuments]
+    const nextDocuments = editingDoc
+      ? userDocuments.map(item => item.id === doc.id ? doc : item)
+      : [doc, ...userDocuments]
     setUserDocuments(nextDocuments)
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDocuments))
@@ -113,9 +118,33 @@ function App() {
     setActive('documents')
     setSelectedDoc(doc)
     setShowCreateModal(false)
+    setEditingDoc(null)
     setQuery('')
     setFilter('Все типы')
     setStatusFilter('Все статусы')
+  }
+
+  const handleDeleteDocument = (doc) => {
+    if (doc.isDemo || !window.confirm('Удалить карточку «' + doc.title + '»?')) return
+    const nextDocuments = userDocuments.filter(item => item.id !== doc.id)
+    setUserDocuments(nextDocuments)
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDocuments))
+    } catch {
+      // Keep the change in the current session if browser storage is unavailable.
+    }
+    setSelectedDoc(null)
+    setActive('documents')
+  }
+
+  const closeDocumentModal = () => {
+    setShowCreateModal(false)
+    setEditingDoc(null)
+  }
+
+  const openNewDocumentModal = () => {
+    setEditingDoc(null)
+    setShowCreateModal(true)
   }
 
   return (
