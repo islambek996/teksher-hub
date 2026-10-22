@@ -419,8 +419,8 @@ function App() {
               canReview={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)}
               files={apiFiles} versions={documentVersions} onDownload={handleDownloadFile} onReview={handleReviewDocument} />
             : active === 'monitoring' ? <MonitorSection monitors={monitors} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
-                onAdd={() => setMonitorModalOpen(true)} onCheck={handleCheckMonitor} onDelete={handleDeleteMonitor} />
-            : active === 'users' ? <UsersSection users={users} onAdd={() => setUserModalOpen(true)} onToggle={handleToggleUser} />
+                onAdd={() => { setActionError(''); setMonitorModalOpen(true) }} onCheck={handleCheckMonitor} onDelete={handleDeleteMonitor} />
+            : active === 'users' ? <UsersSection users={users} onAdd={() => { setActionError(''); setUserModalOpen(true) }} onToggle={handleToggleUser} />
             : <>
             <div className="page-heading">
               <div><div className="section-kicker">БАЗА ЗНАНИЙ / {jurisdictions[active]?.short || 'TEKSHER HUB'}</div><h1>{pageTitle}</h1><p>{jurisdictions[active] ? `Документы и материалы: ${jurisdictions[active].label}. ` : 'Поиск по нормативным актам и рабочим материалам платформы.'}{API_ENABLED ? ' Проверяйте реквизиты и статус каждого документа перед применением.' : ' Демонстрационные записи не являются официальной нормативной базой.'}</p></div>
