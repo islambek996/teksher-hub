@@ -35,7 +35,7 @@ public class FileStorageService {
         if (baseName.length() > 250) baseName = baseName.substring(baseName.length() - 250);
         String stored = UUID.randomUUID() + "." + extension;
         Path target = resolve(stored);
-        try { Files.copy(upload.getInputStream(), target); }
+        try (var input = upload.getInputStream()) { Files.copy(input, target); }
         catch (IOException ex) { throw new IllegalStateException("Не удалось сохранить файл", ex); }
         String contentType = upload.getContentType();
         if (contentType == null || contentType.isBlank() || contentType.length() > 160) contentType = "application/octet-stream";
