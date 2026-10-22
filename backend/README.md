@@ -23,7 +23,7 @@ The initial admin is created only if `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_A
 - `POST /api/documents/{id}/review` – record manual status/source review.
 - `GET/POST /api/documents/{id}/files`, `GET /api/documents/{id}/files/{fileId}/download`.
 - `GET/POST/PUT/DELETE /api/monitors`, `POST /api/monitors/{id}/check`.
-- `GET/POST /api/users` and `PATCH /api/users/{id}/enabled` – administrator only.
+- `GET/POST /api/users`, `PATCH /api/users/{id}/enabled` and `PUT /api/users/{id}/password` – administrator only.
 - `GET /api/health`.
 
 ## Roles
