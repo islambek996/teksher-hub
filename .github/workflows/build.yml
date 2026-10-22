@@ -23,6 +23,20 @@ jobs:
 
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: teksher_hub
+          POSTGRES_USER: teksher
+          POSTGRES_PASSWORD: ci-test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U teksher -d teksher_hub"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,5 +46,37 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - name: Compile and test backend
+      - name: Compile backend
         run: mvn -B -f backend/pom.xml clean verify
+      - name: Start API and smoke-test schema, login and documents
+        env:
+          DATABASE_URL: jdbc:postgresql://localhost:5432/teksher_hub
+          DATABASE_USERNAME: teksher
+          DATABASE_PASSWORD: ci-test-password
+          JWT_SECRET: CI-only-secret-that-is-at-least-thirty-two-bytes
+          BOOTSTRAP_ADMIN_USERNAME: ci-admin
+          BOOTSTRAP_ADMIN_PASSWORD: ci-password-strong-enough-123
+          APP_CORS_ORIGINS: http://localhost:5173
+          UPLOAD_DIR: /tmp/teksher-hub-uploads
+        run: |
+          java -jar backend/target/teksher-hub-api-1.0.0.jar > /tmp/teksher-hub-api.log 2>&1 &
+          echo $! > /tmp/teksher-hub-api.pid
+          for i in {1..60}; do
+            if curl --silent --fail http://localhost:8080/api/health > /tmp/teksher-hub-health.json; then
+              break
+            fi
+            sleep 2
+          done
+          if ! curl --silent --fail http://localhost:8080/api/health; then
+            cat /tmp/teksher-hub-api.log
+            exit 1
+          fi
+          LOGIN=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/auth/login -H 'Content-Type: application/json' -d '{"username":"ci-admin","password":"ci-password-strong-enough-123"}')
+          TOKEN=$(echo "$LOGIN" | jq -r '.token')
+          test -n "$TOKEN" && test "$TOKEN" != "null"
+          CREATED=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/documents -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"title":"CI smoke test document","jurisdiction":"KG","kind":"Нормативный акт","area":"CI","documentNumber":"CI-001","documentDate":"2026-01-01","effectiveFrom":"2026-01-01","effectiveUntil":"2027-01-01","sourceUrl":"https://minjust.gov.kg/","description":"Temporary record to validate database migration and REST API","status":"","changeNote":"CI smoke test"}')
+          DOC_ID=$(echo "$CREATED" | jq -r '.id')
+          test -n "$DOC_ID" && test "$DOC_ID" != "null"
+          curl --silent --show-error --fail "http://localhost:8080/api/documents/$DOC_ID/versions" -H "Authorization: Bearer $TOKEN" | jq -e 'length == 1'
+          curl --silent --show-error --fail "http://localhost:8080/api/documents" -H "Authorization: Bearer $TOKEN" | jq -e 'length == 1'
+          kill "$(cat /tmp/teksher-hub-api.pid)" || true
