@@ -146,3 +146,31 @@
 .related-document b{font-size:10px;color:#2e4761;line-height:1.5}
 .related-document small{font-size:9px;color:#8393a6}
 .related-document:hover{background:#f7faff;border-color:#c6d7eb}
+
+.product-groups-page .page-heading{align-items:flex-start}
+.product-contour-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:18px 0 26px}
+.contour-card{background:#fff;border:1px solid #e1e9f2;border-radius:14px;padding:22px;min-width:0;display:flex;flex-direction:column;box-shadow:0 4px 16px #203c5b05}
+.contour-card.external{border-top:4px solid #527fb5}
+.contour-card.internal{border-top:4px solid #3e9a70}
+.contour-card-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.contour-icon{width:45px;height:45px;border-radius:12px;display:grid;place-items:center;background:#eaf1fb;color:#315f9a}
+.contour-card.internal .contour-icon{background:#e7f5ee;color:#27754e}
+.contour-code{font-size:9px;font-weight:800;letter-spacing:1px;border-radius:6px;padding:7px 8px;background:#edf3fb;color:#315f9a}
+.contour-card.internal .contour-code{background:#e7f5ee;color:#27754e}
+.contour-card h2{font-size:19px;line-height:1.4;color:#20344b;margin:17px 0 6px}
+.contour-subtitle{font-size:10px;font-weight:600;color:#667a91;line-height:1.6;margin:0 0 10px}
+.contour-description{font-size:11px;line-height:1.8;color:#6d7f94;margin:0 0 12px}
+.contour-section{border-top:1px solid #edf0f5;padding:14px 0 5px;margin-top:5px}
+.contour-section>b{font-size:11px;color:#344a62}
+.contour-section ul,.contour-section ol{padding-left:20px;margin:9px 0 10px;color:#6d7f94;font-size:10px;line-height:1.85}
+.contour-card>.primary-button{margin-top:auto;align-self:flex-start}
+.contour-reference{background:#fff;border:1px solid #e5ebf2;border-radius:13px;padding:22px;margin-bottom:22px}
+.contour-reference h2{font-size:17px;color:#20344b;margin:8px 0 17px}
+.reference-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.reference-links a{display:grid;grid-template-columns:1fr auto;gap:5px 10px;align-items:center;padding:13px;border:1px solid #e7edf4;border-radius:9px;text-decoration:none;color:#314a65}
+.reference-links a b{font-size:10px}
+.reference-links a span{font-size:9px;color:#8291a4;line-height:1.6;grid-column:1}
+.reference-links a svg{grid-column:2;grid-row:1/3;color:#7e94ad}
+.reference-links a:hover{background:#f8fbff;border-color:#c7d8eb}
+@media(max-width:900px){.product-contour-grid{grid-template-columns:1fr}}
+@media(max-width:600px){.contour-card{padding:17px}.reference-links{grid-template-columns:1fr}.contour-card h2{font-size:17px}}
