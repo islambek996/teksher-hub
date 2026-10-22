@@ -1,0 +1,35 @@
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: always
+spring:
+  application:
+    name: teksher-hub-api
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/teksher_hub}
+    username: ${DATABASE_USERNAME:teksher}
+    password: ${DATABASE_PASSWORD:teksher-dev-password}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+  servlet:
+    multipart:
+      max-file-size: 30MB
+      max-request-size: 32MB
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+app:
+  jwt:
+    secret: ${JWT_SECRET:local-dev-only-secret-change-this-to-at-least-32-characters}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:480}
+  cors:
+    allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5173,http://localhost:4173}
+  storage:
+    directory: ${UPLOAD_DIR:./uploads}
+  bootstrap:
+    admin-username: ${BOOTSTRAP_ADMIN_USERNAME:}
+    admin-password: ${BOOTSTRAP_ADMIN_PASSWORD:}
