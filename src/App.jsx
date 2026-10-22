@@ -457,16 +457,47 @@ function App() {
                 <span className="overview-copy"><strong>{documents.length}</strong><b>{API_ENABLED ? 'Материалов в базе' : 'Демо-карточек'}</b><small>{API_ENABLED ? 'Документы и рабочие материалы' : 'Примеры интерфейса, не официальные НПА'}</small></span>
                 <ArrowUpRight size={16} className="overview-arrow" />
               </button>
+              <button className="overview-card" onClick={() => {
+                setActive('documents'); setSelectedDoc(null); setQuery(''); setFilter('Все типы'); setStatusFilter('На проверке'); syncRoute('documents')
+              }}>
+                <span className="overview-icon overview-amber"><CircleHelp size={20} /></span>
+                <span className="overview-copy"><strong>{API_ENABLED ? documents.filter(doc => ['UNDER_REVIEW', 'На проверке'].includes(doc.statusLabel || doc.status)).length : '—'}</strong><b>Требуют проверки</b><small>{API_ENABLED ? 'Нормативные записи на юридической проверке' : 'Доступно в подключённой базе'}</small></span>
+                <ArrowUpRight size={16} className="overview-arrow" />
+              </button>
               <button className="overview-card" onClick={() => openSection('groups')}>
                 <span className="overview-icon overview-green"><Boxes size={20} /></span>
                 <span className="overview-copy"><strong>02</strong><b>Контура маркировки</b><small>Внешний МЗКМ и внутренний ГАИС МТ</small></span>
                 <ArrowUpRight size={16} className="overview-arrow" />
               </button>
-              <button className="overview-card" onClick={() => openSection('EAEU')}>
-                <span className="overview-icon overview-violet"><Globe2 size={20} /></span>
-                <span className="overview-copy"><strong>03</strong><b>Юрисдикции</b><small>Кыргызстан, Россия и ЕАЭС</small></span>
-                <ArrowUpRight size={16} className="overview-arrow" />
-              </button>
+            </section>
+
+            <section className="home-workbench">
+              <div className="workbench-heading">
+                <div><div className="section-kicker">РАБОЧАЯ ПАНЕЛЬ</div><h2>Материалы и контроль</h2><p>Быстрый переход к документам и проверке актуальности.</p></div>
+                <button className="text-button" onClick={() => openSection('documents')}>Вся база <ArrowUpRight size={15}/></button>
+              </div>
+              <div className="workbench-grid">
+                <div className="workbench-panel">
+                  <div className="workbench-panel-title"><span className="workbench-panel-icon"><LibraryBig size={17}/></span><div><b>Недавно добавленные</b><small>{documents.length ? 'Последние материалы в базе' : 'Пока нет материалов'}</small></div></div>
+                  {documents.length ? [...documents].sort((a,b) => new Date(b.updatedAt || b.createdAt || b.documentDate || 0) - new Date(a.updatedAt || a.createdAt || a.documentDate || 0)).slice(0,4).map(doc => (
+                    <button className="recent-document" key={doc.id} onClick={() => { setActive('documents'); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы'); syncRoute('documents', doc.id); setSelectedDoc(doc) }}>
+                      <span className={'recent-jurisdiction ' + (jurisdictions[doc.jurisdiction]?.className || '')}>{jurisdictions[doc.jurisdiction]?.short || 'НПА'}</span>
+                      <span className="recent-copy"><b>{doc.title}</b><small>{doc.documentNumber ? '№ ' + doc.documentNumber + ' · ' : ''}{doc.kind || 'Материал'} · {doc.statusLabel || doc.status || 'Без статуса'}</small></span>
+                      <ArrowUpRight size={15}/>
+                    </button>
+                  )) : <div className="workbench-empty">Добавьте первый документ, чтобы он появился здесь.</div>}
+                </div>
+                <div className="workbench-panel workbench-check-panel">
+                  <div className="workbench-panel-title"><span className="workbench-panel-icon amber"><ShieldCheck size={17}/></span><div><b>Контроль актуальности</b><small>Порядок работы с нормативным актом</small></div></div>
+                  <div className="review-step"><span>01</span><div><b>Откройте официальный источник</b><small>Проверьте текст акта, изменения и дату публикации.</small></div></div>
+                  <div className="review-step"><span>02</span><div><b>Сверьте применимость</b><small>Юрисдикция, товарная группа, код и срок действия.</small></div></div>
+                  <div className="review-step"><span>03</span><div><b>Зафиксируйте результат</b><small>Обновите статус карточки после ручной проверки.</small></div></div>
+                  <button className="secondary-button workbench-review-button" onClick={() => {
+                    setActive('documents'); setSelectedDoc(null); setQuery(''); setFilter('Все типы'); setStatusFilter('На проверке'); syncRoute('documents')
+                  }}>Открыть очередь проверки <ArrowUpRight size={15}/></button>
+                </div>
+              </div>
+              {!API_ENABLED && <div className="workbench-demo-note"><CircleHelp size={14}/> Сейчас показан демонстрационный режим. Счётчики юридической проверки появятся после подключения API и загрузки общей базы.</div>}
             </section>
 
             <div className="section-title-row"><div><div className="section-kicker">БЫСТРЫЙ ДОСТУП</div><h2>Выберите направление</h2><p>Каждый контур – отдельная нормативная область</p></div><span className="muted-count">03 направления</span></div>
