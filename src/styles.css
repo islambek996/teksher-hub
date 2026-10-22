@@ -174,3 +174,136 @@
 .reference-links a:hover{background:#f8fbff;border-color:#c7d8eb}
 @media(max-width:900px){.product-contour-grid{grid-template-columns:1fr}}
 @media(max-width:600px){.contour-card{padding:17px}.reference-links{grid-template-columns:1fr}.contour-card h2{font-size:17px}}
+
+
+/* TEKSHER HUB – visual polish */
+:root {
+  --ink: #172b45;
+  --muted: #72839a;
+  --line: #e4ebf3;
+  --surface: #ffffff;
+  --accent: #2c5b91;
+  --accent-soft: #edf4fc;
+}
+body {
+  background:
+    radial-gradient(ellipse at 90% 0%, rgba(218,232,249,.42), transparent 34rem),
+    #f5f7fb;
+}
+button, a, input, select { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 3px solid rgba(92, 151, 218, .42);
+  outline-offset: 2px;
+}
+.sidebar {
+  background: linear-gradient(165deg, #132945 0%, #173455 58%, #10243d 100%);
+  box-shadow: 8px 0 30px rgba(15, 38, 65, .06);
+}
+.brand-mark {
+  background: linear-gradient(145deg, #fff, #dceafa);
+  box-shadow: 0 5px 16px rgba(0,0,0,.12);
+}
+.nav-item { transition: background .18s ease, color .18s ease, transform .18s ease; }
+.nav-item:hover { transform: translateX(2px); }
+.nav-item.active {
+  background: linear-gradient(100deg, rgba(88,139,195,.34), rgba(61,101,148,.22));
+  box-shadow: inset 3px 0 #9ac7fa;
+}
+.topbar {
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(14px);
+  border-bottom-color: rgba(222,231,241,.9);
+}
+.page-content { padding-top: 32px; }
+.welcome {
+  border: 1px solid rgba(255,255,255,.13);
+  background:
+    radial-gradient(circle at 82% 40%, rgba(116,164,216,.22), transparent 17rem),
+    linear-gradient(118deg, #142e4e 0%, #20466f 57%, #2a5684 100%);
+  box-shadow: 0 18px 42px rgba(22, 52, 86, .13);
+}
+.welcome::after {
+  content: "";
+  position: absolute;
+  inset: auto -10% -100px 20%;
+  height: 170px;
+  background: linear-gradient(90deg, transparent, rgba(173,208,246,.07), transparent);
+  transform: rotate(-8deg);
+  pointer-events: none;
+}
+.welcome-button, .primary-button {
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.welcome-button { box-shadow: 0 5px 14px rgba(5,24,45,.12); }
+.welcome-button:hover, .primary-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 18px rgba(26,65,108,.16);
+}
+.jurisdiction-card, .system-card, .document-row, .detail-card, .contour-card {
+  box-shadow: 0 4px 18px rgba(24, 48, 76, .025);
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease, background .18s ease;
+}
+.jurisdiction-card:hover, .system-card:hover, .document-row:hover, .contour-card:hover {
+  box-shadow: 0 10px 28px rgba(24, 48, 76, .075);
+  transform: translateY(-2px);
+}
+.jurisdiction-card { border-radius: 15px; }
+.jurisdiction-card h3 { letter-spacing: -.45px; }
+.section-title-row h2 { letter-spacing: -.5px; }
+.page-heading h1 { letter-spacing: -1px; }
+.search-input-wrap, .filter-wrap {
+  box-shadow: 0 2px 6px rgba(26, 53, 84, .02);
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.search-input-wrap:focus-within, .filter-wrap:focus-within {
+  border-color: #8fb5df;
+  box-shadow: 0 0 0 3px rgba(94, 147, 205, .10);
+}
+.document-row { border-radius: 12px; }
+.doc-main > b { line-height: 1.5; }
+.detail-card { border-radius: 16px; box-shadow: 0 10px 36px rgba(20, 48, 80, .045); }
+.notice { border-radius: 11px; }
+.feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 13px 15px;
+  border-radius: 11px;
+  margin-bottom: 14px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.feedback span { flex: 1; }
+.feedback button { border: 0; background: transparent; color: inherit; padding: 0; display: grid; place-items: center; }
+.feedback-error { background: #fff1f0; border: 1px solid #ffd7d3; color: #9b3832; }
+.feedback-success { background: #edf9f1; border: 1px solid #d1efdc; color: #247548; }
+.primary-button, .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 9px;
+  padding: 11px 14px;
+  font-size: 11px;
+  font-weight: 650;
+}
+.primary-button { border: 1px solid #244d79; background: #244d79; color: white; }
+.secondary-button { border: 1px solid #d9e3ef; background: white; color: #31587f; }
+.primary-button:hover { background: #1b416b; }
+.secondary-button:hover { background: #f5f8fc; border-color: #b8cde3; }
+.footer { color: #8998aa; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+@media (max-width: 760px) {
+  .sidebar { box-shadow: 0 5px 22px rgba(15,38,65,.10); }
+  .sidebar .nav-group { flex: 0 0 auto; }
+  .sidebar .nav-group:nth-of-type(1) { display: flex !important; }
+  .sidebar .nav-item { flex: 0 0 auto; border: 1px solid transparent; }
+  .sidebar .nav-item.active { border-color: rgba(160,199,240,.18); }
+  .page-content { padding-top: 18px; }
+  .welcome { border-radius: 15px; }
+  .welcome-button { min-height: 42px; }
+  .topbar { position: sticky; }
+  .jurisdiction-card:hover, .system-card:hover, .document-row:hover, .contour-card:hover { transform: none; }
+}
