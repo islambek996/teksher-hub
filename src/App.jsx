@@ -343,6 +343,9 @@ function App() {
   const openNewDocumentModal = () => { setEditingDoc(null); setActionError(''); setShowCreateModal(true) }
 
 
+  if (API_ENABLED && authInitializing) return <LoginScreen loading />
+  if (API_ENABLED && !currentUser) return <LoginScreen onSubmit={handleLogin} error={loginError} />
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -351,12 +354,20 @@ function App() {
           <span className="brand-copy"><strong>TEKSHER<span>HUB</span></strong><small>KNOWLEDGE PLATFORM</small></span>
         </button>
         <div className="sidebar-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
-        {navGroups.map((group) => <div className="nav-group" key={group.title}>
-          <div className="nav-heading">{group.title}</div>
-          {group.items.map(({ id, label, icon: Icon }) => <button key={id} className={`nav-item ${active === id ? 'active' : ''}`} onClick={() => openSection(id)}>
-            <Icon size={18} strokeWidth={1.8} /><span>{label}</span>{active === id && <span className="active-dot" />}
-          </button>)}
-        </div>)}
+        {navGroups.map((group) => {
+          const items = group.items.filter(item => {
+            if (!API_ENABLED && ['monitoring', 'users'].includes(item.id)) return false
+            if (item.id === 'users' && currentUser?.role !== 'ADMIN') return false
+            return true
+          })
+          if (!items.length) return null
+          return <div className="nav-group" key={group.title}>
+            <div className="nav-heading">{group.title}</div>
+            {items.map(({ id, label, icon: Icon }) => <button key={id} className={`nav-item ${active === id ? 'active' : ''}`} onClick={() => openSection(id)}>
+              <Icon size={18} strokeWidth={1.8} /><span>{label}</span>{active === id && <span className="active-dot" />}
+            </button>)}
+          </div>
+        })}
         <div className="sidebar-bottom">
           <div className="status-indicator"><span /> Платформа в разработке</div>
           <div className="sidebar-version">Версия 0.2 · MVP</div>
@@ -366,10 +377,12 @@ function App() {
       <main className="main-area">
         <header className="topbar">
           <div className="breadcrumbs"><span>TEKSHER HUB</span><span className="crumb-slash">/</span><strong>{selectedDoc ? 'Карточка документа' : pageTitle}</strong></div>
-          <div className="topbar-right"><span className="internal-badge"><ShieldCheck size={14} /> Внутренний портал</span><div className="avatar">ОП</div></div>
+          <div className="topbar-right"><span className="internal-badge"><ShieldCheck size={14} /> {API_ENABLED ? currentUser?.role || 'Пользователь' : 'Демо-режим'}</span><div className="avatar">{currentUser?.displayName ? currentUser.displayName.split(' ').map(part => part[0]).join('').slice(0,2).toUpperCase() : 'ОП'}</div>{API_ENABLED && <button className="logout-button" onClick={handleLogout} title="Выйти"><LogOut size={15} /><span>Выход</span></button>}</div>
         </header>
 
         <div className="page-content">
+          {actionError && <div className="feedback feedback-error" role="alert"><CircleHelp size={16} /><span>{actionError}</span><button onClick={() => setActionError('')} aria-label="Закрыть сообщение"><X size={15} /></button></div>}
+          {successMessage && <div className="feedback feedback-success" role="status"><CheckCircle2 size={16} /><span>{successMessage}</span><button onClick={() => setSuccessMessage('')} aria-label="Закрыть сообщение"><X size={15} /></button></div>}
           {active === 'home' && !selectedDoc ? <>
             <section className="welcome">
               <div className="welcome-content">
@@ -398,24 +411,36 @@ function App() {
               <a className="system-card" href="https://label.teksher.kg" target="_blank" rel="noreferrer"><span className="system-icon blue"><ExternalLink size={20} /></span><span className="system-copy"><b>МЗКМ «Текшер»</b><small>Внешний контур · РФ</small></span><ArrowUpRight size={17} className="system-arrow" /></a>
               <a className="system-card" href="https://main.teksher.kg" target="_blank" rel="noreferrer"><span className="system-icon green"><ExternalLink size={20} /></span><span className="system-copy"><b>ГАИС МТ</b><small>Внутренний контур · КР</small></span><ArrowUpRight size={17} className="system-arrow" /></a>
             </section>
-          </> : selectedDoc ? <DocumentDetail doc={selectedDoc} onBack={() => setSelectedDoc(null)} onEdit={() => { setEditingDoc(selectedDoc); setShowCreateModal(true) }} onDelete={() => handleDeleteDocument(selectedDoc)} /> : <>
+          </> : selectedDoc ? <DocumentDetail doc={selectedDoc} onBack={() => setSelectedDoc(null)}
+              onEdit={() => { setEditingDoc(selectedDoc); setShowCreateModal(true) }}
+              onDelete={() => handleDeleteDocument(selectedDoc)}
+              canEdit={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)}
+              canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'}
+              canReview={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)}
+              files={apiFiles} versions={documentVersions} onDownload={handleDownloadFile} onReview={handleReviewDocument} />
+            : active === 'monitoring' ? <MonitorSection monitors={monitors} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
+                onAdd={() => setMonitorModalOpen(true)} onCheck={handleCheckMonitor} onDelete={handleDeleteMonitor} />
+            : active === 'users' ? <UsersSection users={users} onAdd={() => setUserModalOpen(true)} onToggle={handleToggleUser} />
+            : <>
             <div className="page-heading">
               <div><div className="section-kicker">БАЗА ЗНАНИЙ / {jurisdictions[active]?.short || 'TEKSHER HUB'}</div><h1>{pageTitle}</h1><p>{jurisdictions[active] ? `Документы и материалы: ${jurisdictions[active].label}. ` : 'Поиск по нормативным актам и рабочим материалам платформы.'}Демонстрационные записи не являются официальной нормативной базой.</p></div>
-              <div className="heading-actions"><span className="record-count">{filteredDocuments.length} записей</span><button className="primary-button" onClick={openNewDocumentModal}><FilePlus2 size={16} /> Добавить запись</button></div>
+              <div className="heading-actions"><span className="record-count">{filteredDocuments.length} записей</span>{(!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)) && <button className="primary-button" onClick={openNewDocumentModal}><FilePlus2 size={16} /> Добавить запись</button>}</div>
             </div>
             <div className="search-panel">
               <div className="search-input-wrap"><Search size={19} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск по названию, номеру или содержанию..." /></div>
               <div className="filter-wrap"><SlidersHorizontal size={16} /><select value={filter} onChange={(e) => setFilter(e.target.value)}><option>Все типы</option><option>Обзор</option><option>Нормативный акт</option><option>Товарная группа</option><option>Инструкция</option><option>Внутренний документ</option><option>Бизнес-процесс</option></select><ChevronDown size={14} /></div>
-              <div className="filter-wrap status-select"><select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}><option>Все статусы</option><option>Демонстрационная запись</option><option>Черновик</option><option>Источник указан</option></select><ChevronDown size={14} /></div>
+              <div className="filter-wrap status-select"><select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}><option>Все статусы</option><option>Демонстрационная запись</option><option>Черновик</option><option>Источник указан</option><option>На проверке</option><option>Действует</option><option>Срок действия истёк</option><option>В архиве</option></select><ChevronDown size={14} /></div>
             </div>
-            <div className="notice"><CircleHelp size={17} /><div><b>Каталог пока работает без серверного хранилища</b><span>Новые карточки сохраняются в локальном хранилище этого браузера. Для общего доступа, загрузки файлов и единой базы потребуется backend. Демонстрационные записи не являются официальными документами.</span></div></div>
+            <div className="notice"><CircleHelp size={17} /><div><b>{API_ENABLED ? 'Единая база документов' : 'Локальный демонстрационный режим'}</b><span>{API_ENABLED ? 'Данные загружаются из PostgreSQL через защищённый API. Перед публикацией проверяйте официальный источник и дату действия.' : 'Карточки сохраняются только в этом браузере. Чтобы включить общую базу, вход по ролям, версии и загрузку файлов, задайте VITE_API_URL после развёртывания backend.'}</span></div></div>
             <div className="document-list">{filteredDocuments.length ? filteredDocuments.map(doc => <DocumentRow key={doc.id} doc={doc} onClick={() => setSelectedDoc(doc)} />) : <div className="empty-state"><Search size={28} /><b>{active === 'groups' ? 'Справочник товарных групп пока пуст' : active === 'processes' ? 'Бизнес-процессы ещё не добавлены' : 'Ничего не найдено'}</b><span>{['groups', 'processes'].includes(active) ? 'Добавь первую карточку через форму. Она сохранится в этом браузере.' : 'Измени поисковый запрос или фильтр.'}</span>{['groups', 'processes'].includes(active) && <button className="secondary-button" onClick={openNewDocumentModal}>Добавить первую запись</button>}</div>}</div>
           </>}
-          <footer className="footer"><span>TEKSHER HUB <i>·</i> Информационная платформа оператора маркировки</span><span>Версия 0.2 · 2026</span></footer>
+          <footer className="footer"><span>TEKSHER HUB <i>·</i> Информационная платформа оператора маркировки</span><span>Версия 0.3 · 2026</span></footer>
         </div>
       </main>
 
-      {showCreateModal && <CreateDocumentModal initialDoc={editingDoc} onClose={closeDocumentModal} onSubmit={handleSaveDocument} />}
+      {showCreateModal && <CreateDocumentModal initialDoc={editingDoc} onClose={closeDocumentModal} onSubmit={handleSaveDocument} apiEnabled={API_ENABLED} saving={isSaving} error={actionError} />}
+      {monitorModalOpen && <MonitorModal onClose={() => setMonitorModalOpen(false)} onSubmit={handleSaveMonitor} saving={isSaving} />}
+      {userModalOpen && <UserModal onClose={() => setUserModalOpen(false)} onSubmit={handleSaveUser} saving={isSaving} />}
     </div>
   )
 }
