@@ -1,0 +1,41 @@
+databases:
+  - name: teksher-hub-db
+    databaseName: teksher_hub
+    user: teksher
+    plan: 0.5c-1g
+    diskSizeGB: 15
+    region: frankfurt
+    ipAllowList: []
+
+services:
+  - type: web
+    name: teksher-hub-api
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /api/health
+    disk:
+      name: teksher-hub-uploads
+      mountPath: /app/uploads
+      sizeGB: 5
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: teksher-hub-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: BOOTSTRAP_ADMIN_USERNAME
+        value: teksher-admin
+      - key: BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
+      - key: APP_CORS_ORIGINS
+        sync: false
+      - key: UPLOAD_DIR
+        value: /app/uploads
+      - key: JWT_EXPIRATION_MINUTES
+        value: "480"
+      - key: MONITOR_ALLOWED_HOSTS
+        value: publication.pravo.gov.ru,pravo.gov.ru,docs.eaeunion.org,eec.eaeunion.org,cbd.minjust.gov.kg,minjust.gov.kg,gov.kg
