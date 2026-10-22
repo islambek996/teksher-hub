@@ -14,11 +14,13 @@ public class DocumentService {
     private final DocumentRepository documents;
     private final DocumentVersionRepository versions;
     private final DocumentFileRepository files;
+    private final FileStorageService storage;
 
-    public DocumentService(DocumentRepository documents, DocumentVersionRepository versions, DocumentFileRepository files) {
+    public DocumentService(DocumentRepository documents, DocumentVersionRepository versions, DocumentFileRepository files, FileStorageService storage) {
         this.documents = documents;
         this.versions = versions;
         this.files = files;
+        this.storage = storage;
     }
 
     @Transactional(readOnly = true)
@@ -91,6 +93,9 @@ public class DocumentService {
     @Transactional
     public void delete(UUID id) {
         DocumentRecord d = findEntity(id);
+        for (DocumentFile file : files.findAllByDocumentIdOrderByUploadedAtDesc(id)) {
+            storage.delete(file.getStoredName());
+        }
         documents.delete(d);
     }
 
