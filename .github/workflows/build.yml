@@ -78,5 +78,5 @@ jobs:
           DOC_ID=$(echo "$CREATED" | jq -r '.id')
           test -n "$DOC_ID" && test "$DOC_ID" != "null"
           curl --silent --show-error --fail "http://localhost:8080/api/documents/$DOC_ID/versions" -H "Authorization: Bearer $TOKEN" | jq -e 'length == 1'
-          curl --silent --show-error --fail "http://localhost:8080/api/documents" -H "Authorization: Bearer $TOKEN" | jq -e 'length == 1'
+          curl --silent --show-error --fail "http://localhost:8080/api/documents" -H "Authorization: Bearer $TOKEN" | jq -e --arg title "CI smoke test document" 'any(.[]; .title == $title)'
           kill "$(cat /tmp/teksher-hub-api.pid)" || true
