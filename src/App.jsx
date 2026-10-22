@@ -55,6 +55,7 @@ function loadUserDocuments() {
 
 function App() {
   const [active, setActive] = useState('home')
+  const [navigationRevision, setNavigationRevision] = useState(0)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('Все типы')
   const [statusFilter, setStatusFilter] = useState('Все статусы')
@@ -128,10 +129,43 @@ function App() {
   const pageTitle = active === 'home' ? 'База знаний оператора маркировки'
     : jurisdictions[active]?.label || ({ documents: 'Все документы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний', monitoring: 'Мониторинг официальных источников', users: 'Управление пользователями' }[active] || 'TEKSHER HUB')
 
+  const syncRoute = (section, docId = null, replace = false) => {
+    const route = { app: 'teksher-hub', section, docId }
+    const url = docId ? '#' + section + '/document/' + encodeURIComponent(docId) : '#' + section
+    if (replace) window.history.replaceState(route, '', url)
+    else window.history.pushState(route, '', url)
+  }
+
   const openSection = (id) => {
+    syncRoute(id)
     setActive(id); setSelectedDoc(null); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы')
     setActionError(''); setSuccessMessage('')
   }
+
+  const openDocument = (doc) => {
+    syncRoute(active, doc.id)
+    setSelectedDoc(doc)
+    setActionError(''); setSuccessMessage('')
+  }
+
+  useEffect(() => {
+    const restoreRoute = () => {
+      const route = window.history.state
+      if (route?.app === 'teksher-hub') {
+        setActive(route.section || 'home')
+        const doc = route.docId ? documents.find(item => String(item.id) === String(route.docId)) : null
+        setSelectedDoc(doc || null)
+      } else {
+        setActive('home')
+        setSelectedDoc(null)
+      }
+      setActionError(''); setSuccessMessage('')
+      setNavigationRevision(value => value + 1)
+    }
+    if (!window.history.state?.app) syncRoute('home', null, true)
+    window.addEventListener('popstate', restoreRoute)
+    return () => window.removeEventListener('popstate', restoreRoute)
+  }, [documents])
 
   const refreshDocuments = async () => {
     if (API_ENABLED) setApiDocuments(await apiRequest('/api/documents'))
@@ -226,6 +260,7 @@ function App() {
         setSuccessMessage('Карточка сохранена в текущем браузере. Для общей базы подключи API.')
       }
       setActive('documents')
+      syncRoute('documents', doc.id)
       setSelectedDoc(doc)
       setShowCreateModal(false)
       setEditingDoc(null)
@@ -430,7 +465,7 @@ function App() {
               <a className="system-card" href="https://label.teksher.kg" target="_blank" rel="noreferrer"><span className="system-icon blue"><ExternalLink size={20} /></span><span className="system-copy"><b>МЗКМ «Текшер»</b><small>Внешний контур · РФ</small></span><ArrowUpRight size={17} className="system-arrow" /></a>
               <a className="system-card" href="https://main.teksher.kg" target="_blank" rel="noreferrer"><span className="system-icon green"><ExternalLink size={20} /></span><span className="system-copy"><b>ГАИС МТ</b><small>Внутренний контур · КР</small></span><ArrowUpRight size={17} className="system-arrow" /></a>
             </section>
-          </> : selectedDoc ? <DocumentDetail doc={selectedDoc} onBack={() => setSelectedDoc(null)}
+          </> : selectedDoc ? <DocumentDetail doc={selectedDoc} onBack={() => { if (window.history.state?.app === 'teksher-hub') window.history.back(); else { setSelectedDoc(null); syncRoute(active, null, true) } }}
               onEdit={() => { setEditingDoc(selectedDoc); setShowCreateModal(true) }}
               onDelete={() => handleDeleteDocument(selectedDoc)}
               canEdit={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)}
@@ -451,7 +486,7 @@ function App() {
               <div className="filter-wrap status-select"><select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}><option>Все статусы</option><option>Демонстрационная запись</option><option>Черновик</option><option>Источник указан</option><option>На проверке</option><option>Действует</option><option>Срок действия истёк</option><option>В архиве</option></select><ChevronDown size={14} /></div>
             </div>
             <div className="notice"><CircleHelp size={17} /><div><b>{API_ENABLED ? 'Единая база документов' : 'Локальный демонстрационный режим'}</b><span>{API_ENABLED ? 'Данные загружаются из PostgreSQL через защищённый API. Перед публикацией проверяйте официальный источник и дату действия.' : 'Карточки сохраняются только в этом браузере. Чтобы включить общую базу, вход по ролям, версии и загрузку файлов, задайте VITE_API_URL после развёртывания backend.'}</span></div></div>
-            <div className="document-list">{filteredDocuments.length ? filteredDocuments.map(doc => <DocumentRow key={doc.id} doc={doc} onClick={() => setSelectedDoc(doc)} />) : <div className="empty-state"><Search size={28} /><b>{active === 'groups' ? 'Справочник товарных групп пока пуст' : active === 'processes' ? 'Бизнес-процессы ещё не добавлены' : 'Ничего не найдено'}</b><span>{['groups', 'processes'].includes(active) ? 'Добавь первую карточку через форму. Она сохранится в этом браузере.' : 'Измени поисковый запрос или фильтр.'}</span>{['groups', 'processes'].includes(active) && (!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)) && <button className="secondary-button" onClick={openNewDocumentModal}>Добавить первую запись</button>}</div>}</div>
+            <div className="document-list">{filteredDocuments.length ? filteredDocuments.map(doc => <DocumentRow key={doc.id} doc={doc} onClick={() => openDocument(doc)} />) : <div className="empty-state"><Search size={28} /><b>{active === 'groups' ? 'Справочник товарных групп пока пуст' : active === 'processes' ? 'Бизнес-процессы ещё не добавлены' : 'Ничего не найдено'}</b><span>{['groups', 'processes'].includes(active) ? 'Добавь первую карточку через форму. Она сохранится в этом браузере.' : 'Измени поисковый запрос или фильтр.'}</span>{['groups', 'processes'].includes(active) && (!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)) && <button className="secondary-button" onClick={openNewDocumentModal}>Добавить первую запись</button>}</div>}</div>
           </>}
           <footer className="footer"><span>TEKSHER HUB <i>·</i> Информационная платформа оператора маркировки</span><span>Версия 0.3 · 2026</span></footer>
         </div>
