@@ -43,8 +43,12 @@ public class UserAdminController {
     }
 
     @PatchMapping("/{id}/enabled")
-    public UserView setEnabled(@PathVariable Long id, @RequestBody EnabledRequest request) {
+    public UserView setEnabled(@PathVariable Long id, @RequestBody EnabledRequest request,
+                               @AuthenticationPrincipal UserAccount actingUser) {
         UserAccount user = users.findById(id).orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+        if (user.getId().equals(actingUser.getId()) && !request.enabled()) {
+            throw new IllegalArgumentException("Нельзя отключить собственную учётную запись администратора");
+        }
         user.setEnabled(request.enabled());
         return UserView.from(users.save(user));
     }
@@ -52,7 +56,7 @@ public class UserAdminController {
     public record CreateUserRequest(@NotBlank @Size(max = 120) String username,
                                     @NotBlank @Size(max = 180) String displayName,
                                     @NotBlank @Size(min = 12, max = 200) String password,
-                                    @Pattern(regexp = "ADMIN|EDITOR|READER") String role) {}
+                                    @NotBlank @Pattern(regexp = "ADMIN|EDITOR|READER") String role) {}
     public record EnabledRequest(boolean enabled) {}
     public record UserView(Long id, String username, String displayName, String role, boolean enabled) {
         static UserView from(UserAccount u) { return new UserView(u.getId(), u.getUsername(), u.getDisplayName(), u.getRole(), u.isEnabled()); }
