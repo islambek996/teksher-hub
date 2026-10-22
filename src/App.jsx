@@ -75,6 +75,7 @@ function App() {
   const [isSaving, setIsSaving] = useState(false)
   const [monitorModalOpen, setMonitorModalOpen] = useState(false)
   const [userModalOpen, setUserModalOpen] = useState(false)
+  const [passwordResetTarget, setPasswordResetTarget] = useState(null)
 
   const documents = useMemo(() => API_ENABLED ? apiDocuments : [...userDocuments, ...demoDocuments], [apiDocuments, userDocuments])
 
@@ -332,6 +333,21 @@ function App() {
     finally { setIsSaving(false) }
   }
 
+  const handleResetPassword = async (event) => {
+    event.preventDefault()
+    if (!passwordResetTarget) return
+    const data = new FormData(event.currentTarget)
+    const password = String(data.get('password') || '')
+    setIsSaving(true); setActionError('')
+    try {
+      await apiRequest('/api/users/' + passwordResetTarget.id + '/password', { method: 'PUT', body: { password } })
+      setPasswordResetTarget(null)
+      setSuccessMessage('Пароль пользователя «' + passwordResetTarget.username + '» обновлён.')
+      await refreshUsers()
+    } catch (error) { setActionError(error.message || 'Не удалось сменить пароль.') }
+    finally { setIsSaving(false) }
+  }
+
   const handleToggleUser = async (user) => {
     try {
       await apiRequest('/api/users/' + user.id + '/enabled', { method: 'PATCH', body: { enabled: !user.enabled } })
@@ -420,7 +436,7 @@ function App() {
               files={apiFiles} versions={documentVersions} onDownload={handleDownloadFile} onReview={handleReviewDocument} />
             : active === 'monitoring' ? <MonitorSection monitors={monitors} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
                 onAdd={() => { setActionError(''); setMonitorModalOpen(true) }} onCheck={handleCheckMonitor} onDelete={handleDeleteMonitor} />
-            : active === 'users' ? <UsersSection users={users} onAdd={() => { setActionError(''); setUserModalOpen(true) }} onToggle={handleToggleUser} />
+            : active === 'users' ? <UsersSection users={users} onAdd={() => { setActionError(''); setUserModalOpen(true) }} onToggle={handleToggleUser} onReset={user => { setActionError(''); setPasswordResetTarget(user) }} />
             : <>
             <div className="page-heading">
               <div><div className="section-kicker">БАЗА ЗНАНИЙ / {jurisdictions[active]?.short || 'TEKSHER HUB'}</div><h1>{pageTitle}</h1><p>{jurisdictions[active] ? `Документы и материалы: ${jurisdictions[active].label}. ` : 'Поиск по нормативным актам и рабочим материалам платформы.'}{API_ENABLED ? ' Проверяйте реквизиты и статус каждого документа перед применением.' : ' Демонстрационные записи не являются официальной нормативной базой.'}</p></div>
@@ -441,6 +457,7 @@ function App() {
       {showCreateModal && <CreateDocumentModal initialDoc={editingDoc} onClose={closeDocumentModal} onSubmit={handleSaveDocument} apiEnabled={API_ENABLED} saving={isSaving} error={actionError} />}
       {monitorModalOpen && <MonitorModal onClose={() => setMonitorModalOpen(false)} onSubmit={handleSaveMonitor} saving={isSaving} error={actionError} />}
       {userModalOpen && <UserModal onClose={() => setUserModalOpen(false)} onSubmit={handleSaveUser} saving={isSaving} error={actionError} />}
+      {passwordResetTarget && <UserPasswordModal user={passwordResetTarget} onClose={() => setPasswordResetTarget(null)} onSubmit={handleResetPassword} saving={isSaving} error={actionError} />}
     </div>
   )
 }
@@ -630,7 +647,7 @@ function MonitorModal({ onClose, onSubmit, saving, error }) {
   </div>
 }
 
-function UsersSection({ users, onAdd, onToggle }) {
+function UsersSection({ users, onAdd, onToggle, onReset }) {
   return <section className="management-page">
     <div className="page-heading"><div><div className="section-kicker">АДМИНИСТРИРОВАНИЕ / ДОСТУП</div><h1>Пользователи</h1><p>Создавай учётные записи и назначай минимально необходимые права доступа.</p></div><button className="primary-button" onClick={onAdd}><UserPlus size={16} /> Добавить пользователя</button></div>
     <div className="notice"><ShieldCheck size={17} /><div><b>Принцип минимальных прав</b><span>ADMIN управляет пользователями и всеми карточками. EDITOR работает с документами и источниками. READER имеет доступ только на чтение.</span></div></div>
@@ -651,6 +668,20 @@ function UserModal({ onClose, onSubmit, saving, error }) {
       </div>
       {error && <div className="feedback feedback-error"><CircleHelp size={16} /><span>{error}</span></div>}
       <div className="modal-actions"><button className="secondary-button" type="button" onClick={onClose}>Отмена</button><button className="primary-button" type="submit" disabled={saving}>{saving ? 'Создание…' : 'Создать пользователя'}</button></div>
+      </form>
+    </section>
+  </div>
+}
+
+function UserPasswordModal({ user, onClose, onSubmit, saving, error }) {
+  return <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !saving) onClose() }}>
+    <section className="create-modal compact-modal" role="dialog" aria-modal="true" aria-labelledby="user-password-title">
+      <header className="modal-header"><div><div className="section-kicker">УПРАВЛЕНИЕ ДОСТУПОМ</div><h2 id="user-password-title">Смена пароля</h2><p>Пользователь: {user.displayName} ({user.username}). Передай новый пароль безопасным способом.</p></div><button className="icon-button" type="button" onClick={onClose} disabled={saving}><X size={20} /></button></header>
+      <form onSubmit={onSubmit}>
+        <label className="form-field full-field"><span>Новый пароль *</span><input name="password" type="password" minLength="12" maxLength="200" autoComplete="new-password" required autoFocus /></label>
+        {error && <div className="feedback feedback-error"><CircleHelp size={16} /><span>{error}</span></div>}
+        <div className="form-note"><ShieldCheck size={16} /><span>Минимум 12 символов. Сохраняется только защищённый BCrypt-хеш.</span></div>
+        <div className="modal-actions"><button className="secondary-button" type="button" onClick={onClose} disabled={saving}>Отмена</button><button className="primary-button" type="submit" disabled={saving}>{saving ? 'Обновление…' : 'Обновить пароль'}</button></div>
       </form>
     </section>
   </div>
