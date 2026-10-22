@@ -451,6 +451,24 @@ function App() {
               </div>
             </section>
 
+            <section className="home-overview" aria-label="Сводка платформы">
+              <button className="overview-card" onClick={() => openSection('documents')}>
+                <span className="overview-icon overview-blue"><LibraryBig size={20} /></span>
+                <span className="overview-copy"><strong>{documents.length}</strong><b>{API_ENABLED ? 'Материалов в базе' : 'Демо-карточек'}</b><small>{API_ENABLED ? 'Документы и рабочие материалы' : 'Примеры интерфейса, не официальные НПА'}</small></span>
+                <ArrowUpRight size={16} className="overview-arrow" />
+              </button>
+              <button className="overview-card" onClick={() => openSection('groups')}>
+                <span className="overview-icon overview-green"><Boxes size={20} /></span>
+                <span className="overview-copy"><strong>02</strong><b>Контура маркировки</b><small>Внешний МЗКМ и внутренний ГАИС МТ</small></span>
+                <ArrowUpRight size={16} className="overview-arrow" />
+              </button>
+              <button className="overview-card" onClick={() => openSection('EAEU')}>
+                <span className="overview-icon overview-violet"><Globe2 size={20} /></span>
+                <span className="overview-copy"><strong>03</strong><b>Юрисдикции</b><small>Кыргызстан, Россия и ЕАЭС</small></span>
+                <ArrowUpRight size={16} className="overview-arrow" />
+              </button>
+            </section>
+
             <div className="section-title-row"><div><div className="section-kicker">БЫСТРЫЙ ДОСТУП</div><h2>Выберите направление</h2><p>Каждый контур – отдельная нормативная область</p></div><span className="muted-count">03 направления</span></div>
             <section className="jurisdiction-grid">
               <JurisdictionCard code="RU" title="МЗКМ" subtitle="Российская Федерация" description="Законы РФ, нормативные акты и материалы системы «Честный ЗНАК»." count="Нормативная база РФ" onClick={() => openSection('RU')} />
