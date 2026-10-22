@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: teksher_hub
+      POSTGRES_USER: ${DB_USERNAME:-teksher}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - teksher_hub_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-teksher} -d teksher_hub"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 8080
+      DATABASE_URL: jdbc:postgresql://db:5432/teksher_hub
+      DATABASE_USERNAME: ${DB_USERNAME:-teksher}
+      DATABASE_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-480}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:?Set BOOTSTRAP_ADMIN_USERNAME in .env}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?Set BOOTSTRAP_ADMIN_PASSWORD in .env}
+      APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:-http://localhost:5173,http://localhost:4173}
+      UPLOAD_DIR: /app/uploads
+      MONITOR_ALLOWED_HOSTS: ${MONITOR_ALLOWED_HOSTS:-publication.pravo.gov.ru,pravo.gov.ru,docs.eaeunion.org,eec.eaeunion.org,cbd.minjust.gov.kg,minjust.gov.kg,gov.kg}
+    ports:
+      - "8080:8080"
+    volumes:
+      - teksher_hub_uploads:/app/uploads
+
+volumes:
+  teksher_hub_db:
+  teksher_hub_uploads:
