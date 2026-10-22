@@ -46,6 +46,8 @@ public class DocumentVersion {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 24)
     private DocumentStatus status;
+    @Column(name = "related_document_ids", nullable = false, columnDefinition = "text")
+    private String relatedDocumentIds = "";
     @Column(name = "change_note", length = 1000)
     private String changeNote;
     @Column(name = "changed_by", nullable = false, length = 120)
