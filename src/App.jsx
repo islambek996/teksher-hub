@@ -463,47 +463,102 @@ function DocumentRow({ doc, onClick }) {
   </button>
 }
 
-function DocumentDetail({ doc, onBack, onEdit, onDelete }) {
-  const jurisdiction = jurisdictions[doc.jurisdiction]
+function statusClass(doc) {
+  const status = doc.status || ''
+  if (status === 'ACTIVE' || status === 'Действует' || doc.statusLabel === 'Действует') return 'source-status'
+  if (status === 'EXPIRED' || status === 'Срок действия истёк' || doc.statusLabel === 'Срок действия истёк') return 'expired-status'
+  if (status === 'ARCHIVED' || status === 'В архиве' || doc.statusLabel === 'В архиве') return 'archived-status'
+  if (status === 'UNDER_REVIEW' || status === 'На проверке' || doc.statusLabel === 'На проверке') return 'review-status'
+  return doc.isDemo ? 'demo-status' : 'draft-status'
+}
+
+function formatDate(value) {
+  if (!value) return 'Не указана'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? 'Не указана' : date.toLocaleDateString('ru-RU')
+}
+
+function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, canReview, files = [], versions = [], onDownload, onReview }) {
+  const jurisdiction = jurisdictions[doc.jurisdiction] || { label: doc.jurisdiction || 'Не указана', flag: '🌐', className: 'eaeu' }
+  const statusLabel = doc.statusLabel || doc.status || 'Черновик'
   return <section className="detail-page">
     <button className="back-button" onClick={onBack}>← Назад к списку</button>
     <div className="detail-card">
       <span className={`tag ${jurisdiction.className}`}>{jurisdiction.flag} {jurisdiction.label}</span>
       <div className="detail-icon"><FileCheck2 size={28} /></div>
-      <div className="detail-status-row"><span className={`status-pill ${doc.isDemo ? 'demo-status' : doc.sourceUrl ? 'source-status' : 'draft-status'}`}>{doc.status}</span>{doc.isDemo && <span className="detail-muted">Пример интерфейса, не официальный документ</span>}</div>
+      <div className="detail-status-row"><span className={`status-pill ${statusClass(doc)}`}>{statusLabel}</span>{doc.isDemo && <span className="detail-muted">Пример интерфейса, не официальный документ</span>}</div>
       <h1>{doc.title}</h1><p>{doc.description}</p>
-      {!doc.isDemo && <div className="detail-actions"><button type="button" className="secondary-button" onClick={onEdit}><Pencil size={15} /> Редактировать</button><button type="button" className="danger-button" onClick={onDelete}><Trash2 size={15} /> Удалить карточку</button></div>}
+      {!doc.isDemo && (canEdit || canDelete) && <div className="detail-actions">
+        {canEdit && <button type="button" className="secondary-button" onClick={onEdit}><Pencil size={15} /> Редактировать</button>}
+        {canDelete && <button type="button" className="danger-button" onClick={onDelete}><Trash2 size={15} /> Удалить карточку</button>}
+      </div>}
+      {canReview && !doc.isDemo && <div className="review-actions">
+        <span>Проверка источника</span>
+        <button type="button" className="secondary-button" onClick={() => onReview('UNDER_REVIEW')}><RefreshCw size={14} /> На проверку</button>
+        <button type="button" className="primary-button" onClick={() => onReview('ACTIVE')}><CheckCircle2 size={14} /> Подтвердить актуальность</button>
+      </div>}
       <div className="detail-meta">
         <div><small>Тип материала</small><b>{doc.kind}</b></div>
         <div><small>Юрисдикция</small><b>{jurisdiction.label}</b></div>
         <div><small>Тематическая область</small><b>{doc.area || 'Не указана'}</b></div>
         <div><small>Номер документа</small><b>{doc.documentNumber || 'Не указан'}</b></div>
-        <div><small>Дата документа</small><b>{doc.documentDate ? new Date(doc.documentDate + 'T00:00:00').toLocaleDateString('ru-RU') : 'Не указана'}</b></div>
-        <div><small>Запись добавлена</small><b>{doc.createdAt ? new Date(doc.createdAt).toLocaleDateString('ru-RU') : 'Демо-данные'}</b></div>
+        <div><small>Дата документа</small><b>{formatDate(doc.documentDate)}</b></div>
+        <div><small>Действует с</small><b>{formatDate(doc.effectiveFrom)}</b></div>
+        <div><small>Действует по</small><b>{formatDate(doc.effectiveUntil)}</b></div>
+        <div><small>Версия карточки</small><b>{doc.versionNumber || 1}</b></div>
+        <div><small>Последняя проверка источника</small><b>{formatDate(doc.officialSourceCheckedAt)}</b></div>
+        <div><small>Добавил</small><b>{doc.createdBy || 'Локальная запись'}</b></div>
+        <div><small>Обновил</small><b>{doc.updatedBy || '–'}</b></div>
+        <div><small>Последнее изменение</small><b>{formatDate(doc.updatedAt || doc.createdAt)}</b></div>
       </div>
-      {doc.sourceUrl ? <a className="source-link" href={doc.sourceUrl} target="_blank" rel="noreferrer"><ExternalLink size={17} /><span><b>Открыть источник документа</b><small>{doc.sourceUrl}</small></span><ArrowUpRight size={16} /></a> : <div className="notice"><CircleHelp size={17} /><div><b>{doc.isDemo ? 'Это демонстрационная запись' : 'Официальный источник не указан'}</b><span>{doc.isDemo ? 'Не используйте эту запись как юридическое основание. Вместо неё нужно добавить проверенный документ с официальными реквизитами и ссылкой на источник.' : 'Укажите официальный URL в карточке записи при создании. Редактирование записи и прикрепление файла появятся после подключения серверного хранилища.'}</span></div></div>}
-      {!doc.isDemo && <p className="storage-note">Эта пользовательская карточка хранится только в локальном браузере. Она пока не видна другим сотрудникам.</p>}
+      {doc.sourceUrl ? <a className="source-link" href={doc.sourceUrl} target="_blank" rel="noreferrer"><ExternalLink size={17} /><span><b>Открыть источник документа</b><small>{doc.sourceUrl}</small></span><ArrowUpRight size={16} /></a> : <div className="notice"><CircleHelp size={17} /><div><b>{doc.isDemo ? 'Это демонстрационная запись' : 'Официальный источник не указан'}</b><span>{doc.isDemo ? 'Не используйте эту запись как юридическое основание. Добавьте проверенный документ с реквизитами и ссылкой на источник.' : 'Добавьте ссылку на официальный источник и проведите проверку перед использованием.'}</span></div></div>}
+      {doc.sourceCheckNote && <div className="check-note"><b>Комментарий проверки</b><span>{doc.sourceCheckNote}</span></div>}
+      {!doc.isDemo && <section className="detail-subsection">
+        <div className="subsection-heading"><div><Paperclip size={17} /><b>Файлы документа</b></div><span>{files.length}</span></div>
+        {files.length ? <div className="attached-files">{files.map(file => <div className="attached-file" key={file.id}><FileText size={18} /><div><b>{file.originalName}</b><small>{formatBytes(file.sizeBytes)} · {file.uploadedBy || 'пользователь'} · {formatDate(file.uploadedAt)}</small></div><button type="button" className="icon-button" onClick={() => onDownload(file)} aria-label="Скачать файл"><Download size={16} /></button></div>)}
+        </div> : <p className="subsection-empty">К файлу документа пока ничего не прикреплено. Файл можно добавить через форму редактирования.</p>}
+      </section>}
+      {!doc.isDemo && <section className="detail-subsection">
+        <div className="subsection-heading"><div><History size={17} /><b>История редакций</b></div><span>{versions.length || 0}</span></div>
+        {versions.length ? <div className="version-list">{versions.map(version => <div className="version-row" key={version.id}><span className="version-number">v{version.versionNumber}</span><div><b>{version.changeNote || 'Изменение карточки'}</b><small>{version.changedBy} · {formatDate(version.createdAt)} · {version.statusLabel || version.status}</small></div></div>)}</div>
+          : <p className="subsection-empty">История появится после первого сохранения в серверной базе.</p>}
+      </section>}
+      {doc.isDemo && <div className="notice"><CircleHelp size={17} /><div><b>Демонстрационная запись</b><span>Не используйте её как юридическое основание. В общей базе должны находиться реальные документы, проверенные по официальным источникам.</span></div></div>}
+      {!API_ENABLED && !doc.isDemo && <p className="storage-note">Эта пользовательская карточка хранится только в локальном браузере и не видна другим сотрудникам.</p>}
     </div>
   </section>
 }
 
-function CreateDocumentModal({ initialDoc, onClose, onSubmit }) {
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+function formatBytes(bytes = 0) {
+  if (bytes < 1024) return bytes + ' Б'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' КБ'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' МБ'
+}
+
+function CreateDocumentModal({ initialDoc, onClose, onSubmit, apiEnabled, saving, error }) {
+  const initialStatus = ['DRAFT','UNDER_REVIEW','ACTIVE','EXPIRED','ARCHIVED'].includes(initialDoc?.status) ? initialDoc.status : ''
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose() }}>
     <section className="create-modal" role="dialog" aria-modal="true" aria-labelledby="create-document-title">
-      <header className="modal-header"><div><div className="section-kicker">КАТАЛОГ / НОВАЯ КАРТОЧКА</div><h2 id="create-document-title">{initialDoc ? 'Редактировать карточку' : 'Добавить документ'}</h2><p>Заполните реквизиты и, при наличии, ссылку на официальный источник.</p></div><button type="button" className="icon-button" onClick={onClose} aria-label="Закрыть"><X size={20} /></button></header>
+      <header className="modal-header"><div><div className="section-kicker">КАТАЛОГ / НОРМАТИВНЫЙ ФОНД</div><h2 id="create-document-title">{initialDoc ? 'Редактировать карточку' : 'Добавить документ'}</h2><p>Укажите реквизиты и официальный источник. Перед отметкой «Действует» проверьте документ вручную.</p></div><button type="button" className="icon-button" onClick={onClose} aria-label="Закрыть" disabled={saving}><X size={20} /></button></header>
       <form onSubmit={onSubmit}>
         <label className="form-field full-field"><span>Название документа *</span><input name="title" required maxLength="240" defaultValue={initialDoc?.title || ''} placeholder="Например, постановление или инструкция" /></label>
         <div className="form-grid">
           <label className="form-field"><span>Юрисдикция *</span><select name="jurisdiction" defaultValue={initialDoc?.jurisdiction || 'KG'} required><option value="KG">Кыргызская Республика</option><option value="RU">Российская Федерация</option><option value="EAEU">ЕАЭС</option></select></label>
           <label className="form-field"><span>Тип материала *</span><select name="kind" defaultValue={initialDoc?.kind || 'Нормативный акт'} required><option>Нормативный акт</option><option>Товарная группа</option><option>Инструкция</option><option>Внутренний документ</option><option>Бизнес-процесс</option><option>Обзор</option></select></label>
-          <label className="form-field"><span>Номер документа</span><input name="documentNumber" maxLength="100" defaultValue={initialDoc?.documentNumber || ''} placeholder="№ / реквизиты" /></label>
+          <label className="form-field"><span>Номер документа</span><input name="documentNumber" maxLength="120" defaultValue={initialDoc?.documentNumber || ''} placeholder="№ / реквизиты" /></label>
           <label className="form-field"><span>Дата документа</span><span className="date-input"><CalendarDays size={15} /><input name="documentDate" type="date" defaultValue={initialDoc?.documentDate || ''} /></span></label>
+          <label className="form-field"><span>Вступает в силу</span><input name="effectiveFrom" type="date" defaultValue={initialDoc?.effectiveFrom || ''} /></label>
+          <label className="form-field"><span>Действует по</span><input name="effectiveUntil" type="date" defaultValue={initialDoc?.effectiveUntil || ''} /></label>
           <label className="form-field full-field"><span>Тематическая область *</span><input name="area" required maxLength="120" defaultValue={initialDoc?.area || ''} placeholder="Например, товарные группы, заказ КМ, нанесение" /></label>
-          <label className="form-field full-field"><span>Ссылка на официальный источник</span><input name="sourceUrl" type="url" defaultValue={initialDoc?.sourceUrl || ''} placeholder="https://..." /></label>
-          <label className="form-field full-field"><span>Краткое описание *</span><textarea name="description" required rows="3" maxLength="1200" defaultValue={initialDoc?.description || ''} placeholder="Что регулирует документ и когда его использовать" /></label>
+          <label className="form-field full-field"><span>Ссылка на официальный источник</span><input name="sourceUrl" type="url" maxLength="2000" defaultValue={initialDoc?.sourceUrl || ''} placeholder="https://..." /></label>
+          {apiEnabled && <label className="form-field"><span>Статус карточки</span><select name="status" defaultValue={initialStatus}><option value="">Автоматически: черновик / на проверку</option><option value="DRAFT">Черновик</option><option value="UNDER_REVIEW">На проверке</option><option value="ACTIVE">Действует</option><option value="EXPIRED">Срок действия истёк</option><option value="ARCHIVED">В архиве</option></select></label>}
+          <label className="form-field full-field"><span>Краткое описание *</span><textarea name="description" required rows="3" maxLength="3000" defaultValue={initialDoc?.description || ''} placeholder="Что регулирует документ и когда его использовать" /></label>
+          {apiEnabled && <label className="form-field full-field"><span>Комментарий к редакции</span><input name="changeNote" maxLength="1000" placeholder="Например, обновлена дата вступления в силу" /></label>}
+          {apiEnabled && <label className="form-field full-field upload-field"><span>Прикрепить файл (необязательно, до 30 МБ)</span><span className="file-input-wrap"><Paperclip size={16} /><input name="file" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg" /></span></label>}
         </div>
-        <div className="form-note"><CircleHelp size={16} /><span>Карточка сохраняется в этом браузере. Загрузка файлов, редактирование и общий доступ появятся после подключения backend.</span></div>
-        <div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose}>Отмена</button><button type="submit" className="primary-button"><FilePlus2 size={16} /> {initialDoc ? 'Сохранить изменения' : 'Сохранить карточку'}</button></div>
+        {error && <div className="feedback feedback-error"><CircleHelp size={16} /><span>{error}</span></div>}
+        <div className="form-note"><CircleHelp size={16} /><span>{apiEnabled ? 'Карточка сохраняется в общей базе. Файл хранится в серверном каталоге. Статус «Действует» означает, что сотрудник подтвердил источник, а не автоматическое юридическое заключение.' : 'Карточка пока сохраняется только в этом браузере. Для общей базы настройте VITE_API_URL и backend.'}</span></div>
+        <div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose} disabled={saving}>Отмена</button><button type="submit" className="primary-button" disabled={saving}>{saving ? <RefreshCw size={15} className="spin" /> : <FilePlus2 size={16} />} {saving ? 'Сохранение…' : initialDoc ? 'Сохранить изменения' : 'Сохранить карточку'}</button></div>
       </form>
     </section>
   </div>
