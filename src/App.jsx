@@ -81,13 +81,13 @@ function App() {
 
   const filteredDocuments = useMemo(() => documents.filter((doc) => {
     const matchesJurisdiction = ['RU', 'KG', 'EAEU'].includes(active) ? doc.jurisdiction === active : true
-    const matchesQuery = [doc.title, doc.description, doc.area, doc.kind, doc.documentNumber || ''].join(' ').toLowerCase().includes(query.toLowerCase())
+    const matchesQuery = [doc.title, doc.description, doc.area, doc.kind, doc.productGroup || '', doc.keywords || '', doc.documentNumber || ''].join(' ').toLowerCase().includes(query.toLowerCase())
     const matchesFilter = filter === 'Все типы' || doc.kind === filter
     const displayStatus = doc.statusLabel || doc.status
     const matchesStatus = statusFilter === 'Все статусы' || displayStatus === statusFilter
     const matchesSection = active === 'groups' ? (doc.kind === 'Товарная группа' || doc.area === 'Товарные группы')
       : active === 'processes' ? doc.kind === 'Бизнес-процесс'
-      : active === 'knowledge' ? ['Инструкция', 'Внутренний документ'].includes(doc.kind)
+      : active === 'knowledge' ? ['Инструкция', 'Внутренний документ', 'Техническая документация', 'Известная ошибка', 'Шаблон'].includes(doc.kind)
       : true
     return matchesJurisdiction && matchesQuery && matchesFilter && matchesStatus && matchesSection
   }), [documents, active, query, filter, statusFilter])
@@ -183,6 +183,9 @@ function App() {
       jurisdiction: String(data.get('jurisdiction') || 'KG'),
       kind: String(data.get('kind') || 'Нормативный акт'),
       area: String(data.get('area') || '').trim(),
+      productGroup: String(data.get('productGroup') || '').trim() || null,
+      keywords: String(data.get('keywords') || '').trim() || null,
+      relatedDocumentIds: data.getAll('relatedDocumentIds').map(String).filter(Boolean),
       documentNumber: String(data.get('documentNumber') || '').trim() || null,
       documentDate: String(data.get('documentDate') || '') || null,
       effectiveFrom: String(data.get('effectiveFrom') || '') || null,
@@ -433,7 +436,7 @@ function App() {
               canEdit={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)}
               canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'}
               canReview={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)}
-              files={apiFiles} versions={documentVersions} onDownload={handleDownloadFile} onReview={handleReviewDocument} />
+              files={apiFiles} versions={documentVersions} documents={documents} onOpenRelated={docId => { const related = documents.find(item => item.id === docId); if (related) setSelectedDoc(related) }} onDownload={handleDownloadFile} onReview={handleReviewDocument} />
             : active === 'monitoring' ? <MonitorSection monitors={monitors} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
                 onAdd={() => { setActionError(''); setMonitorModalOpen(true) }} onCheck={handleCheckMonitor} onDelete={handleDeleteMonitor} />
             : active === 'users' ? <UsersSection users={users} onAdd={() => { setActionError(''); setUserModalOpen(true) }} onToggle={handleToggleUser} onReset={user => { setActionError(''); setPasswordResetTarget(user) }} />
@@ -454,7 +457,7 @@ function App() {
         </div>
       </main>
 
-      {showCreateModal && <CreateDocumentModal initialDoc={editingDoc} onClose={closeDocumentModal} onSubmit={handleSaveDocument} apiEnabled={API_ENABLED} saving={isSaving} error={actionError} />}
+      {showCreateModal && <CreateDocumentModal initialDoc={editingDoc} documents={documents.filter(item => !item.isDemo && item.id !== editingDoc?.id)} onClose={closeDocumentModal} onSubmit={handleSaveDocument} apiEnabled={API_ENABLED} saving={isSaving} error={actionError} />}
       {monitorModalOpen && <MonitorModal onClose={() => setMonitorModalOpen(false)} onSubmit={handleSaveMonitor} saving={isSaving} error={actionError} />}
       {userModalOpen && <UserModal onClose={() => setUserModalOpen(false)} onSubmit={handleSaveUser} saving={isSaving} error={actionError} />}
       {passwordResetTarget && <UserPasswordModal user={passwordResetTarget} onClose={() => setPasswordResetTarget(null)} onSubmit={handleResetPassword} saving={isSaving} error={actionError} />}
