@@ -55,7 +55,6 @@ function loadUserDocuments() {
 
 function App() {
   const [active, setActive] = useState('home')
-  const [navigationRevision, setNavigationRevision] = useState(0)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('Все типы')
   const [statusFilter, setStatusFilter] = useState('Все статусы')
@@ -160,7 +159,6 @@ function App() {
         setSelectedDoc(null)
       }
       setActionError(''); setSuccessMessage('')
-      setNavigationRevision(value => value + 1)
     }
     if (!window.history.state?.app) syncRoute('home', null, true)
     window.addEventListener('popstate', restoreRoute)
@@ -471,7 +469,7 @@ function App() {
               canEdit={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)}
               canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'}
               canReview={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)}
-              files={apiFiles} versions={documentVersions} documents={documents} onOpenRelated={docId => { const related = documents.find(item => item.id === docId); if (related) setSelectedDoc(related) }} onDownload={handleDownloadFile} onReview={handleReviewDocument} />
+              files={apiFiles} versions={documentVersions} documents={documents} onOpenRelated={docId => { const related = documents.find(item => item.id === docId); if (related) openDocument(related) }} onDownload={handleDownloadFile} onReview={handleReviewDocument} />
             : active === 'groups' ? <ProductGroupsSection onOpen={openSection} />
             : active === 'monitoring' ? <MonitorSection monitors={monitors} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
                 onAdd={() => { setActionError(''); setMonitorModalOpen(true) }} onCheck={handleCheckMonitor} onDelete={handleDeleteMonitor} />
