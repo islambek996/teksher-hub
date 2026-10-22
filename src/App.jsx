@@ -64,7 +64,7 @@ function App() {
     const matchesQuery = [doc.title, doc.description, doc.area, doc.kind, doc.documentNumber || ''].join(' ').toLowerCase().includes(query.toLowerCase())
     const matchesFilter = filter === 'Все типы' || doc.kind === filter
     const matchesStatus = statusFilter === 'Все статусы' || doc.status === statusFilter
-    const matchesSection = active === 'groups' ? doc.area === 'Товарные группы'
+    const matchesSection = active === 'groups' ? (doc.kind === 'Товарная группа' || doc.area === 'Товарные группы')
       : active === 'processes' ? doc.kind === 'Бизнес-процесс'
       : active === 'knowledge' ? ['Инструкция', 'Внутренний документ'].includes(doc.kind)
       : true
@@ -180,11 +180,11 @@ function App() {
             </div>
             <div className="search-panel">
               <div className="search-input-wrap"><Search size={19} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск по названию, номеру или содержанию..." /></div>
-              <div className="filter-wrap"><SlidersHorizontal size={16} /><select value={filter} onChange={(e) => setFilter(e.target.value)}><option>Все типы</option><option>Обзор</option><option>Нормативный акт</option><option>Инструкция</option><option>Внутренний документ</option><option>Бизнес-процесс</option></select><ChevronDown size={14} /></div>
+              <div className="filter-wrap"><SlidersHorizontal size={16} /><select value={filter} onChange={(e) => setFilter(e.target.value)}><option>Все типы</option><option>Обзор</option><option>Нормативный акт</option><option>Товарная группа</option><option>Инструкция</option><option>Внутренний документ</option><option>Бизнес-процесс</option></select><ChevronDown size={14} /></div>
               <div className="filter-wrap status-select"><select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}><option>Все статусы</option><option>Демонстрационная запись</option><option>Черновик</option><option>Источник указан</option></select><ChevronDown size={14} /></div>
             </div>
             <div className="notice"><CircleHelp size={17} /><div><b>Каталог пока работает без серверного хранилища</b><span>Новые карточки сохраняются в локальном хранилище этого браузера. Для общего доступа, загрузки файлов и единой базы потребуется backend. Демонстрационные записи не являются официальными документами.</span></div></div>
-            <div className="document-list">{filteredDocuments.length ? filteredDocuments.map(doc => <DocumentRow key={doc.id} doc={doc} onClick={() => setSelectedDoc(doc)} />) : <div className="empty-state"><Search size={28} /><b>Ничего не найдено</b><span>Измени поисковый запрос или фильтр.</span></div>}</div>
+            <div className="document-list">{filteredDocuments.length ? filteredDocuments.map(doc => <DocumentRow key={doc.id} doc={doc} onClick={() => setSelectedDoc(doc)} />) : <div className="empty-state"><Search size={28} /><b>{active === 'groups' ? 'Справочник товарных групп пока пуст' : active === 'processes' ? 'Бизнес-процессы ещё не добавлены' : 'Ничего не найдено'}</b><span>{['groups', 'processes'].includes(active) ? 'Добавь первую карточку через форму. Она сохранится в этом браузере.' : 'Измени поисковый запрос или фильтр.'}</span>{['groups', 'processes'].includes(active) && <button className="secondary-button" onClick={() => setShowCreateModal(true)}>Добавить первую запись</button>}</div>}</div>
           </>}
           <footer className="footer"><span>TEKSHER HUB <i>·</i> Информационная платформа оператора маркировки</span><span>Версия 0.2 · 2026</span></footer>
         </div>
@@ -244,7 +244,7 @@ function CreateDocumentModal({ onClose, onSubmit }) {
         <label className="form-field full-field"><span>Название документа *</span><input name="title" required maxLength="240" placeholder="Например, постановление или инструкция" /></label>
         <div className="form-grid">
           <label className="form-field"><span>Юрисдикция *</span><select name="jurisdiction" defaultValue="KG" required><option value="KG">Кыргызская Республика</option><option value="RU">Российская Федерация</option><option value="EAEU">ЕАЭС</option></select></label>
-          <label className="form-field"><span>Тип материала *</span><select name="kind" defaultValue="Нормативный акт" required><option>Нормативный акт</option><option>Инструкция</option><option>Внутренний документ</option><option>Бизнес-процесс</option><option>Обзор</option></select></label>
+          <label className="form-field"><span>Тип материала *</span><select name="kind" defaultValue="Нормативный акт" required><option>Нормативный акт</option><option>Товарная группа</option><option>Инструкция</option><option>Внутренний документ</option><option>Бизнес-процесс</option><option>Обзор</option></select></label>
           <label className="form-field"><span>Номер документа</span><input name="documentNumber" maxLength="100" placeholder="№ / реквизиты" /></label>
           <label className="form-field"><span>Дата документа</span><span className="date-input"><CalendarDays size={15} /><input name="documentDate" type="date" /></span></label>
           <label className="form-field full-field"><span>Тематическая область *</span><input name="area" required maxLength="120" placeholder="Например, товарные группы, заказ КМ, нанесение" /></label>
