@@ -43,6 +43,13 @@ public class UserAdminController {
         return UserView.from(users.save(user));
     }
 
+    @PutMapping("/{id}/password")
+    public UserView resetPassword(@PathVariable Long id, @Valid @RequestBody PasswordResetRequest request) {
+        UserAccount user = users.findById(id).orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+        user.setPasswordHash(encoder.encode(request.password()));
+        return UserView.from(users.save(user));
+    }
+
     @PatchMapping("/{id}/enabled")
     public UserView setEnabled(@PathVariable Long id, @RequestBody EnabledRequest request,
                                @AuthenticationPrincipal UserAccount actingUser) {
@@ -58,6 +65,7 @@ public class UserAdminController {
                                     @NotBlank @Size(max = 180) String displayName,
                                     @NotBlank @Size(min = 12, max = 200) String password,
                                     @NotBlank @Pattern(regexp = "ADMIN|EDITOR|READER") String role) {}
+    public record PasswordResetRequest(@NotBlank @Size(min = 12, max = 200) String password) {}
     public record EnabledRequest(boolean enabled) {}
     public record UserView(Long id, String username, String displayName, String role, boolean enabled) {
         static UserView from(UserAccount u) { return new UserView(u.getId(), u.getUsername(), u.getDisplayName(), u.getRole(), u.isEnabled()); }
