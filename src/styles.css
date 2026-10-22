@@ -349,3 +349,40 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .feedback{font-size:12px}
 @media(max-width:1050px){.home-overview{grid-template-columns:1fr;gap:10px}.overview-card{padding:14px}.overview-copy small{font-size:11px}}
 @media(max-width:760px){.home-overview{margin:14px 0 22px;gap:9px}.overview-card{min-height:78px}.overview-copy strong{font-size:20px}.overview-copy b{font-size:12px}.welcome p{font-size:12px}.page-heading h1{font-size:25px}.detail-card h1{font-size:23px}}
+
+
+/* Home workbench – recent materials and legal review */
+.overview-amber{background:#fff3df;color:#a76a16}
+.home-workbench{margin:4px 0 30px;padding:22px;background:#f0f4f9;border:1px solid #e2eaf3;border-radius:18px}
+.workbench-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:17px}
+.workbench-heading h2{margin:5px 0 4px;font-size:20px;letter-spacing:-.45px;color:#1c3553}
+.workbench-heading p{margin:0;color:#7a8ba0;font-size:12px;line-height:1.6}
+.text-button{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;border:0;background:transparent;color:#315f96;font-size:12px;font-weight:700;padding:8px 0}
+.text-button:hover{color:#1b426e}
+.workbench-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:14px}
+.workbench-panel{min-width:0;padding:18px;background:#fff;border:1px solid #e2eaf3;border-radius:14px}
+.workbench-panel-title{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.workbench-panel-icon{display:grid;place-items:center;width:36px;height:36px;flex:0 0 36px;border-radius:10px;background:#eaf2fc;color:#315f96}
+.workbench-panel-icon.amber{background:#fff3df;color:#a76a16}
+.workbench-panel-title>div{display:flex;flex-direction:column;gap:3px}
+.workbench-panel-title b{font-size:13px;color:#243b57}
+.workbench-panel-title small{font-size:11px;color:#8795a8}
+.recent-document{display:flex;align-items:center;gap:10px;width:100%;padding:11px 0;text-align:left;border:0;border-top:1px solid #edf1f6;background:transparent;color:#71839a}
+.recent-document:hover .recent-copy b{color:#315f96}
+.recent-document>svg{flex:0 0 auto}
+.recent-jurisdiction{display:grid;place-items:center;width:38px;height:34px;flex:0 0 38px;border-radius:9px;background:#f0edfb;color:#7658a8;font-size:10px;font-weight:800}
+.recent-jurisdiction.ru{background:#eaf2fc;color:#315f96}.recent-jurisdiction.kg{background:#e8f6ef;color:#2b8057}.recent-jurisdiction.eaeu{background:#f1edfb;color:#7658a8}
+.recent-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:5px}
+.recent-copy b{font-size:12px;line-height:1.45;color:#314660;font-weight:650;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.recent-copy small{font-size:10px;line-height:1.5;color:#8795a8}
+.workbench-empty{padding:18px 0;color:#8795a8;font-size:12px}
+.review-step{display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-top:1px solid #edf1f6}
+.review-step>span{display:grid;place-items:center;width:27px;height:27px;flex:0 0 27px;border-radius:8px;background:#f1f5fa;color:#627b99;font-size:10px;font-weight:800}
+.review-step>div{display:flex;flex-direction:column;gap:4px}
+.review-step b{font-size:11px;color:#344a64}
+.review-step small{font-size:10px;line-height:1.6;color:#8795a8}
+.workbench-review-button{width:100%;justify-content:center;margin-top:12px}
+.workbench-demo-note{display:flex;align-items:flex-start;gap:8px;margin-top:13px;padding:11px 12px;border-radius:10px;background:#fff8eb;color:#8a6a37;font-size:11px;line-height:1.6}
+.workbench-demo-note svg{flex:0 0 auto;margin-top:1px}
+@media(max-width:900px){.workbench-grid{grid-template-columns:1fr}.home-workbench{padding:16px}}
+@media(max-width:600px){.workbench-heading{align-items:flex-start}.workbench-heading h2{font-size:18px}.workbench-panel{padding:14px}.recent-copy b{font-size:11px}.recent-document{gap:8px}}
