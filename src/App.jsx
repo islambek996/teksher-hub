@@ -127,9 +127,42 @@ function App() {
   const pageTitle = active === 'home' ? 'База знаний оператора маркировки'
     : jurisdictions[active]?.label || ({ documents: 'Все документы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний', monitoring: 'Мониторинг официальных источников', users: 'Управление пользователями' }[active] || 'TEKSHER HUB')
 
-  const openSection = (id) => { setActive(id); setSelectedDoc(null); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы') }
+  const openSection = (id) => {
+    setActive(id); setSelectedDoc(null); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы')
+    setActionError(''); setSuccessMessage('')
+  }
 
-  const handleSaveDocument = (event) => {
+  const refreshDocuments = async () => {
+    if (API_ENABLED) setApiDocuments(await apiRequest('/api/documents'))
+  }
+  const refreshMonitors = async () => setMonitors(await apiRequest('/api/monitors'))
+  const refreshUsers = async () => setUsers(await apiRequest('/api/users'))
+
+  const handleLogin = async (event) => {
+    event.preventDefault()
+    const data = new FormData(event.currentTarget)
+    setLoginError('')
+    try {
+      const result = await apiRequest('/api/auth/login', { method: 'POST', auth: false, body: {
+        username: String(data.get('username') || '').trim(),
+        password: String(data.get('password') || '')
+      }})
+      storeToken(result.token)
+      setCurrentUser(result.user)
+    } catch (error) { setLoginError(error.message || 'Не удалось выполнить вход') }
+  }
+
+  const handleLogout = () => {
+    clearStoredToken()
+    setCurrentUser(null)
+    setApiDocuments([])
+    setApiFiles([])
+    setDocumentVersions([])
+    setSelectedDoc(null)
+    setActive('home')
+  }
+
+  const handleSaveDocument = async (event) => {
     event.preventDefault()
     const data = new FormData(event.currentTarget)
     const sourceValue = String(data.get('sourceUrl') || '').trim()
@@ -138,66 +171,177 @@ function App() {
       try {
         const parsedSource = new URL(sourceValue)
         if (['https:', 'http:'].includes(parsedSource.protocol)) sourceUrl = parsedSource.href
+        else throw new Error('Ссылка должна начинаться с HTTP или HTTPS')
       } catch {
-        sourceUrl = ''
+        setActionError('Проверь ссылку на официальный источник: нужен полный адрес HTTP или HTTPS.')
+        return
       }
     }
-    const doc = {
-      ...(editingDoc || {}),
-      id: editingDoc?.id || 'user-' + Date.now(),
+    const payload = {
       title: String(data.get('title') || '').trim(),
       jurisdiction: String(data.get('jurisdiction') || 'KG'),
       kind: String(data.get('kind') || 'Нормативный акт'),
       area: String(data.get('area') || '').trim(),
-      documentNumber: String(data.get('documentNumber') || '').trim(),
-      documentDate: String(data.get('documentDate') || ''),
-      sourceUrl,
+      documentNumber: String(data.get('documentNumber') || '').trim() || null,
+      documentDate: String(data.get('documentDate') || '') || null,
+      effectiveFrom: String(data.get('effectiveFrom') || '') || null,
+      effectiveUntil: String(data.get('effectiveUntil') || '') || null,
+      sourceUrl: sourceUrl || null,
       description: String(data.get('description') || '').trim(),
-      status: sourceUrl ? 'Источник указан' : 'Черновик',
-      isDemo: false,
-      createdAt: editingDoc?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      status: String(data.get('status') || ''),
+      changeNote: String(data.get('changeNote') || '').trim() || (editingDoc ? 'Редактирование карточки' : 'Создание карточки'),
     }
-    const nextDocuments = editingDoc
-      ? userDocuments.map(item => item.id === doc.id ? doc : item)
-      : [doc, ...userDocuments]
-    setUserDocuments(nextDocuments)
+    const upload = data.get('file')
+    setIsSaving(true); setActionError(''); setSuccessMessage('')
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDocuments))
-    } catch {
-      // Keep the record in the current session if browser storage is unavailable.
-    }
-    setActive('documents')
-    setSelectedDoc(doc)
-    setShowCreateModal(false)
-    setEditingDoc(null)
-    setQuery('')
-    setFilter('Все типы')
-    setStatusFilter('Все статусы')
+      let doc
+      if (API_ENABLED) {
+        doc = await apiRequest(editingDoc ? '/api/documents/' + editingDoc.id : '/api/documents', {
+          method: editingDoc ? 'PUT' : 'POST', body: payload
+        })
+        if (upload instanceof File && upload.size > 0) {
+          const formData = new FormData()
+          formData.append('file', upload)
+          await apiRequest('/api/documents/' + doc.id + '/files', { method: 'POST', body: formData })
+        }
+        await refreshDocuments()
+        setSuccessMessage(editingDoc ? 'Карточка и история редакций обновлены.' : 'Карточка добавлена в общую базу.')
+      } else {
+        doc = {
+          ...(editingDoc || {}),
+          ...payload,
+          id: editingDoc?.id || 'user-' + Date.now(),
+          status: sourceUrl ? 'Источник указан' : 'Черновик',
+          createdAt: editingDoc?.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isDemo: false,
+        }
+        const nextDocuments = editingDoc ? userDocuments.map(item => item.id === doc.id ? doc : item) : [doc, ...userDocuments]
+        setUserDocuments(nextDocuments)
+        try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDocuments)) } catch { /* local storage unavailable */ }
+        setSuccessMessage('Карточка сохранена в текущем браузере. Для общей базы подключи API.')
+      }
+      setActive('documents')
+      setSelectedDoc(doc)
+      setShowCreateModal(false)
+      setEditingDoc(null)
+      setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы')
+    } catch (error) {
+      setActionError(error.message || 'Не удалось сохранить документ.')
+    } finally { setIsSaving(false) }
   }
 
-  const handleDeleteDocument = (doc) => {
+  const handleDeleteDocument = async (doc) => {
     if (doc.isDemo || !window.confirm('Удалить карточку «' + doc.title + '»?')) return
-    const nextDocuments = userDocuments.filter(item => item.id !== doc.id)
-    setUserDocuments(nextDocuments)
+    setActionError(''); setSuccessMessage('')
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDocuments))
-    } catch {
-      // Keep the change in the current session if browser storage is unavailable.
-    }
-    setSelectedDoc(null)
-    setActive('documents')
+      if (API_ENABLED) {
+        await apiRequest('/api/documents/' + doc.id, { method: 'DELETE' })
+        await refreshDocuments()
+        setSuccessMessage('Карточка удалена.')
+      } else {
+        const nextDocuments = userDocuments.filter(item => item.id !== doc.id)
+        setUserDocuments(nextDocuments)
+        try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDocuments)) } catch { /* local storage unavailable */ }
+      }
+      setSelectedDoc(null)
+      setActive('documents')
+    } catch (error) { setActionError(error.message || 'Не удалось удалить карточку.') }
   }
 
-  const closeDocumentModal = () => {
-    setShowCreateModal(false)
-    setEditingDoc(null)
+  const handleReviewDocument = async (status) => {
+    if (!selectedDoc || !API_ENABLED) return
+    const note = window.prompt('Комментарий проверки источника (необязательно):', 'Проверено вручную')
+    if (note === null) return
+    try {
+      const updated = await apiRequest('/api/documents/' + selectedDoc.id + '/review', {
+        method: 'POST', body: { status, note }
+      })
+      setSelectedDoc(updated)
+      await refreshDocuments()
+      setSuccessMessage('Статус проверки обновлён.')
+      setActionError('')
+    } catch (error) { setActionError(error.message || 'Не удалось обновить статус.') }
   }
 
-  const openNewDocumentModal = () => {
-    setEditingDoc(null)
-    setShowCreateModal(true)
+  const handleDownloadFile = async (file) => {
+    try {
+      const blob = await apiRequest(file.downloadPath, { responseType: 'blob' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = file.originalName
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch (error) { setActionError(error.message || 'Не удалось скачать файл.') }
   }
+
+  const handleSaveMonitor = async (event) => {
+    event.preventDefault()
+    const data = new FormData(event.currentTarget)
+    setIsSaving(true); setActionError('')
+    try {
+      await apiRequest('/api/monitors', { method: 'POST', body: {
+        name: String(data.get('name') || '').trim(),
+        jurisdiction: String(data.get('jurisdiction') || 'KG'),
+        sourceUrl: String(data.get('sourceUrl') || '').trim(),
+        enabled: data.get('enabled') === 'on',
+        intervalHours: Number(data.get('intervalHours') || 24),
+      }})
+      await refreshMonitors()
+      setMonitorModalOpen(false)
+      setSuccessMessage('Источник добавлен в мониторинг.')
+    } catch (error) { setActionError(error.message || 'Не удалось добавить источник.') }
+    finally { setIsSaving(false) }
+  }
+
+  const handleCheckMonitor = async (monitor) => {
+    setActionError('')
+    try {
+      const updated = await apiRequest('/api/monitors/' + monitor.id + '/check', { method: 'POST' })
+      setMonitors(rows => rows.map(row => row.id === updated.id ? updated : row))
+      setSuccessMessage('Источник проверен.')
+    } catch (error) { setActionError(error.message || 'Проверка источника не выполнена.') }
+  }
+
+  const handleDeleteMonitor = async (monitor) => {
+    if (!window.confirm('Удалить источник «' + monitor.name + '» из мониторинга?')) return
+    try {
+      await apiRequest('/api/monitors/' + monitor.id, { method: 'DELETE' })
+      await refreshMonitors()
+    } catch (error) { setActionError(error.message || 'Не удалось удалить источник.') }
+  }
+
+  const handleSaveUser = async (event) => {
+    event.preventDefault()
+    const data = new FormData(event.currentTarget)
+    setIsSaving(true); setActionError('')
+    try {
+      await apiRequest('/api/users', { method: 'POST', body: {
+        username: String(data.get('username') || '').trim(),
+        displayName: String(data.get('displayName') || '').trim(),
+        password: String(data.get('password') || ''),
+        role: String(data.get('role') || 'READER'),
+      }})
+      await refreshUsers()
+      setUserModalOpen(false)
+      setSuccessMessage('Пользователь создан.')
+    } catch (error) { setActionError(error.message || 'Не удалось создать пользователя.') }
+    finally { setIsSaving(false) }
+  }
+
+  const handleToggleUser = async (user) => {
+    try {
+      await apiRequest('/api/users/' + user.id + '/enabled', { method: 'PATCH', body: { enabled: !user.enabled } })
+      await refreshUsers()
+    } catch (error) { setActionError(error.message || 'Не удалось изменить пользователя.') }
+  }
+
+  const closeDocumentModal = () => { setShowCreateModal(false); setEditingDoc(null); setActionError('') }
+  const openNewDocumentModal = () => { setEditingDoc(null); setActionError(''); setShowCreateModal(true) }
+
 
   return (
     <div className="app-shell">
