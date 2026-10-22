@@ -564,4 +564,94 @@ function CreateDocumentModal({ initialDoc, onClose, onSubmit, apiEnabled, saving
   </div>
 }
 
+
+function LoginScreen({ onSubmit, error, loading = false }) {
+  return <main className="auth-screen">
+    <section className="auth-card">
+      <div className="auth-brand"><span className="brand-mark">T</span><span><b>TEKSHER<span>HUB</span></b><small>KNOWLEDGE PLATFORM</small></span></div>
+      <div className="auth-kicker"><ShieldCheck size={15} /> ЗАЩИЩЁННЫЙ ДОСТУП</div>
+      <h1>{loading ? 'Проверяем сессию' : 'Вход в рабочее пространство'}</h1>
+      <p>{loading ? 'Подключаемся к TEKSHER HUB…' : 'Войдите под учётной записью, выданной администратором.'}</p>
+      {loading ? <div className="auth-loading"><RefreshCw className="spin" size={20} /> Проверка доступа</div> : <form onSubmit={onSubmit} className="auth-form">
+        <label className="form-field"><span>Логин</span><input name="username" autoComplete="username" required autoFocus maxLength="120" placeholder="Введите логин" /></label>
+        <label className="form-field"><span>Пароль</span><input name="password" type="password" autoComplete="current-password" required maxLength="200" placeholder="Введите пароль" /></label>
+        {error && <div className="feedback feedback-error"><CircleHelp size={16} /><span>{error}</span></div>}
+        <button className="primary-button auth-submit" type="submit"><ShieldCheck size={16} /> Войти в систему</button>
+      </form>}
+      <div className="auth-footnote">Доступ предоставляется администратором. Самостоятельная регистрация отключена.</div>
+    </section>
+  </main>
+}
+
+function MonitorSection({ monitors, canManage, onAdd, onCheck, onDelete }) {
+  return <section className="management-page">
+    <div className="page-heading"><div><div className="section-kicker">КОНТРОЛЬ ИЗМЕНЕНИЙ / ИСТОЧНИКИ</div><h1>Мониторинг официальных источников</h1><p>Система периодически проверяет содержимое разрешённых официальных сайтов и фиксирует изменение контрольной суммы. Найденное изменение требует проверки специалистом и само по себе не означает изменения юридической силы документа.</p></div>{canManage && <button className="primary-button" onClick={onAdd}><FilePlus2 size={16} /> Добавить источник</button>}</div>
+    <div className="notice"><ShieldCheck size={17} /><div><b>Защита исходящих запросов</b><span>Автоматическая проверка ограничена доменами в MONITOR_ALLOWED_HOSTS. Перенаправления отключены, локальные IP-адреса блокируются. Если официальный сайт не входит в список, администратор должен добавить его в allowlist после проверки.</span></div></div>
+    {!monitors.length ? <div className="empty-state management-empty"><RefreshCw size={28} /><b>Источники ещё не добавлены</b><span>Добавь официальный портал, который нужно периодически перепроверять.</span>{canManage && <button className="primary-button" onClick={onAdd}>Добавить первый источник</button>}</div> :
+      <div className="monitor-list">{monitors.map(monitor => <article className="monitor-card" key={monitor.id}>
+        <div className="monitor-icon"><Globe2 size={19} /></div>
+        <div className="monitor-main"><div className="monitor-title-row"><h3>{monitor.name}</h3><span className={`status-pill ${monitor.lastError ? 'draft-status' : monitor.lastChangeDetectedAt ? 'review-status' : monitor.lastCheckedAt ? 'source-status' : 'demo-status'}`}>{monitor.lastError ? 'Ошибка проверки' : monitor.lastChangeDetectedAt ? 'Обнаружено изменение' : monitor.lastCheckedAt ? 'Проверено' : 'Ожидает первой проверки'}</span></div>
+          <div className="monitor-url">{monitor.sourceUrl}</div>
+          <div className="monitor-meta"><span>{jurisdictions[monitor.jurisdiction]?.short || monitor.jurisdiction}</span><span>Интервал: {monitor.intervalHours} ч</span><span>HTTP: {monitor.lastHttpStatus || '–'}</span><span>Последняя проверка: {formatDateTime(monitor.lastCheckedAt)}</span></div>
+          {monitor.lastError && <div className="monitor-error">{monitor.lastError}</div>}
+          {monitor.lastChangeDetectedAt && <div className="monitor-change"><AlertTriangleIcon /> Изменение контрольной суммы: {formatDateTime(monitor.lastChangeDetectedAt)}. Проверьте источник вручную.</div>}
+        </div>
+        <div className="monitor-actions"><button type="button" className="secondary-button" onClick={() => onCheck(monitor)}><RefreshCw size={14} /> Проверить</button>{canManage && <button type="button" className="danger-button compact-danger" onClick={() => onDelete(monitor)}><Trash2 size={14} /> Удалить</button>}</div>
+      </article>)}</div>}
+  </section>
+}
+
+function AlertTriangleIcon() {
+  return <CircleHelp size={14} />
+}
+
+function formatDateTime(value) {
+  if (!value) return 'Ещё не выполнялась'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '–' : date.toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+function MonitorModal({ onClose, onSubmit, saving }) {
+  return <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !saving) onClose() }}>
+    <section className="create-modal compact-modal" role="dialog" aria-modal="true" aria-labelledby="monitor-modal-title">
+      <header className="modal-header"><div><div className="section-kicker">МОНИТОРИНГ</div><h2 id="monitor-modal-title">Добавить официальный источник</h2><p>Адрес должен принадлежать разрешённому доверенному домену.</p></div><button className="icon-button" type="button" onClick={onClose} disabled={saving}><X size={20} /></button></header>
+      <form onSubmit={onSubmit}><div className="form-grid">
+        <label className="form-field full-field"><span>Название источника *</span><input name="name" required maxLength="180" placeholder="Например, официальный портал правовой информации" /></label>
+        <label className="form-field"><span>Юрисдикция *</span><select name="jurisdiction" defaultValue="KG"><option value="KG">Кыргызская Республика</option><option value="RU">Российская Федерация</option><option value="EAEU">ЕАЭС</option></select></label>
+        <label className="form-field"><span>Интервал проверки, ч</span><input name="intervalHours" type="number" min="1" max="720" defaultValue="24" required /></label>
+        <label className="form-field full-field"><span>URL сайта или страницы *</span><input name="sourceUrl" type="url" required maxLength="2000" placeholder="https://official.gov.kg/..." /></label>
+        <label className="monitor-enable"><input name="enabled" type="checkbox" defaultChecked /> Включить автоматическую проверку</label>
+      </div>
+        <div className="form-note"><CircleHelp size={16} /><span>Система сравнивает контрольную сумму ответа до 2 МБ. Динамическая вёрстка может вызывать ложные срабатывания. Изменение проверяет сотрудник.</span></div>
+        <div className="modal-actions"><button className="secondary-button" type="button" onClick={onClose}>Отмена</button><button className="primary-button" type="submit" disabled={saving}>{saving ? 'Сохранение…' : 'Сохранить источник'}</button></div>
+      </form>
+    </section>
+  </div>
+}
+
+function UsersSection({ users, onAdd, onToggle }) {
+  return <section className="management-page">
+    <div className="page-heading"><div><div className="section-kicker">АДМИНИСТРИРОВАНИЕ / ДОСТУП</div><h1>Пользователи</h1><p>Создавай учётные записи и назначай минимально необходимые права доступа.</p></div><button className="primary-button" onClick={onAdd}><UserPlus size={16} /> Добавить пользователя</button></div>
+    <div className="notice"><ShieldCheck size={17} /><div><b>Принцип минимальных прав</b><span>ADMIN управляет пользователями и всеми карточками. EDITOR работает с документами и источниками. READER имеет доступ только на чтение.</span></div></div>
+    {!users.length ? <div className="empty-state management-empty"><UsersRound size={28} /><b>Нет пользователей</b><span>Пользователи появятся после добавления учётных записей.</span></div> :
+      <div className="user-table-wrap"><table className="user-table"><thead><tr><th>Пользователь</th><th>Логин</th><th>Роль</th><th>Статус</th><th>Действие</th></tr></thead><tbody>{users.map(user => <tr key={user.id}><td>{user.displayName}</td><td>{user.username}</td><td><span className="role-pill">{({ADMIN:'Администратор',EDITOR:'Редактор',READER:'Чтение'})[user.role] || user.role}</span></td><td><span className={`status-pill ${user.enabled ? 'source-status' : 'draft-status'}`}>{user.enabled ? 'Активен' : 'Отключён'}</span></td><td><button className="secondary-button" onClick={() => onToggle(user)}>{user.enabled ? 'Отключить' : 'Включить'}</button></td></tr>)}</tbody></table></div>}
+  </section>
+}
+
+function UserModal({ onClose, onSubmit, saving }) {
+  return <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !saving) onClose() }}>
+    <section className="create-modal compact-modal" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
+      <header className="modal-header"><div><div className="section-kicker">УПРАВЛЕНИЕ ДОСТУПОМ</div><h2 id="user-modal-title">Новый пользователь</h2><p>Пароль должен содержать минимум 12 символов. Передай его сотруднику безопасным способом.</p></div><button className="icon-button" type="button" onClick={onClose} disabled={saving}><X size={20} /></button></header>
+      <form onSubmit={onSubmit}><div className="form-grid">
+        <label className="form-field full-field"><span>ФИО / отображаемое имя *</span><input name="displayName" required maxLength="180" /></label>
+        <label className="form-field full-field"><span>Логин *</span><input name="username" required autoComplete="off" maxLength="120" /></label>
+        <label className="form-field full-field"><span>Временный пароль *</span><input name="password" type="password" minLength="12" required autoComplete="new-password" maxLength="200" /></label>
+        <label className="form-field full-field"><span>Роль *</span><select name="role" defaultValue="READER"><option value="READER">READER – чтение</option><option value="EDITOR">EDITOR – редактирование</option><option value="ADMIN">ADMIN – администратор</option></select></label>
+      </div>
+      <div className="modal-actions"><button className="secondary-button" type="button" onClick={onClose}>Отмена</button><button className="primary-button" type="submit" disabled={saving}>{saving ? 'Создание…' : 'Создать пользователя'}</button></div>
+      </form>
+    </section>
+  </div>
+}
+
 export default App
