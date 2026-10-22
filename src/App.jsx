@@ -498,7 +498,7 @@ function formatDate(value) {
   return Number.isNaN(date.getTime()) ? 'Не указана' : date.toLocaleDateString('ru-RU')
 }
 
-function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, canReview, files = [], versions = [], onDownload, onReview }) {
+function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, canReview, files = [], versions = [], documents = [], onOpenRelated, onDownload, onReview }) {
   const jurisdiction = jurisdictions[doc.jurisdiction] || { label: doc.jurisdiction || 'Не указана', flag: '🌐', className: 'eaeu' }
   const statusLabel = doc.statusLabel || doc.status || 'Черновик'
   return <section className="detail-page">
@@ -521,6 +521,8 @@ function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, can
         <div><small>Тип материала</small><b>{doc.kind}</b></div>
         <div><small>Юрисдикция</small><b>{jurisdiction.label}</b></div>
         <div><small>Тематическая область</small><b>{doc.area || 'Не указана'}</b></div>
+        <div><small>Товарная группа</small><b>{doc.productGroup || 'Не указана'}</b></div>
+        <div><small>Ключевые слова</small><b>{doc.keywords || 'Не указаны'}</b></div>
         <div><small>Номер документа</small><b>{doc.documentNumber || 'Не указан'}</b></div>
         <div><small>Дата документа</small><b>{formatDate(doc.documentDate)}</b></div>
         <div><small>Действует с</small><b>{formatDate(doc.effectiveFrom)}</b></div>
@@ -533,6 +535,13 @@ function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, can
       </div>
       {doc.sourceUrl ? <a className="source-link" href={doc.sourceUrl} target="_blank" rel="noreferrer"><ExternalLink size={17} /><span><b>Открыть источник документа</b><small>{doc.sourceUrl}</small></span><ArrowUpRight size={16} /></a> : <div className="notice"><CircleHelp size={17} /><div><b>{doc.isDemo ? 'Это демонстрационная запись' : 'Официальный источник не указан'}</b><span>{doc.isDemo ? 'Не используйте эту запись как юридическое основание. Добавьте проверенный документ с реквизитами и ссылкой на источник.' : 'Добавьте ссылку на официальный источник и проведите проверку перед использованием.'}</span></div></div>}
       {doc.sourceCheckNote && <div className="check-note"><b>Комментарий проверки</b><span>{doc.sourceCheckNote}</span></div>}
+      {doc.relatedDocumentIds?.length > 0 && <section className="detail-subsection">
+        <div className="subsection-heading"><div><Link2 size={17} /><b>Связанные документы</b></div><span>{doc.relatedDocumentIds.length}</span></div>
+        <div className="related-document-list">{doc.relatedDocumentIds.map(id => {
+          const related = documents.find(item => item.id === id)
+          return related ? <button key={id} className="related-document" type="button" onClick={() => onOpenRelated?.(id)}><FileText size={16} /><span><b>{related.title}</b><small>{jurisdictions[related.jurisdiction]?.short || related.jurisdiction} · {related.kind}</small></span><ArrowUpRight size={15} /></button> : <div className="subsection-empty" key={id}>Связанный документ {id} не найден в текущем списке.</div>
+        })}</div>
+      </section>}
       {!doc.isDemo && <section className="detail-subsection">
         <div className="subsection-heading"><div><Paperclip size={17} /><b>Файлы документа</b></div><span>{files.length}</span></div>
         {files.length ? <div className="attached-files">{files.map(file => <div className="attached-file" key={file.id}><FileText size={18} /><div><b>{file.originalName}</b><small>{formatBytes(file.sizeBytes)} · {file.uploadedBy || 'пользователь'} · {formatDate(file.uploadedAt)}</small></div><button type="button" className="icon-button" onClick={() => onDownload(file)} aria-label="Скачать файл"><Download size={16} /></button></div>)}
@@ -555,7 +564,7 @@ function formatBytes(bytes = 0) {
   return (bytes / (1024 * 1024)).toFixed(1) + ' МБ'
 }
 
-function CreateDocumentModal({ initialDoc, onClose, onSubmit, apiEnabled, saving, error }) {
+function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, apiEnabled, saving, error }) {
   const initialStatus = ['DRAFT','UNDER_REVIEW','ACTIVE','EXPIRED','ARCHIVED'].includes(initialDoc?.status) ? initialDoc.status : ''
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose() }}>
     <section className="create-modal" role="dialog" aria-modal="true" aria-labelledby="create-document-title">
@@ -564,12 +573,15 @@ function CreateDocumentModal({ initialDoc, onClose, onSubmit, apiEnabled, saving
         <label className="form-field full-field"><span>Название документа *</span><input name="title" required maxLength="240" defaultValue={initialDoc?.title || ''} placeholder="Например, постановление или инструкция" /></label>
         <div className="form-grid">
           <label className="form-field"><span>Юрисдикция *</span><select name="jurisdiction" defaultValue={initialDoc?.jurisdiction || 'KG'} required><option value="KG">Кыргызская Республика</option><option value="RU">Российская Федерация</option><option value="EAEU">ЕАЭС</option></select></label>
-          <label className="form-field"><span>Тип материала *</span><select name="kind" defaultValue={initialDoc?.kind || 'Нормативный акт'} required><option>Нормативный акт</option><option>Товарная группа</option><option>Инструкция</option><option>Внутренний документ</option><option>Бизнес-процесс</option><option>Обзор</option></select></label>
+          <label className="form-field"><span>Тип материала *</span><select name="kind" defaultValue={initialDoc?.kind || 'Нормативный акт'} required><option>Нормативный акт</option><option>Товарная группа</option><option>Инструкция</option><option>Техническая документация</option><option>Известная ошибка</option><option>Шаблон</option><option>Внутренний документ</option><option>Бизнес-процесс</option><option>Обзор</option></select></label>
           <label className="form-field"><span>Номер документа</span><input name="documentNumber" maxLength="120" defaultValue={initialDoc?.documentNumber || ''} placeholder="№ / реквизиты" /></label>
           <label className="form-field"><span>Дата документа</span><span className="date-input"><CalendarDays size={15} /><input name="documentDate" type="date" defaultValue={initialDoc?.documentDate || ''} /></span></label>
           <label className="form-field"><span>Вступает в силу</span><input name="effectiveFrom" type="date" defaultValue={initialDoc?.effectiveFrom || ''} /></label>
           <label className="form-field"><span>Действует по</span><input name="effectiveUntil" type="date" defaultValue={initialDoc?.effectiveUntil || ''} /></label>
           <label className="form-field full-field"><span>Тематическая область *</span><input name="area" required maxLength="120" defaultValue={initialDoc?.area || ''} placeholder="Например, товарные группы, заказ КМ, нанесение" /></label>
+          <label className="form-field"><span>Товарная группа</span><input name="productGroup" maxLength="160" defaultValue={initialDoc?.productGroup || ''} placeholder="Например, обувь, косметика" /></label>
+          <label className="form-field"><span>Ключевые слова</span><input name="keywords" maxLength="1000" defaultValue={initialDoc?.keywords || ''} placeholder="Через запятую" /></label>
+          {apiEnabled && <label className="form-field full-field"><span>Связанные документы</span><select name="relatedDocumentIds" className="related-select" multiple defaultValue={initialDoc?.relatedDocumentIds || []}>{documents.map(item => <option key={item.id} value={item.id}>{jurisdictions[item.jurisdiction]?.short || item.jurisdiction} · {item.title}</option>)}</select><small className="form-help">Чтобы выбрать несколько документов, удерживай Ctrl (Windows) или Command (Mac).</small></label>}
           <label className="form-field full-field"><span>Ссылка на официальный источник</span><input name="sourceUrl" type="url" maxLength="2000" defaultValue={initialDoc?.sourceUrl || ''} placeholder="https://..." /></label>
           {apiEnabled && <label className="form-field"><span>Статус карточки</span><select name="status" defaultValue={initialStatus}><option value="">Автоматически: черновик / на проверку</option><option value="DRAFT">Черновик</option><option value="UNDER_REVIEW">На проверке</option><option value="ACTIVE">Действует</option><option value="EXPIRED">Срок действия истёк</option><option value="ARCHIVED">В архиве</option></select></label>}
           <label className="form-field full-field"><span>Краткое описание *</span><textarea name="description" required rows="3" maxLength="3000" defaultValue={initialDoc?.description || ''} placeholder="Что регулирует документ и когда его использовать" /></label>
