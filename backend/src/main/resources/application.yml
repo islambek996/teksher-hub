@@ -33,3 +33,7 @@ app:
   bootstrap:
     admin-username: ${BOOTSTRAP_ADMIN_USERNAME:}
     admin-password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+  monitor:
+    allowed-hosts: ${MONITOR_ALLOWED_HOSTS:publication.pravo.gov.ru,pravo.gov.ru,docs.eaeunion.org,eec.eaeunion.org,cbd.minjust.gov.kg,minjust.gov.kg,gov.kg}
+    scheduler-delay-ms: ${MONITOR_SCHEDULER_DELAY_MS:900000}
+    initial-delay-ms: ${MONITOR_INITIAL_DELAY_MS:60000}
