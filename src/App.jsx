@@ -79,7 +79,16 @@ function App() {
   const handleCreateDocument = (event) => {
     event.preventDefault()
     const data = new FormData(event.currentTarget)
-    const sourceUrl = String(data.get('sourceUrl') || '').trim()
+    const sourceValue = String(data.get('sourceUrl') || '').trim()
+    let sourceUrl = ''
+    if (sourceValue) {
+      try {
+        const parsedSource = new URL(sourceValue)
+        if (['https:', 'http:'].includes(parsedSource.protocol)) sourceUrl = parsedSource.href
+      } catch {
+        sourceUrl = ''
+      }
+    }
     const doc = {
       id: `user-${Date.now()}`,
       title: String(data.get('title') || '').trim(),
