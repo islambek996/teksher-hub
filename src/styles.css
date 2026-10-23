@@ -1165,3 +1165,21 @@ html[data-theme="dark"] .assistant-status-active{background:#1c4232;color:#a3dfb
 html[data-theme="dark"] .assistant-status-under_review{background:#46391e;color:#f0d39a}
 html[data-theme="dark"] .assistant-status-draft,html[data-theme="dark"] .assistant-status-expired,html[data-theme="dark"] .assistant-status-archived{background:#452a2d;color:#f1b4b8}
 html[data-theme="dark"] .assistant-error{background:#412529;border-color:#6b393f;color:#ffbfc2}
+
+
+/* One unified product-group list from MZKM user guide v2.1 */
+.mzkm-groups-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:18px 0 20px}
+.mzkm-group-card{display:flex;align-items:flex-start;gap:13px;min-width:0;padding:17px;background:#fff;border:1px solid #e3eaf2;border-radius:12px;box-shadow:0 4px 15px rgba(25,51,79,.025)}
+.mzkm-group-number{display:grid;place-items:center;flex-shrink:0;width:35px;height:35px;border-radius:10px;background:#eaf2fc;color:#315b8b;font-size:11px;font-weight:800;letter-spacing:.35px}
+.mzkm-group-copy{min-width:0}
+.mzkm-group-copy h2{font-size:14px;line-height:1.5;letter-spacing:-.2px;color:#243d57;margin:0 0 5px}
+.mzkm-group-copy p{font-size:10px;line-height:1.6;color:#8290a2;margin:0}
+.mzkm-groups-version-note{margin:0 0 22px}
+.mzkm-groups-sources{margin-top:18px}
+.mzkm-groups-source-note{font-size:11px;line-height:1.7;color:#718197;max-width:850px;margin:0 0 15px}
+.mzkm-groups-open-docs{margin-top:16px}
+html[data-theme="dark"] .mzkm-group-card{background:#14263b;border-color:#2e435b;box-shadow:none}
+html[data-theme="dark"] .mzkm-group-copy h2{color:#e3edf8}
+html[data-theme="dark"] .mzkm-group-copy p,html[data-theme="dark"] .mzkm-groups-source-note{color:#9cafc4}
+html[data-theme="dark"] .mzkm-group-number{background:#203b58;color:#bad8fa}
+@media(max-width:760px){.mzkm-groups-grid{grid-template-columns:1fr;gap:9px;margin-top:13px}.mzkm-group-card{padding:14px;gap:11px}.mzkm-group-copy h2{font-size:13px}.mzkm-group-number{width:32px;height:32px}.mzkm-groups-open-docs{width:100%;justify-content:center}}
