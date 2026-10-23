@@ -488,15 +488,9 @@ function App() {
                     </button>
                   )) : <div className="workbench-empty">Добавьте первый документ, чтобы он появился здесь.</div>}
                 </div>
-                <div className="workbench-panel workbench-check-panel">
-                  <div className="workbench-panel-title"><span className="workbench-panel-icon amber"><ShieldCheck size={17}/></span><div><b>Контроль актуальности</b><small>Порядок работы с нормативным актом</small></div></div>
-                  <div className="review-step"><span>01</span><div><b>Откройте официальный источник</b><small>Проверьте текст акта, изменения и дату публикации.</small></div></div>
-                  <div className="review-step"><span>02</span><div><b>Сверьте применимость</b><small>Юрисдикция, товарная группа, код и срок действия.</small></div></div>
-                  <div className="review-step"><span>03</span><div><b>Зафиксируйте результат</b><small>Обновите статус карточки после ручной проверки.</small></div></div>
-                  <button className="secondary-button workbench-review-button" onClick={() => {
-                    setActive('documents'); setSelectedDoc(null); setQuery(''); setFilter('Все типы'); setStatusFilter('На проверке'); syncRoute('documents')
-                  }}>Открыть очередь проверки <ArrowUpRight size={15}/></button>
-                </div>
+                <FreshnessReviewPanel documents={documents} apiEnabled={API_ENABLED} onOpenDocument={(doc) => {
+                  setActive('documents'); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы'); syncRoute('documents', doc.id); setSelectedDoc(doc)
+                }} />
               </div>
               {!API_ENABLED && <div className="workbench-demo-note"><CircleHelp size={14}/> Сейчас показан демонстрационный режим. Счётчики юридической проверки появятся после подключения API и загрузки общей базы.</div>}
             </section>
@@ -550,6 +544,96 @@ function App() {
   )
 }
 
+
+const FRESHNESS_REVIEW_DAYS = 180
+
+function getFreshnessFlags(doc) {
+  const flags = []
+  const status = doc.status || ''
+  const statusLabel = doc.statusLabel || ''
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  if (status === 'ARCHIVED' || statusLabel === 'В архиве') return flags
+
+  if (doc.effectiveUntil) {
+    const dateOnly = String(doc.effectiveUntil).slice(0, 10)
+    const endDate = new Date(dateOnly + 'T00:00:00')
+    if (!Number.isNaN(endDate.getTime()) && endDate < today) {
+      flags.push('Дата «Действует по» уже прошла')
+    }
+  }
+  if (status === 'EXPIRED' || statusLabel === 'Срок действия истёк') {
+    flags.push('Статус отмечен как истёкший')
+  }
+  if (!doc.sourceUrl || !String(doc.sourceUrl).trim()) {
+    flags.push('Не указан официальный источник')
+  }
+  if (status === 'UNDER_REVIEW' || statusLabel === 'На проверке') {
+    flags.push('Ожидает проверки')
+  } else if (status === 'DRAFT' || statusLabel === 'Черновик' || !status) {
+    flags.push('Черновик / статус не подтверждён')
+  }
+
+  if (!doc.officialSourceCheckedAt) {
+    flags.push('Нет даты подтверждения актуальности')
+  } else {
+    const checkedAt = new Date(doc.officialSourceCheckedAt)
+    if (!Number.isNaN(checkedAt.getTime())) {
+      const ageDays = Math.floor((today.getTime() - new Date(checkedAt.getFullYear(), checkedAt.getMonth(), checkedAt.getDate()).getTime()) / 86400000)
+      if (ageDays >= FRESHNESS_REVIEW_DAYS) flags.push('Проверка была ' + ageDays + ' дн. назад')
+    } else {
+      flags.push('Не удалось определить дату проверки')
+    }
+  }
+  return [...new Set(flags)]
+}
+
+function freshnessPriority(flags) {
+  if (flags.some(flag => flag.includes('Дата «Действует по»') || flag.includes('отмечен как истёкший'))) return 0
+  if (flags.includes('Не указан официальный источник')) return 1
+  if (flags.includes('Ожидает проверки') || flags.includes('Черновик / статус не подтверждён')) return 2
+  if (flags.includes('Нет даты подтверждения актуальности')) return 3
+  return 4
+}
+
+function FreshnessReviewPanel({ documents, apiEnabled, onOpenDocument }) {
+  const records = documents.filter(doc => !doc.isDemo)
+  const items = records
+    .map(doc => ({ doc, flags: getFreshnessFlags(doc) }))
+    .filter(item => item.flags.length > 0)
+    .sort((a, b) => freshnessPriority(a.flags) - freshnessPriority(b.flags)
+      || new Date(b.doc.updatedAt || b.doc.createdAt || 0) - new Date(a.doc.updatedAt || a.doc.createdAt || 0))
+  const dateWarnings = items.filter(item => item.flags.some(flag => flag.includes('Дата «Действует по»') || flag.includes('отмечен как истёкший'))).length
+  const missingSources = items.filter(item => item.flags.includes('Не указан официальный источник')).length
+  const unconfirmed = items.filter(item => item.flags.includes('Нет даты подтверждения актуальности')).length
+
+  return <div className="workbench-panel workbench-check-panel">
+    <div className="workbench-panel-title">
+      <span className="workbench-panel-icon amber"><RefreshCw size={17}/></span>
+      <div><b>Контроль актуальности</b><small>{records.length ? items.length + ' карточек требуют внимания' : 'Проверка карточек базы'}</small></div>
+    </div>
+    {records.length > 0 ? <>
+      <div className="freshness-metrics">
+        <span><b>{dateWarnings}</b><small>Проверить срок</small></span>
+        <span><b>{missingSources}</b><small>Без источника</small></span>
+        <span><b>{unconfirmed}</b><small>Без подтверждения</small></span>
+      </div>
+      {items.length ? <div className="freshness-list">
+        {items.slice(0, 5).map(({ doc, flags }) => <button className="freshness-item" key={doc.id} type="button" onClick={() => onOpenDocument(doc)} aria-label={'Открыть карточку: ' + doc.title}>
+          <span className={'freshness-marker ' + (freshnessPriority(flags) === 0 ? 'urgent' : '')}><CircleHelp size={15}/></span>
+          <span className="freshness-item-copy"><b>{doc.title}</b><small>{flags.slice(0, 3).join(' · ')}{flags.length > 3 ? ' · +' + (flags.length - 3) : ''}</small></span>
+          <ArrowUpRight size={15}/>
+        </button>)}
+        {items.length > 5 && <div className="freshness-more">И ещё {items.length - 5} карточек в очереди.</div>}
+      </div> : <div className="freshness-empty"><CheckCircle2 size={16}/><span>По контрольным критериям замечаний нет. Это не заменяет проверку официальных источников.</span></div>}
+      <button className="secondary-button workbench-review-button" type="button" onClick={() => onOpenDocument(items[0]?.doc)} disabled={!items.length}>
+        Открыть первую карточку очереди <ArrowUpRight size={15}/>
+      </button>
+    </> : <div className="freshness-empty"><LibraryBig size={16}/><span>{apiEnabled ? 'В общей базе пока нет карточек для контроля.' : 'В демо-режиме показаны только примеры. Добавьте реальную карточку, чтобы проверить работу очереди.'}</span></div>}
+    <div className="freshness-footnote">Напоминания не являются юридическим заключением. Порог повторной проверки в {FRESHNESS_REVIEW_DAYS} дней – внутренний контрольный ориентир; применимость подтверждается по официальному источнику.</div>
+  </div>
+}
 
 function KnowledgeCenterSection({ documents, onSelectKind, onOpenAll, onAdd, canAdd }) {
   const categories = [
