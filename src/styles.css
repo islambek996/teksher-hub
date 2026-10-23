@@ -1183,3 +1183,74 @@ html[data-theme="dark"] .mzkm-group-copy h2{color:#e3edf8}
 html[data-theme="dark"] .mzkm-group-copy p,html[data-theme="dark"] .mzkm-groups-source-note{color:#9cafc4}
 html[data-theme="dark"] .mzkm-group-number{background:#203b58;color:#bad8fa}
 @media(max-width:760px){.mzkm-groups-grid{grid-template-columns:1fr;gap:9px;margin-top:13px}.mzkm-group-card{padding:14px;gap:11px}.mzkm-group-copy h2{font-size:13px}.mzkm-group-number{width:32px;height:32px}.mzkm-groups-open-docs{width:100%;justify-content:center}}
+
+
+/* Unified MZKM list plus separate national internal-marking groups */
+.mzkm-product-group-section,.internal-product-group-section{margin:0 0 28px;min-width:0}
+.mzkm-section-heading{display:flex;align-items:center;gap:13px;margin:5px 0 16px}
+.mzkm-section-heading>div:nth-child(2){min-width:0;flex:1}
+.mzkm-section-heading h2{font-size:20px;line-height:1.35;letter-spacing:-.45px;color:#203752;margin:4px 0 5px}
+.mzkm-section-heading p{font-size:11px;line-height:1.7;color:#78899d;margin:0;max-width:850px}
+.mzkm-section-heading>.record-count{flex-shrink:0}
+.mzkm-section-icon{display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;border-radius:12px;background:#eaf2fc;color:#315f96}
+.mzkm-section-icon.internal{background:#e8f6ef;color:#287b55}
+.mzkm-group-copy h3{font-size:13px;line-height:1.5;letter-spacing:-.15px;color:#243d57;margin:0 0 5px}
+.internal-groups-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:16px 0}
+.internal-group-card{display:flex;align-items:flex-start;gap:13px;min-width:0;padding:18px;background:#fff;border:1px solid #dcebe2;border-radius:12px;box-shadow:0 4px 15px rgba(25,51,79,.025)}
+.internal-group-badge{display:grid;place-items:center;flex:0 0 36px;width:36px;height:36px;border-radius:10px;background:#e8f6ef;color:#287b55;font-size:11px;font-weight:800}
+.internal-group-copy{min-width:0}
+.internal-group-copy h3{font-size:15px;line-height:1.4;color:#244b3b;margin:0 0 7px}
+.internal-group-copy p{font-size:11px;line-height:1.7;color:#748b7d;margin:0 0 11px}
+.internal-group-copy a,.internal-ukm-note a{display:inline-flex;align-items:center;gap:6px;color:#2d7353;font-size:10px;line-height:1.6;font-weight:700;text-decoration:none}
+.internal-group-copy a:hover,.internal-ukm-note a:hover{text-decoration:underline}
+.internal-ukm-note{margin-top:12px}
+.internal-ukm-note a{margin-top:8px}
+
+/* In-app confirmation and source-review dialogs (replace browser prompt/confirm) */
+.action-modal-backdrop{z-index:100;backdrop-filter:blur(4px);background:rgba(9,22,38,.62)}
+.action-confirm-modal{position:relative;width:min(490px,100%);max-height:min(86vh,760px);overflow:auto;background:#fff;border:1px solid #e1e8f0;border-radius:17px;box-shadow:0 28px 100px rgba(6,19,35,.32);padding:28px}
+.action-modal-close{position:absolute;top:16px;right:16px}
+.action-modal-symbol{display:grid;place-items:center;width:48px;height:48px;margin:0 0 17px;border-radius:14px;background:#eaf2fc;color:#315f96}
+.action-modal-symbol.danger{background:#fff0ef;color:#b33e3a}
+.action-modal-symbol.warning{background:#fff5df;color:#9b6d19}
+.action-confirm-modal h2{font-size:21px;letter-spacing:-.4px;line-height:1.35;color:#203650;margin:0 35px 10px 0}
+.action-confirm-modal>p{font-size:12px;line-height:1.75;color:#6f8094;margin:0 0 19px;overflow-wrap:anywhere}
+.action-confirm-buttons{margin-top:20px}
+.action-confirm-buttons .primary-button,.action-confirm-buttons .danger-button{min-height:40px}
+.danger-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid #b9433e;border-radius:8px;background:#b9433e;color:#fff;padding:10px 14px;font-size:11px;font-weight:750;white-space:nowrap}
+.danger-button:hover{background:#a53632;border-color:#a53632}
+.danger-button:disabled,.action-confirm-buttons button:disabled{opacity:.6;cursor:not-allowed}
+.review-source-modal{width:min(560px,100%)}
+.review-source-modal .section-kicker{margin-bottom:7px}
+.review-source-document{padding:11px 12px;border:1px solid #e6edf4;border-radius:9px;background:#f7f9fc;color:#3a526d!important;font-weight:650}
+.review-source-note-field{display:flex;flex-direction:column;gap:8px;margin-top:17px;color:#50647a;font-size:11px;font-weight:700}
+.review-source-note-field>span{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.review-source-note-field em{font-size:10px;color:#8b98a8;font-style:normal;font-weight:400}
+.review-source-note-field textarea{width:100%;min-height:105px;resize:vertical;padding:11px 12px;border:1px solid #dce5ef;border-radius:9px;background:#fff;color:#2c415a;font:inherit;font-size:12px;line-height:1.65;outline:none}
+.review-source-note-field textarea:focus{border-color:#86acd4;box-shadow:0 0 0 3px rgba(69,123,180,.11)}
+.review-source-note-field small{font-size:10px;font-weight:400;line-height:1.6;color:#8391a2}
+.ai-summary-privacy{padding:9px 11px;border:1px solid #f0e0ba;border-radius:8px;background:#fff9ec;color:#896c38!important}
+html[data-theme="dark"] .mzkm-section-heading h2{color:#e4edf7}
+html[data-theme="dark"] .mzkm-section-heading p{color:#a0b2c6}
+html[data-theme="dark"] .internal-group-card{background:#142b2b;border-color:#2e4f45;box-shadow:none}
+html[data-theme="dark"] .internal-group-copy h3{color:#d8f0e2}
+html[data-theme="dark"] .internal-group-copy p{color:#a1b9ad}
+html[data-theme="dark"] .internal-group-copy a,html[data-theme="dark"] .internal-ukm-note a{color:#8cd2ad}
+html[data-theme="dark"] .action-confirm-modal{background:#14263b;border-color:#31475f}
+html[data-theme="dark"] .action-confirm-modal h2{color:#e7eef7}
+html[data-theme="dark"] .action-confirm-modal>p{color:#a7b8cc}
+html[data-theme="dark"] .review-source-document,html[data-theme="dark"] .review-source-note-field textarea{background:#1a3048;border-color:#344a63;color:#e0e9f4!important}
+html[data-theme="dark"] .review-source-note-field,html[data-theme="dark"] .review-source-note-field small{color:#a6b8ce}
+html[data-theme="dark"] .ai-summary-privacy{background:#3a321f;border-color:#5e4e2b;color:#f0d6a0!important}
+@media(max-width:760px){
+  .mzkm-section-heading{align-items:flex-start;flex-wrap:wrap}
+  .mzkm-section-heading>.record-count{margin-left:55px}
+  .mzkm-section-heading h2{font-size:18px}
+  .internal-groups-grid{grid-template-columns:1fr;gap:10px}
+  .internal-group-card{padding:15px}
+  .action-confirm-modal{padding:22px 18px;border-radius:14px}
+  .action-confirm-modal h2{font-size:19px}
+  .action-confirm-buttons{flex-direction:column-reverse;align-items:stretch}
+  .action-confirm-buttons button{width:100%;justify-content:center}
+  .action-modal-close{top:12px;right:12px}
+}
