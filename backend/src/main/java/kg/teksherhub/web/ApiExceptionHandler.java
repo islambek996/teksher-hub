@@ -6,6 +6,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.Map;
@@ -33,4 +34,11 @@ public class ApiExceptionHandler {
     ResponseEntity<?> conflict(IllegalStateException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("timestamp", Instant.now(), "error", ex.getMessage()));
     }
+    @ExceptionHandler(ResponseStatusException.class)
+    ResponseEntity<?> responseStatus(ResponseStatusException ex) {
+        String message = ex.getReason() == null ? "Запрос не выполнен" : ex.getReason();
+        return ResponseEntity.status(ex.getStatusCode())
+                .body(Map.of("timestamp", Instant.now(), "error", message));
+    }
+
 }
