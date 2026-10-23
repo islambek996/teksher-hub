@@ -58,6 +58,97 @@ function loadUserDocuments() {
   }
 }
 
+const ATTACHMENTS_DB_NAME = 'teksher-hub-attachments'
+const ATTACHMENTS_STORE_NAME = 'attachments'
+
+function openLocalAttachmentsDb() {
+  return new Promise((resolve, reject) => {
+    if (!('indexedDB' in window)) {
+      reject(new Error('Браузер не поддерживает локальное хранилище файлов.'))
+      return
+    }
+    const request = window.indexedDB.open(ATTACHMENTS_DB_NAME, 1)
+    request.onupgradeneeded = () => {
+      const db = request.result
+      if (!db.objectStoreNames.contains(ATTACHMENTS_STORE_NAME)) {
+        const store = db.createObjectStore(ATTACHMENTS_STORE_NAME, { keyPath: 'id' })
+        store.createIndex('documentId', 'documentId', { unique: false })
+      }
+    }
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error || new Error('Не удалось открыть локальное хранилище файлов.'))
+    request.onblocked = () => reject(new Error('Локальное хранилище файлов заблокировано другой вкладкой.'))
+  })
+}
+
+async function saveLocalAttachment(documentId, file) {
+  const db = await openLocalAttachmentsDb()
+  const row = {
+    id: 'local-' + String(documentId) + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+    documentId: String(documentId),
+    originalName: file.name,
+    sizeBytes: file.size,
+    uploadedAt: new Date().toISOString(),
+    uploadedBy: 'Этот браузер',
+    textExtractionStatus: 'NOT_INDEXED',
+    textExtractionNote: 'Файл хранится локально в этом браузере. Серверная индексация и поиск по содержимому недоступны в демо-режиме.',
+    localAttachment: true,
+    blob: file,
+  }
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(ATTACHMENTS_STORE_NAME, 'readwrite')
+    transaction.objectStore(ATTACHMENTS_STORE_NAME).put(row)
+    transaction.oncomplete = () => {
+      db.close()
+      const { blob, ...metadata } = row
+      resolve(metadata)
+    }
+    transaction.onerror = () => {
+      db.close()
+      reject(transaction.error || new Error('Не удалось сохранить файл в браузере.'))
+    }
+    transaction.onabort = () => {
+      db.close()
+      reject(transaction.error || new Error('Сохранение файла было отменено.'))
+    }
+  })
+}
+
+async function loadLocalAttachments(documentId) {
+  const db = await openLocalAttachmentsDb()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(ATTACHMENTS_STORE_NAME, 'readonly')
+    const request = transaction.objectStore(ATTACHMENTS_STORE_NAME).index('documentId').getAll(String(documentId))
+    request.onsuccess = () => {
+      const rows = request.result
+        .sort((a, b) => String(b.uploadedAt).localeCompare(String(a.uploadedAt)))
+        .map(({ blob, ...metadata }) => metadata)
+      resolve(rows)
+    }
+    request.onerror = () => reject(request.error || new Error('Не удалось прочитать локальные вложения.'))
+    transaction.oncomplete = () => db.close()
+    transaction.onerror = () => {
+      db.close()
+      reject(transaction.error || new Error('Не удалось прочитать локальные вложения.'))
+    }
+  })
+}
+
+async function readLocalAttachment(id) {
+  const db = await openLocalAttachmentsDb()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(ATTACHMENTS_STORE_NAME, 'readonly')
+    const request = transaction.objectStore(ATTACHMENTS_STORE_NAME).get(String(id))
+    request.onsuccess = () => resolve(request.result || null)
+    request.onerror = () => reject(request.error || new Error('Не удалось открыть локальное вложение.'))
+    transaction.oncomplete = () => db.close()
+    transaction.onerror = () => {
+      db.close()
+      reject(transaction.error || new Error('Не удалось открыть локальное вложение.'))
+    }
+  })
+}
+
 const csvImportFields = [
   { key: 'title', header: 'Название', aliases: ['title', 'название', 'наименование'], required: true },
   { key: 'jurisdiction', header: 'Юрисдикция', aliases: ['jurisdiction', 'юрисдикция', 'контур'], required: true },
@@ -246,6 +337,7 @@ function App() {
   const [apiSearchResults, setApiSearchResults] = useState([])
   const [apiSearchTerm, setApiSearchTerm] = useState('')
   const [apiFiles, setApiFiles] = useState([])
+  const [localAttachmentFiles, setLocalAttachmentFiles] = useState([])
   const [reindexingFileId, setReindexingFileId] = useState(null)
   const [documentVersions, setDocumentVersions] = useState([])
   const [monitors, setMonitors] = useState([])
@@ -287,6 +379,18 @@ function App() {
   }, [])
 
   const documents = useMemo(() => API_ENABLED ? apiDocuments : [...userDocuments, ...demoDocuments], [apiDocuments, userDocuments])
+
+  useEffect(() => {
+    let cancelled = false
+    if (API_ENABLED || !selectedDoc || selectedDoc.isDemo) {
+      setLocalAttachmentFiles([])
+      return undefined
+    }
+    loadLocalAttachments(selectedDoc.id)
+      .then(rows => { if (!cancelled) setLocalAttachmentFiles(rows) })
+      .catch(error => { if (!cancelled) setActionError(error.message || 'Не удалось прочитать вложения из браузера.') })
+    return () => { cancelled = true }
+  }, [selectedDoc?.id])
 
   useEffect(() => {
     if (!showGlobalSearch) return
@@ -510,16 +614,27 @@ function App() {
 
   const handleUploadAttachment = async (file) => {
     if (!file || !selectedDoc || selectedDoc.isDemo) return
+    if (file.size > 30 * 1024 * 1024) {
+      setActionError('Размер файла превышает 30 МБ.')
+      return
+    }
     if (!API_ENABLED) {
-      setActionError('Загрузка вложений станет доступна после подключения общей базы через VITE_API_URL.')
+      setIsUploadingAttachment(true)
+      setActionError('')
+      setSuccessMessage('')
+      try {
+        await saveLocalAttachment(selectedDoc.id, file)
+        setLocalAttachmentFiles(await loadLocalAttachments(selectedDoc.id))
+        setSuccessMessage('Файл прикреплён к карточке и сохранён в этом браузере. Для совместного доступа подключите общую базу.')
+      } catch (error) {
+        setActionError(error.message || 'Не удалось сохранить файл в браузере.')
+      } finally {
+        setIsUploadingAttachment(false)
+      }
       return
     }
     if (!['ADMIN', 'EDITOR'].includes(currentUser?.role)) {
       setActionError('Для загрузки вложений нужна роль редактора или администратора.')
-      return
-    }
-    if (file.size > 30 * 1024 * 1024) {
-      setActionError('Размер файла превышает 30 МБ.')
       return
     }
     setIsUploadingAttachment(true)
@@ -576,6 +691,10 @@ function App() {
       changeNote: String(data.get('changeNote') || '').trim() || (editingDoc ? 'Редактирование карточки' : 'Создание карточки'),
     }
     const upload = data.get('file')
+    if (upload instanceof File && upload.size > 30 * 1024 * 1024) {
+      setActionError('Размер файла превышает 30 МБ.')
+      return
+    }
     setIsSaving(true); setActionError(''); setSuccessMessage('')
     try {
       let doc
@@ -602,8 +721,9 @@ function App() {
         }
         const nextDocuments = editingDoc ? userDocuments.map(item => item.id === doc.id ? doc : item) : [doc, ...userDocuments]
         setUserDocuments(nextDocuments)
-        try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDocuments)) } catch { /* local storage unavailable */ }
-        setSuccessMessage('Карточка сохранена в текущем браузере. Для общей базы подключи API.')
+        try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDocuments)) } catch { /* storage quota may be reached */ }
+        if (upload instanceof File && upload.size > 0) await saveLocalAttachment(doc.id, upload)
+        setSuccessMessage('Карточка сохранена в текущем браузере.' + (upload instanceof File && upload.size > 0 ? ' Файл прикреплён к карточке.' : '') + ' Для общей базы подключите API.')
       }
       setActive('documents')
       syncRoute('documents', doc.id)
@@ -651,7 +771,14 @@ function App() {
 
   const handleDownloadFile = async (file) => {
     try {
-      const blob = await apiRequest(file.downloadPath, { responseType: 'blob' })
+      let blob
+      if (file.localAttachment || String(file.id).startsWith('local-')) {
+        const localFile = await readLocalAttachment(file.id)
+        if (!localFile?.blob) throw new Error('Файл не найден в локальном хранилище этого браузера.')
+        blob = localFile.blob
+      } else {
+        blob = await apiRequest(file.downloadPath, { responseType: 'blob' })
+      }
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -952,7 +1079,7 @@ function App() {
               canEdit={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)}
               canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'}
               canReview={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)}
-              files={apiFiles} versions={documentVersions} documents={documents} onOpenRelated={docId => { const related = documents.find(item => item.id === docId); if (related) openDocument(related) }} onDownload={handleDownloadFile} onUploadFile={handleUploadAttachment} uploadingFile={isUploadingAttachment} canUploadFiles={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)} onReview={handleReviewDocument} canReindex={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)} onReindexFile={handleReindexFile} reindexingFileId={reindexingFileId} />
+              files={API_ENABLED ? apiFiles : localAttachmentFiles} versions={documentVersions} documents={documents} onOpenRelated={docId => { const related = documents.find(item => item.id === docId); if (related) openDocument(related) }} onDownload={handleDownloadFile} onUploadFile={handleUploadAttachment} uploadingFile={isUploadingAttachment} canUploadFiles={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} onReview={handleReviewDocument} canReindex={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)} onReindexFile={handleReindexFile} reindexingFileId={reindexingFileId} />
             : active === 'knowledge' ? <KnowledgeCenterSection documents={documents} onSelectKind={(kind) => { setActive('documents'); setSelectedDoc(null); setQuery(''); setFilter(kind); setStatusFilter('Все статусы'); syncRoute('documents') }} onOpenAll={() => openSection('documents')} onAdd={openNewDocumentModal} canAdd={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} />
             : active === 'groups' ? <ProductGroupsSection onOpen={openSection} />
             : active === 'monitoring' ? <MonitorSection monitors={monitors} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
@@ -1518,7 +1645,7 @@ function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, ap
           </div>
           <label className="form-field full-field"><span>Содержание / рабочая инструкция</span><textarea name="content" rows="8" maxLength="50000" defaultValue={initialDoc?.content || ''} placeholder="Добавьте текст инструкции, порядок действий, решение ошибки, выдержку или другие сведения для поиска..." /><small className="form-help">Текст будет доступен для поиска (до 50 000 символов). Текстовые PDF/Word/Excel/TXT/CSV индексируются автоматически; для сканов PDF и изображений используется OCR с пометкой результата.</small></label>
           {apiEnabled && <label className="form-field full-field"><span>Комментарий к редакции</span><input name="changeNote" maxLength="1000" placeholder="Например, обновлена дата вступления в силу" /></label>}
-          {apiEnabled && <label className="form-field full-field upload-field"><span>Прикрепить файл (необязательно, до 30 МБ)</span><span className="file-input-wrap"><Paperclip size={16} /><input name="file" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg" /></span></label>}
+          <label className="form-field full-field upload-field"><span>Прикрепить файл к карточке (необязательно, до 30 МБ)</span><span className="file-input-wrap"><Paperclip size={16} /><input name="file" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg" /></span><small className="form-help">{apiEnabled ? 'Файл сохранится в общей базе и будет доступен пользователям с правами.' : 'В демо-режиме файл сохранится в этом браузере через локальное хранилище. Для других сотрудников нужна общая база.'}</small></label>
         </div>
         {error && <div className="feedback feedback-error"><CircleHelp size={16} /><span>{error}</span></div>}
         <div className="form-note"><CircleHelp size={16} /><span>{apiEnabled ? 'Карточка сохраняется в общей базе. Файл хранится в серверном каталоге. Статус «Действует» означает, что сотрудник подтвердил источник, а не автоматическое юридическое заключение.' : 'Карточка пока сохраняется только в этом браузере. Для общей базы настройте VITE_API_URL и backend.'}</span></div>
