@@ -1392,6 +1392,13 @@ function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, can
     if (file && onUploadFile) await onUploadFile(file)
   }
 
+  const scrollToArticleSection = (event, id) => {
+    event.preventDefault()
+    const target = document.getElementById(id)
+    if (!target) return
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   const staticToc = [
     { id: 'wiki-overview', label: 'Краткое содержание' },
     ...(doc.content ? [{ id: 'wiki-content', label: 'Содержание материала' }] : []),
@@ -1450,9 +1457,9 @@ function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, can
         <aside className="wiki-side-column">
           <nav className="wiki-toc" aria-label="Содержание карточки">
             <div className="wiki-side-title"><ListTree size={15}/><b>В этой статье</b></div>
-            {staticToc.map(item => <a key={item.id} href={'#' + item.id}>{item.label}</a>)}
+            {staticToc.map(item => <a key={item.id} href={'#' + item.id} onClick={event => scrollToArticleSection(event, item.id)}>{item.label}</a>)}
             {articleHeadings.length > 0 && <div className="wiki-toc-subhead">Разделы текста</div>}
-            {articleHeadings.map(block => <a className="wiki-toc-nested" key={block.id} href={'#' + block.id}>{block.title}</a>)}
+            {articleHeadings.map(block => <a className="wiki-toc-nested" key={block.id} href={'#' + block.id} onClick={event => scrollToArticleSection(event, block.id)}>{block.title}</a>)}
           </nav>
 
           <section className="wiki-infobox" id="wiki-details">
