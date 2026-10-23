@@ -1260,25 +1260,66 @@ function KnowledgeCenterSection({ documents, onSelectKind, onOpenAll, onAdd, can
 
 function ProductGroupsSection({ onOpen }) {
   const groups = [
-    { id: 'external', title: 'Внешний контур – МЗКМ «Текшер»', code: 'ВНЕШКА · РФ', jurisdiction: 'RU', tone: 'external', subtitle: 'Маркировка и нормативные требования Российской Федерации', description: 'Для товаров, которые маркируются в российской системе «Честный ЗНАК» и проходят внешний контур взаимодействия. Работа с кодами и карточками организуется через МЗКМ «Текшер». Применяются российские НПА и специальные правила по каждой товарной группе.', items: ['Обувь и товары лёгкой промышленности', 'Парфюмерия и шины', 'Табачная и никотинсодержащая продукция', 'Упакованная вода и безалкогольные напитки', 'Другие группы из действующего российского перечня'], checklist: ['Проверить код ТН ВЭД / ОКПД2 и применимость маркировки', 'Проверить сроки и правила конкретной группы', 'Оформить карточку товара и заказать коды через МЗКМ', 'Обеспечить корректную передачу сведений и трансграничные документы'] },
-    { id: 'internal', title: 'Внутренний контур – ГАИС МТ', code: 'ВНУТРЕННЯЯ · КР', jurisdiction: 'KG', tone: 'internal', subtitle: 'Национальная маркировка и учёт товаров в Кыргызской Республике', description: 'Для товаров и операций, подпадающих под национальное регулирование Кыргызской Республики. Основные источники – постановления Кабинета Министров КР, налоговое законодательство, правила маркировки и документы оператора ГАИС МТ. Не следует автоматически переносить сюда российские требования.', items: ['Товары из действующего национального перечня маркировки', 'Упакованная вода и учетно-контрольные марки – в пределах применимых требований', 'Национальные операции маркировки и учёта', 'Внутренние регламенты, инструкции и документы оператора'], checklist: ['Сверить товар с действующим перечнем КР', 'Определить тип маркировки и применимые сроки', 'Выполнить операции в ГАИС МТ по утверждённому процессу', 'Сохранить документы и проверить отражение операций в системе'] },
+    'Обувные товары',
+    'Белье постельное, столовое, туалетное и кухонное',
+    'Предметы одежды',
+    'Духи и туалетная вода',
+    'Фотокамеры (кроме кинокамер), фотовспышки и лампы-вспышки',
+    'Молочная продукция',
+    'Продукты, используемые для кормления животных',
+    'Косметика, бытовая химия и товары личной гигиены',
+    'Моторные масла, смазочные материалы, тормозные жидкости и антифризы',
+    'Игры и игрушки для детей',
   ]
+
   return <div className="product-groups-page">
-    <div className="page-heading"><div><div className="section-kicker">СПРАВОЧНИК / ДВА КОНТУРА</div><h1>Товарные группы</h1><p>Разделение по нормативной юрисдикции и системе работы. Наличие группы в списке не означает, что маркировка обязательна для любого товара внутри неё: сверяйте код товара, даты и действующую редакцию НПА.</p></div><div className="record-count">2 контура</div></div>
-    <div className="notice"><CircleHelp size={17}/><div><b>Важно: контуры регулируются разными правилами</b><span>Внешний контур относится к российской системе МЗКМ и правилам РФ. Внутренний контур относится к национальной системе ГАИС МТ и законодательству КР. Акты ЕАЭС применяются отдельно в пределах их предмета регулирования.</span></div></div>
-    <div className="product-contour-grid">{groups.map(group => <section className={'contour-card ' + group.tone} key={group.id}>
-      <div className="contour-card-top"><span className="contour-icon"><Boxes size={23}/></span><span className="contour-code">{group.code}</span></div>
-      <h2>{group.title}</h2><p className="contour-subtitle">{group.subtitle}</p><p className="contour-description">{group.description}</p>
-      <div className="contour-section"><b>Основные категории</b><ul>{group.items.map(item => <li key={item}>{item}</li>)}</ul></div>
-      <div className="contour-section"><b>Рабочий порядок</b><ol>{group.checklist.map(item => <li key={item}>{item}</li>)}</ol></div>
-      <button className="primary-button" onClick={() => onOpen(group.jurisdiction)}>Открыть нормативные документы <ArrowUpRight size={15}/></button>
-    </section>)}</div>
-    <section className="contour-reference"><div className="section-kicker">ОФИЦИАЛЬНЫЕ СПРАВОЧНИКИ</div><h2>Где проверять перечни и действующие редакции</h2><div className="reference-links">
-      <a href="https://cbd.minjust.gov.kg/search-docs/ru" target="_blank" rel="noreferrer"><b>ЦБД правовой информации Минюста КР</b><span>Национальные НПА, редакции и статус документов</span><ExternalLink size={16}/></a>
-      <a href="https://www.gov.kg/ru/npa" target="_blank" rel="noreferrer"><b>НПА Кабинета Министров КР</b><span>Официальные постановления и распоряжения</span><ExternalLink size={16}/></a>
-      <a href="https://eec.eaeunion.org/" target="_blank" rel="noreferrer"><b>Евразийская экономическая комиссия</b><span>Соглашения и решения по маркировке в ЕАЭС</span><ExternalLink size={16}/></a>
-      <a href="https://pravo.gov.ru/" target="_blank" rel="noreferrer"><b>Официальный портал правовой информации РФ</b><span>Официальное опубликование российских НПА</span><ExternalLink size={16}/></a>
-    </div></section>
+    <div className="page-heading">
+      <div>
+        <div className="section-kicker">СПРАВОЧНИК / МЗКМ v2.1</div>
+        <h1>Товарные группы</h1>
+        <p>Единый список товарных групп по руководству пользователя МЗКМ версии 2.1 от 9 октября 2026 года.</p>
+      </div>
+      <div className="record-count">10 групп в перечне на обложке</div>
+    </div>
+
+    <div className="notice">
+      <CircleHelp size={17}/>
+      <div>
+        <b>Единый перечень без деления на «внешку» и «внутреннюю»</b>
+        <span>В руководстве МЗКМ v2.1 товарные группы приведены одним списком. Здесь они отображаются вместе – без распределения по двум контурам и без дублирования между ними. Наличие группы в руководстве само по себе не подтверждает обязательность маркировки любого товара этой группы: проверяйте применимые нормативные акты, код ТН ВЭД и сценарий оборота отдельно.</span>
+      </div>
+    </div>
+
+    <section className="mzkm-groups-grid" aria-label="Единый список товарных групп МЗКМ v2.1">
+      {groups.map((name, index) => <article className="mzkm-group-card" key={name}>
+        <div className="mzkm-group-number">{String(index + 1).padStart(2, '0')}</div>
+        <div className="mzkm-group-copy">
+          <h2>{name}</h2>
+          <p>Указана в перечне товарных групп руководства МЗКМ v2.1.</p>
+        </div>
+      </article>)}
+    </section>
+
+    <div className="notice mzkm-groups-version-note">
+      <CircleHelp size={17}/>
+      <div>
+        <b>Примечание к самому руководству</b>
+        <span>В разделе 4.3 и истории изменений также упоминается товарная группа «Бритвы», но на титульной странице она отсутствует. Поэтому она не добавлена в основной список из 10 групп; наличие этой группы в текущем интерфейсе МЗКМ следует подтвердить отдельно.</span>
+      </div>
+    </div>
+
+    <section className="contour-reference mzkm-groups-sources">
+      <div className="section-kicker">ИСТОЧНИКИ И ПРОВЕРКА</div>
+      <h2>Где сверять актуальные сведения</h2>
+      <p className="mzkm-groups-source-note">Основной источник каталога – руководство пользователя МЗКМ v2.1 от 09.10.2026. Для обязательности маркировки и сроков дополнительно проверяйте применимый акт и страну назначения.</p>
+      <div className="reference-links">
+        <a href="https://main.teksher.kg/" target="_blank" rel="noreferrer"><b>Официальный портал «Текшер»</b><span>Информация оператора и руководства</span><ExternalLink size={16}/></a>
+        <a href="https://main.teksher.kg/news.html" target="_blank" rel="noreferrer"><b>Новости оператора</b><span>Добавление групп и обновления перечней ТН ВЭД</span><ExternalLink size={16}/></a>
+        <a href="https://cbd.minjust.gov.kg/" target="_blank" rel="noreferrer"><b>Правовая база Кыргызской Республики</b><span>Актуальные редакции нормативных актов</span><ExternalLink size={16}/></a>
+        <a href="https://docs.eaeunion.org/" target="_blank" rel="noreferrer"><b>Правовые акты ЕАЭС</b><span>Соглашения и решения ЕЭК</span><ExternalLink size={16}/></a>
+      </div>
+      <button className="primary-button mzkm-groups-open-docs" type="button" onClick={() => onOpen('KG')}>Открыть материалы МЗКМ в базе <ArrowUpRight size={15}/></button>
+    </section>
   </div>
 }
 
