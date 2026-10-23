@@ -1560,7 +1560,7 @@ function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, ap
     const form = event.currentTarget.closest('form')
     if (!form) return
     if (!apiEnabled) {
-      setAiSummaryMessage('ИИ доступен после подключения общей базы: задайте VITE_API_URL для frontend и OPENAI_API_KEY в настройках backend. В демо-режиме запрос к ИИ не выполняется.')
+      setAiSummaryMessage('ИИ доступен после подключения общей базы: задайте VITE_API_URL для frontend и GROQ_API_KEY в настройках backend. В демо-режиме запрос к ИИ не выполняется.')
       setAiSummaryError('')
       return
     }
@@ -1577,7 +1577,7 @@ function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, ap
       setAiSummaryMessage('')
       return
     }
-    const confirmed = window.confirm('Для подготовки описания текст и выбранный файл будут отправлены через сервер TEKSHER HUB в настроенный OpenAI API. Не продолжайте, если материал содержит налоговую тайну, персональные данные или иную закрытую информацию без разрешения. Продолжить?')
+    const confirmed = window.confirm('Для подготовки описания текст и выбранный файл будут отправлены через сервер TEKSHER HUB в настроенный Groq API. Не продолжайте, если материал содержит налоговую тайну, персональные данные или иную закрытую информацию без разрешения. Продолжить?')
     if (!confirmed) return
     const requestBody = new FormData()
     ;['title', 'jurisdiction', 'kind', 'area', 'documentNumber', 'documentDate', 'effectiveFrom', 'effectiveUntil', 'sourceUrl', 'content'].forEach(name => {
@@ -1598,7 +1598,7 @@ function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, ap
     } catch (requestError) {
       const message = requestError?.message || ''
       if (/404|no static resource|not found|not_found/i.test(message)) {
-        setAiSummaryMessage('Маршрут ИИ не найден на подключённом backend. Обновите/redeploy backend до актуальной версии и задайте OPENAI_API_KEY в настройках сервера.')
+        setAiSummaryMessage('Маршрут ИИ не найден на подключённом backend. Обновите/redeploy backend до актуальной версии и задайте GROQ_API_KEY в настройках сервера.')
         setAiSummaryError('')
       } else {
         setAiSummaryError(message || 'Не удалось подготовить описание. Попробуйте ещё раз или заполните его вручную.')
@@ -1642,7 +1642,7 @@ function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, ap
             <div className="ai-summary-field-heading"><label htmlFor="document-description">Краткое описание *</label><button type="button" className="secondary-button ai-summary-button" onClick={handleGenerateAiSummary} disabled={aiSummaryLoading || saving}><Sparkles size={14}/>{aiSummaryLoading ? 'Готовим описание…' : 'Подготовить с ИИ'}</button></div>
             <textarea id="document-description" name="description" required rows="4" maxLength="3000" defaultValue={initialDoc?.description || ''} placeholder="Кратко: о чём документ, к кому относится и что важно сотруднику знать" />
             <small className="form-help">ИИ-описание – только черновик. Проверьте факты, номера, даты и область применения по исходному документу.</small>
-            <small className="form-help ai-summary-privacy">Для генерации текст и выбранный файл отправляются в настроенный OpenAI API. Не отправляйте материалы с налоговой тайной или иной закрытой информацией без разрешения.</small>
+            <small className="form-help ai-summary-privacy">Для генерации текст и выбранный файл отправляются в настроенный Groq API. Не отправляйте материалы с налоговой тайной или иной закрытой информацией без разрешения.</small>
             {aiSummaryMessage && <div className="ai-summary-message" role="status"><Sparkles size={14}/><span>{aiSummaryMessage}</span></div>}
             {aiSummaryError && <div className="feedback feedback-error ai-summary-feedback" role="alert"><CircleHelp size={14}/><span>{aiSummaryError}</span></div>}
           </div>
