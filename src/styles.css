@@ -1254,3 +1254,6 @@ html[data-theme="dark"] .ai-summary-privacy{background:#3a321f;border-color:#5e4
   .action-confirm-buttons button{width:100%;justify-content:center}
   .action-modal-close{top:12px;right:12px}
 }
+
+.review-modal-error{display:flex;align-items:flex-start;gap:8px;margin-top:13px;padding:10px 11px;font-size:10px;line-height:1.55}
+.review-modal-error svg{flex:0 0 auto;margin-top:1px}
