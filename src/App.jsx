@@ -1169,7 +1169,7 @@ function App() {
       {monitorModalOpen && <MonitorModal onClose={() => setMonitorModalOpen(false)} onSubmit={handleSaveMonitor} saving={isSaving} error={actionError} />}
       {userModalOpen && <UserModal onClose={() => setUserModalOpen(false)} onSubmit={handleSaveUser} saving={isSaving} error={actionError} />}
       {passwordResetTarget && <UserPasswordModal user={passwordResetTarget} onClose={() => setPasswordResetTarget(null)} onSubmit={handleResetPassword} saving={isSaving} error={actionError} />}
-      {confirmDialog && <ConfirmActionModal {...confirmDialog} onClose={() => setConfirmDialog(null)} onConfirm={async () => { const action = confirmDialog?.onConfirm; setConfirmDialog(null); if (action) await action() }} />}
+      {confirmDialog && <ConfirmActionModal {...confirmDialog} onClose={() => setConfirmDialog(null)} onConfirm={async () => { const action = confirmDialog?.onConfirm; if (action) await action() }} />}
       {reviewDialog && <ReviewSourceModal documentTitle={reviewDialog.documentTitle} status={reviewDialog.status} note={reviewNote} onNoteChange={setReviewNote} onClose={() => { if (!isReviewSaving) setReviewDialog(null) }} onSubmit={handleSubmitReview} saving={isReviewSaving} error={actionError} />}
     </div>
   )
@@ -1179,6 +1179,11 @@ function App() {
 
 function ConfirmActionModal({ title, message, confirmLabel = 'Подтвердить', tone = 'primary', onClose, onConfirm }) {
   const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    const onKeyDown = event => { if (event.key === 'Escape' && !busy) onClose?.() }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [busy, onClose])
   const handleConfirm = async () => {
     if (busy) return
     setBusy(true)
@@ -1210,6 +1215,11 @@ function ConfirmActionModal({ title, message, confirmLabel = 'Подтверди
 
 function ReviewSourceModal({ documentTitle, status, note, onNoteChange, onClose, onSubmit, saving, error }) {
   const reviewing = status === 'UNDER_REVIEW'
+  useEffect(() => {
+    const onKeyDown = event => { if (event.key === 'Escape' && !saving) onClose?.() }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [saving, onClose])
   return <div className="modal-backdrop action-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !saving) onClose?.() }}>
     <section className="action-confirm-modal review-source-modal" role="dialog" aria-modal="true" aria-labelledby="review-source-title">
       <button type="button" className="icon-button action-modal-close" onClick={onClose} disabled={saving} aria-label="Закрыть"><X size={18}/></button>
@@ -1789,7 +1799,6 @@ function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, ap
     setAiSummaryLoading(true)
     setAiSummaryError('')
     setAiSummaryMessage('')
-    setAiConsentOpen(false)
     try {
       const result = await apiRequest('/api/ai/summarize', { method: 'POST', body: requestBody })
       const summary = String(result?.description || result?.summary || '').trim()
