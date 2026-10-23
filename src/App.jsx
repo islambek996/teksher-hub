@@ -355,6 +355,10 @@ function App() {
   const [monitorModalOpen, setMonitorModalOpen] = useState(false)
   const [userModalOpen, setUserModalOpen] = useState(false)
   const [passwordResetTarget, setPasswordResetTarget] = useState(null)
+  const [confirmDialog, setConfirmDialog] = useState(null)
+  const [reviewDialog, setReviewDialog] = useState(null)
+  const [reviewNote, setReviewNote] = useState('Проверено вручную')
+  const [isReviewSaving, setIsReviewSaving] = useState(false)
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -737,37 +741,59 @@ function App() {
     } finally { setIsSaving(false) }
   }
 
-  const handleDeleteDocument = async (doc) => {
-    if (doc.isDemo || !window.confirm('Удалить карточку «' + doc.title + '»?')) return
-    setActionError(''); setSuccessMessage('')
-    try {
-      if (API_ENABLED) {
-        await apiRequest('/api/documents/' + doc.id, { method: 'DELETE' })
-        await refreshDocuments()
-        setSuccessMessage('Карточка удалена.')
-      } else {
-        const nextDocuments = userDocuments.filter(item => item.id !== doc.id)
-        setUserDocuments(nextDocuments)
-        try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDocuments)) } catch { /* local storage unavailable */ }
-      }
-      setSelectedDoc(null)
-      setActive('documents')
-    } catch (error) { setActionError(error.message || 'Не удалось удалить карточку.') }
+  const handleDeleteDocument = (doc) => {
+    if (doc.isDemo) return
+    setConfirmDialog({
+      title: 'Удалить карточку документа?',
+      message: 'Карточка «' + doc.title + '» будет удалена из общей базы. Связанные вложения и история редакций также удалятся. Это действие нельзя отменить.',
+      confirmLabel: 'Удалить карточку',
+      tone: 'danger',
+      onConfirm: async () => {
+        setActionError(''); setSuccessMessage('')
+        try {
+          if (API_ENABLED) {
+            await apiRequest('/api/documents/' + doc.id, { method: 'DELETE' })
+            await refreshDocuments()
+            setSuccessMessage('Карточка удалена.')
+          } else {
+            const nextDocuments = userDocuments.filter(item => item.id !== doc.id)
+            setUserDocuments(nextDocuments)
+            try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDocuments)) } catch { /* local storage unavailable */ }
+          }
+          setSelectedDoc(null)
+          setActive('documents')
+        } catch (error) {
+          setActionError(error.message || 'Не удалось удалить карточку.')
+        }
+      },
+    })
   }
 
-  const handleReviewDocument = async (status) => {
+  const handleReviewDocument = (status) => {
     if (!selectedDoc || !API_ENABLED) return
-    const note = window.prompt('Комментарий проверки источника (необязательно):', 'Проверено вручную')
-    if (note === null) return
+    setReviewNote('Проверено вручную')
+    setReviewDialog({ status, documentId: selectedDoc.id, documentTitle: selectedDoc.title })
+  }
+
+  const handleSubmitReview = async () => {
+    if (!reviewDialog || !API_ENABLED || isReviewSaving) return
+    setIsReviewSaving(true)
+    setActionError('')
     try {
-      const updated = await apiRequest('/api/documents/' + selectedDoc.id + '/review', {
-        method: 'POST', body: { status, note }
+      const updated = await apiRequest('/api/documents/' + reviewDialog.documentId + '/review', {
+        method: 'POST',
+        body: { status: reviewDialog.status, note: reviewNote.trim() },
       })
-      setSelectedDoc(updated)
+      setSelectedDoc(current => current?.id === updated.id ? updated : current)
       await refreshDocuments()
       setSuccessMessage('Статус проверки обновлён.')
       setActionError('')
-    } catch (error) { setActionError(error.message || 'Не удалось обновить статус.') }
+      setReviewDialog(null)
+    } catch (error) {
+      setActionError(error.message || 'Не удалось обновить статус.')
+    } finally {
+      setIsReviewSaving(false)
+    }
   }
 
   const handleDownloadFile = async (file) => {
@@ -910,12 +936,23 @@ function App() {
     } catch (error) { setActionError(error.message || 'Проверка источника не выполнена.') }
   }
 
-  const handleDeleteMonitor = async (monitor) => {
-    if (!window.confirm('Удалить источник «' + monitor.name + '» из мониторинга?')) return
-    try {
-      await apiRequest('/api/monitors/' + monitor.id, { method: 'DELETE' })
-      await refreshMonitors()
-    } catch (error) { setActionError(error.message || 'Не удалось удалить источник.') }
+  const handleDeleteMonitor = (monitor) => {
+    setConfirmDialog({
+      title: 'Удалить источник мониторинга?',
+      message: 'Источник «' + monitor.name + '» будет удалён из списка отслеживания. Это действие нельзя отменить.',
+      confirmLabel: 'Удалить источник',
+      tone: 'danger',
+      onConfirm: async () => {
+        try {
+          await apiRequest('/api/monitors/' + monitor.id, { method: 'DELETE' })
+          await refreshMonitors()
+          setSuccessMessage('Источник удалён из мониторинга.')
+          setActionError('')
+        } catch (error) {
+          setActionError(error.message || 'Не удалось удалить источник.')
+        }
+      },
+    })
   }
 
   const handleSaveUser = async (event) => {
@@ -1131,10 +1168,69 @@ function App() {
       {monitorModalOpen && <MonitorModal onClose={() => setMonitorModalOpen(false)} onSubmit={handleSaveMonitor} saving={isSaving} error={actionError} />}
       {userModalOpen && <UserModal onClose={() => setUserModalOpen(false)} onSubmit={handleSaveUser} saving={isSaving} error={actionError} />}
       {passwordResetTarget && <UserPasswordModal user={passwordResetTarget} onClose={() => setPasswordResetTarget(null)} onSubmit={handleResetPassword} saving={isSaving} error={actionError} />}
+      {confirmDialog && <ConfirmActionModal {...confirmDialog} onClose={() => setConfirmDialog(null)} onConfirm={async () => { const action = confirmDialog?.onConfirm; setConfirmDialog(null); if (action) await action() }} />}
+      {reviewDialog && <ReviewSourceModal documentTitle={reviewDialog.documentTitle} status={reviewDialog.status} note={reviewNote} onNoteChange={setReviewNote} onClose={() => { if (!isReviewSaving) setReviewDialog(null) }} onSubmit={handleSubmitReview} saving={isReviewSaving} />}
     </div>
   )
 }
 
+
+
+function ConfirmActionModal({ title, message, confirmLabel = 'Подтвердить', tone = 'primary', onClose, onConfirm }) {
+  const [busy, setBusy] = useState(false)
+  const handleConfirm = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      await onConfirm?.()
+      onClose?.()
+    } finally {
+      setBusy(false)
+    }
+  }
+  return <div className="modal-backdrop action-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !busy) onClose?.() }}>
+    <section className="action-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="action-confirm-title" aria-describedby="action-confirm-message">
+      <button type="button" className="icon-button action-modal-close" onClick={onClose} disabled={busy} aria-label="Закрыть"><X size={18}/></button>
+      <div className={'action-modal-symbol ' + (tone === 'danger' ? 'danger' : tone === 'warning' ? 'warning' : 'normal')}>
+        {tone === 'danger' ? <Trash2 size={22}/> : tone === 'warning' ? <ShieldCheck size={22}/> : <CircleHelp size={22}/>}
+      </div>
+      <h2 id="action-confirm-title">{title}</h2>
+      <p id="action-confirm-message">{message}</p>
+      <div className="modal-actions action-confirm-buttons">
+        <button type="button" className="secondary-button" onClick={onClose} disabled={busy}>Отмена</button>
+        <button type="button" className={tone === 'danger' ? 'danger-button' : 'primary-button'} onClick={handleConfirm} disabled={busy}>
+          {busy ? <RefreshCw size={15} className="spin"/> : tone === 'danger' ? <Trash2 size={15}/> : <CheckCircle2 size={15}/>}
+          {busy ? 'Выполняется…' : confirmLabel}
+        </button>
+      </div>
+    </section>
+  </div>
+}
+
+function ReviewSourceModal({ documentTitle, status, note, onNoteChange, onClose, onSubmit, saving }) {
+  const reviewing = status === 'UNDER_REVIEW'
+  return <div className="modal-backdrop action-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !saving) onClose?.() }}>
+    <section className="action-confirm-modal review-source-modal" role="dialog" aria-modal="true" aria-labelledby="review-source-title">
+      <button type="button" className="icon-button action-modal-close" onClick={onClose} disabled={saving} aria-label="Закрыть"><X size={18}/></button>
+      <div className={'action-modal-symbol ' + (reviewing ? 'warning' : 'normal')}>{reviewing ? <RefreshCw size={22}/> : <CheckCircle2 size={22}/>}</div>
+      <div className="section-kicker">КОНТРОЛЬ КАЧЕСТВА БАЗЫ</div>
+      <h2 id="review-source-title">{reviewing ? 'Отправить на повторную проверку?' : 'Подтвердить актуальность источника?'}</h2>
+      <p className="review-source-document">{documentTitle}</p>
+      <label className="review-source-note-field">
+        <span>Комментарий проверки <em>необязательно</em></span>
+        <textarea autoFocus maxLength={1000} rows={4} value={note} onChange={event => onNoteChange(event.target.value)} placeholder="Что проверено: редакция акта, даты действия, товарная группа, ссылка на первоисточник…" />
+        <small>Комментарий сохраняется вместе со статусом проверки и помогает коллегам понять, что именно было проверено.</small>
+      </label>
+      <div className="modal-actions action-confirm-buttons">
+        <button type="button" className="secondary-button" onClick={onClose} disabled={saving}>Отмена</button>
+        <button type="button" className="primary-button" onClick={onSubmit} disabled={saving}>
+          {saving ? <RefreshCw size={15} className="spin"/> : reviewing ? <RefreshCw size={15}/> : <CheckCircle2 size={15}/>}
+          {saving ? 'Сохраняем…' : reviewing ? 'Отправить на проверку' : 'Сохранить проверку'}
+        </button>
+      </div>
+    </section>
+  </div>
+}
 
 const FRESHNESS_REVIEW_DAYS = 180
 
@@ -1259,7 +1355,7 @@ function KnowledgeCenterSection({ documents, onSelectKind, onOpenAll, onAdd, can
 }
 
 function ProductGroupsSection({ onOpen }) {
-  const groups = [
+  const mzkmGroups = [
     'Обувные товары',
     'Белье постельное, столовое, туалетное и кухонное',
     'Предметы одежды',
@@ -1271,54 +1367,98 @@ function ProductGroupsSection({ onOpen }) {
     'Моторные масла, смазочные материалы, тормозные жидкости и антифризы',
     'Игры и игрушки для детей',
   ]
+  const internalGroups = [
+    {
+      name: 'Алкоголь',
+      description: 'Национальная внутренняя маркировка Кыргызской Республики. Применимость и способ маркировки проверять по действующим актам КР и официальным методическим правилам.',
+      source: 'https://main.teksher.kg/internal-marking.html',
+    },
+    {
+      name: 'Табак',
+      description: 'Национальная внутренняя маркировка Кыргызской Республики. Для конкретного вида продукции проверять действующие требования и методические правила.',
+      source: 'https://main.teksher.kg/internal-marking.html',
+    },
+  ]
 
   return <div className="product-groups-page">
     <div className="page-heading">
       <div>
-        <div className="section-kicker">СПРАВОЧНИК / МЗКМ v2.1</div>
+        <div className="section-kicker">СПРАВОЧНИК / МАРКИРОВКА ТОВАРОВ</div>
         <h1>Товарные группы</h1>
-        <p>Единый список товарных групп по руководству пользователя МЗКМ версии 2.1 от 9 октября 2026 года.</p>
+        <p>Списки разделены по назначению: товарные группы из руководства МЗКМ v2.1 и внутренние национальные группы Кыргызстана.</p>
       </div>
-      <div className="record-count">10 групп в перечне на обложке</div>
+      <div className="record-count">10 групп МЗКМ · 2 внутренние</div>
     </div>
 
-    <div className="notice">
-      <CircleHelp size={17}/>
-      <div>
-        <b>Единый перечень без деления на «внешку» и «внутреннюю»</b>
-        <span>В руководстве МЗКМ v2.1 товарные группы приведены одним списком. Здесь они отображаются вместе – без распределения по двум контурам и без дублирования между ними. Наличие группы в руководстве само по себе не подтверждает обязательность маркировки любого товара этой группы: проверяйте применимые нормативные акты, код ТН ВЭД и сценарий оборота отдельно.</span>
-      </div>
-    </div>
-
-    <section className="mzkm-groups-grid" aria-label="Единый список товарных групп МЗКМ v2.1">
-      {groups.map((name, index) => <article className="mzkm-group-card" key={name}>
-        <div className="mzkm-group-number">{String(index + 1).padStart(2, '0')}</div>
-        <div className="mzkm-group-copy">
-          <h2>{name}</h2>
-          <p>Указана в перечне товарных групп руководства МЗКМ v2.1.</p>
+    <section className="mzkm-product-group-section">
+      <div className="mzkm-section-heading">
+        <div className="mzkm-section-icon"><Boxes size={19}/></div>
+        <div>
+          <div className="section-kicker">РУКОВОДСТВО МЗКМ v2.1 · 09.10.2026</div>
+          <h2>Товарные группы МЗКМ</h2>
+          <p>Единый список с титульной страницы руководства – без дополнительного деления на внутренние и внешние группы внутри МЗКМ.</p>
         </div>
-      </article>)}
+        <span className="record-count">10 групп</span>
+      </div>
+      <section className="mzkm-groups-grid" aria-label="Единый список товарных групп МЗКМ v2.1">
+        {mzkmGroups.map((name, index) => <article className="mzkm-group-card" key={name}>
+          <div className="mzkm-group-number">{String(index + 1).padStart(2, '0')}</div>
+          <div className="mzkm-group-copy">
+            <h3>{name}</h3>
+            <p>Указана в перечне товарных групп руководства МЗКМ v2.1.</p>
+          </div>
+        </article>)}
+      </section>
+      <div className="notice mzkm-groups-version-note">
+        <CircleHelp size={17}/>
+        <div>
+          <b>Примечание к руководству</b>
+          <span>«Бритвы» описаны в разделе атрибутов v2.1, но отсутствуют в списке из десяти групп на титульной странице. Поэтому они не включены в основной список без подтверждения оператора.</span>
+        </div>
+      </div>
     </section>
 
-    <div className="notice mzkm-groups-version-note">
-      <CircleHelp size={17}/>
-      <div>
-        <b>Примечание к самому руководству</b>
-        <span>В разделе 4.3 и истории изменений также упоминается товарная группа «Бритвы», но на титульной странице она отсутствует. Поэтому она не добавлена в основной список из 10 групп; наличие этой группы в текущем интерфейсе МЗКМ следует подтвердить отдельно.</span>
+    <section className="internal-product-group-section">
+      <div className="mzkm-section-heading">
+        <div className="mzkm-section-icon internal"><ShieldCheck size={19}/></div>
+        <div>
+          <div className="section-kicker">КЫРГЫЗСКАЯ РЕСПУБЛИКА · НАЦИОНАЛЬНЫЕ ТРЕБОВАНИЯ</div>
+          <h2>Товарные группы внутренней маркировки</h2>
+          <p>По официальной странице регистрации оператора «Текшер» во внутреннем списке указаны алкоголь и табак.</p>
+        </div>
+        <span className="record-count">2 группы</span>
       </div>
-    </div>
+      <section className="internal-groups-grid" aria-label="Товарные группы внутренней маркировки Кыргызстана">
+        {internalGroups.map((group, index) => <article className="internal-group-card" key={group.name}>
+          <div className="internal-group-badge">{String(index + 1).padStart(2, '0')}</div>
+          <div className="internal-group-copy">
+            <h3>{group.name}</h3>
+            <p>{group.description}</p>
+            <a href={group.source} target="_blank" rel="noreferrer"><ExternalLink size={13}/> Официальная страница оператора</a>
+          </div>
+        </article>)}
+      </section>
+      <div className="notice internal-ukm-note">
+        <CircleHelp size={17}/>
+        <div>
+          <b>Отдельный национальный режим: упакованная вода и УКМ</b>
+          <span>Кабинет Министров КР отдельно установил режим учетно-контрольных марок для упакованной воды (ТН ВЭД 2201). Это отдельный режим учёта/контроля, поэтому он указан здесь в примечании и не смешивается с десятью товарными группами МЗКМ или с внутренним списком «Алкоголь / Табак».</span>
+          <a href="https://www.gov.kg/ru/npa/s/4687" target="_blank" rel="noreferrer">Постановление КМ КР № 385 от 01.07.2025 <ExternalLink size={13}/></a>
+        </div>
+      </div>
+    </section>
 
     <section className="contour-reference mzkm-groups-sources">
       <div className="section-kicker">ИСТОЧНИКИ И ПРОВЕРКА</div>
       <h2>Где сверять актуальные сведения</h2>
-      <p className="mzkm-groups-source-note">Основной источник каталога – руководство пользователя МЗКМ v2.1 от 09.10.2026. Для обязательности маркировки и сроков дополнительно проверяйте применимый акт и страну назначения.</p>
+      <p className="mzkm-groups-source-note">Для состава списка МЗКМ используется руководство v2.1 от 09.10.2026. Для внутренней маркировки и УКМ сверяйте отдельные нормативные основания Кыргызской Республики; наличие группы в справочнике само по себе не заменяет проверку применимого акта.</p>
       <div className="reference-links">
-        <a href="https://main.teksher.kg/" target="_blank" rel="noreferrer"><b>Официальный портал «Текшер»</b><span>Информация оператора и руководства</span><ExternalLink size={16}/></a>
-        <a href="https://main.teksher.kg/news.html" target="_blank" rel="noreferrer"><b>Новости оператора</b><span>Добавление групп и обновления перечней ТН ВЭД</span><ExternalLink size={16}/></a>
-        <a href="https://cbd.minjust.gov.kg/" target="_blank" rel="noreferrer"><b>Правовая база Кыргызской Республики</b><span>Актуальные редакции нормативных актов</span><ExternalLink size={16}/></a>
-        <a href="https://docs.eaeunion.org/" target="_blank" rel="noreferrer"><b>Правовые акты ЕАЭС</b><span>Соглашения и решения ЕЭК</span><ExternalLink size={16}/></a>
+        <a href="https://main.teksher.kg/register.html" target="_blank" rel="noreferrer"><b>Товарные группы в регистрации «Текшер»</b><span>Официальная страница отдельно показывает внутренние и внешние группы</span><ExternalLink size={16}/></a>
+        <a href="https://main.teksher.kg/internal-marking.html" target="_blank" rel="noreferrer"><b>Внутренняя маркировка КР</b><span>Перечень товаров, подлежащих обязательной маркировке</span><ExternalLink size={16}/></a>
+        <a href="https://www.gov.kg/ru/npa/s/4687" target="_blank" rel="noreferrer"><b>Постановление КМ КР № 385</b><span>Учетно-контрольные марки</span><ExternalLink size={16}/></a>
+        <a href="https://cbd.minjust.gov.kg/" target="_blank" rel="noreferrer"><b>Правовая база Минюста КР</b><span>Актуальные редакции нормативных актов</span><ExternalLink size={16}/></a>
       </div>
-      <button className="primary-button mzkm-groups-open-docs" type="button" onClick={() => onOpen('KG')}>Открыть материалы МЗКМ в базе <ArrowUpRight size={15}/></button>
+      <button className="primary-button mzkm-groups-open-docs" type="button" onClick={() => onOpen('KG')}>Открыть нормативные документы КР <ArrowUpRight size={15}/></button>
     </section>
   </div>
 }
