@@ -519,6 +519,7 @@ function App() {
               canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'}
               canReview={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)}
               files={apiFiles} versions={documentVersions} documents={documents} onOpenRelated={docId => { const related = documents.find(item => item.id === docId); if (related) openDocument(related) }} onDownload={handleDownloadFile} onReview={handleReviewDocument} />
+            : active === 'knowledge' ? <KnowledgeCenterSection documents={documents} onSelectKind={(kind) => { setActive('documents'); setSelectedDoc(null); setQuery(''); setFilter(kind); setStatusFilter('Все статусы'); syncRoute('documents') }} onOpenAll={() => openSection('documents')} onAdd={openNewDocumentModal} canAdd={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} />
             : active === 'groups' ? <ProductGroupsSection onOpen={openSection} />
             : active === 'monitoring' ? <MonitorSection monitors={monitors} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
                 onAdd={() => { setActionError(''); setMonitorModalOpen(true) }} onCheck={handleCheckMonitor} onDelete={handleDeleteMonitor} />
@@ -546,6 +547,36 @@ function App() {
       {passwordResetTarget && <UserPasswordModal user={passwordResetTarget} onClose={() => setPasswordResetTarget(null)} onSubmit={handleResetPassword} saving={isSaving} error={actionError} />}
     </div>
   )
+}
+
+
+function KnowledgeCenterSection({ documents, onSelectKind, onOpenAll, onAdd, canAdd }) {
+  const categories = [
+    { kind: 'Инструкция', title: 'Инструкции и руководства', description: 'Пошаговая работа в МЗКМ, ГАИС МТ и связанных сервисах.', icon: BookOpen, tone: 'blue' },
+    { kind: 'Бизнес-процесс', title: 'Бизнес-процессы', description: 'Последовательности действий, роли, входы, результаты и исключения.', icon: Workflow, tone: 'green' },
+    { kind: 'Техническая документация', title: 'Техническая документация', description: 'Интеграции, API, обмен данными, ограничения и технические решения.', icon: Layers3, tone: 'purple' },
+    { kind: 'Известная ошибка', title: 'Ошибки и решения', description: 'Текст ошибки, причина, диагностика и подтверждённый способ устранения.', icon: CircleHelp, tone: 'amber' },
+    { kind: 'Шаблон', title: 'Шаблоны документов', description: 'Формы писем, уведомлений, служебных записок и технических заданий.', icon: FileCheck2, tone: 'blue' },
+    { kind: 'Внутренний документ', title: 'Регламенты и внутренние материалы', description: 'Правила работы оператора, инструкции подразделений и рабочие памятки.', icon: FileText, tone: 'green' },
+  ]
+  return <section className="knowledge-center">
+    <div className="page-heading">
+      <div><div className="section-kicker">ЕДИНАЯ БАЗА ЗНАНИЙ</div><h1>Инструкции и рабочие знания</h1><p>Здесь собираются проверенные инструкции, процессы, технические решения, ошибки и шаблоны. Выберите тему, чтобы открыть соответствующие материалы общей базы.</p></div>
+      <div className="heading-actions"><span className="record-count">{documents.filter(doc => !doc.isDemo).length} материалов</span>{canAdd && <button className="primary-button" onClick={onAdd}><FilePlus2 size={16}/> Добавить материал</button>}</div>
+    </div>
+    <div className="knowledge-principle"><ShieldCheck size={19}/><div><b>Одна база – связанные знания</b><span>По возможности у каждого материала должны быть указаны система, юрисдикция, официальный источник или основание, дата проверки и связанные записи. Непроверенные сведения не следует использовать как подтверждённые требования.</span></div></div>
+    <div className="knowledge-category-grid">
+      {categories.map(({ kind, title, description, icon: Icon, tone }) => {
+        const count = documents.filter(doc => doc.kind === kind && !doc.isDemo).length
+        return <button className="knowledge-category" key={kind} onClick={() => onSelectKind(kind)}>
+          <span className={'knowledge-category-icon ' + tone}><Icon size={21}/></span>
+          <span className="knowledge-category-copy"><b>{title}</b><small>{description}</small><em>{count} {count === 1 ? 'материал' : count > 1 && count < 5 ? 'материала' : 'материалов'}</em></span>
+          <ArrowUpRight size={17} className="knowledge-category-arrow"/>
+        </button>
+      })}
+    </div>
+    <div className="knowledge-bottom-actions"><div><b>Нужен другой материал?</b><span>Откройте общий каталог или добавьте новую карточку в соответствующую категорию.</span></div><button className="secondary-button" onClick={onOpenAll}>Открыть все материалы <ArrowUpRight size={15}/></button></div>
+  </section>
 }
 
 function ProductGroupsSection({ onOpen }) {
