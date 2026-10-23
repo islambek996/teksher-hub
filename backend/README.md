@@ -26,6 +26,15 @@ The initial admin is created only if `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_A
 - `GET/POST /api/users`, `PATCH /api/users/{id}/enabled` and `PUT /api/users/{id}/password` – administrator only.
 - `GET /api/health`.
 
+## AI knowledge assistant
+
+- `POST /api/ai/ask` – answer a question using retrieved TEKSHER HUB cards and extracted text from attachments, returning ranked source references and their review status.
+- Available to authenticated `ADMIN`, `EDITOR` and `READER` roles. The question is limited to 2,000 characters.
+- Retrieval ranks matching document metadata and contents, with an additional search over extracted attachment text. A maximum of six evidence cards and bounded context are sent to the configured Groq Responses API.
+- The assistant is constrained to the supplied sources and should cite them as `[1]`, `[2]`. If retrieval finds no relevant source, the endpoint returns an explicit insufficient-evidence answer without calling the model.
+- Relevant excerpts from the database are sent to Groq. Do not submit tax secrets, personal data or other restricted materials without organizational approval.
+- Chat history is kept in the frontend component state only; it is not persisted on the server. Answers do not replace human/legal verification.
+
 ## AI summaries
 
 - `POST /api/ai/summarize` – generate a draft card description from editor-entered text and/or an attached PDF, Word, Excel, CSV, TXT, PNG or JPG file.
