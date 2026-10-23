@@ -864,3 +864,7 @@ html[data-theme="dark"] .global-search-result-arrow{color:#93a7bf}
 html[data-theme="dark"] .global-search-results,
 html[data-theme="dark"] .global-search-footer{border-color:#2b3f55}
 html[data-theme="dark"] .global-search-footer{background:#111f30;color:#90a5bd}
+
+.global-search-result.active{background:#edf4fc}
+html[data-theme="dark"] .global-search-result.active{background:#263c55}
+.global-search-results[role="listbox"]{outline:none}
