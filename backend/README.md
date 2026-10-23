@@ -30,10 +30,11 @@ The initial admin is created only if `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_A
 
 - `POST /api/ai/summarize` – generate a draft card description from editor-entered text and/or an attached PDF, Word, Excel, CSV, TXT, PNG or JPG file.
 - Requires an authenticated `ADMIN` or `EDITOR` account.
-- Set `OPENAI_API_KEY` in the backend environment to enable generation. Set `OPENAI_MODEL` to change the default `gpt-5-mini` model.
-- The key stays on the server. The API request uses the Responses API with response storage disabled; extracted document text is sent to the configured OpenAI model for summarization.
+- Set `GROQ_API_KEY` in the backend environment to enable generation. Set `GROQ_MODEL` to change the default `openai/gpt-oss-20b` model.
+- Requests use Groq's Responses API at `https://api.groq.com/openai/v1/responses`. The key remains on the backend and must never be put in frontend variables or committed to Git.
+- Extracted document text is sent to Groq for summarization. Do not submit tax secrets, personal or other restricted data without organizational approval.
+- Free-tier availability is subject to Groq's published model limits and may be throttled. Check current quotas in Groq Console. If no key is configured, the endpoint returns a configuration error.
 - The endpoint does not verify laws or official sources. A generated description is a draft and must be checked by an employee.
-- OpenAI API usage is billed separately from a ChatGPT subscription. If no key is configured, the endpoint returns a clear configuration error.
 
 ## Roles
 
