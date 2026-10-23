@@ -1745,8 +1745,10 @@ function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, ap
   const [aiSummaryLoading, setAiSummaryLoading] = useState(false)
   const [aiSummaryMessage, setAiSummaryMessage] = useState('')
   const [aiSummaryError, setAiSummaryError] = useState('')
+  const [aiConsentOpen, setAiConsentOpen] = useState(false)
+  const aiSummaryFormRef = useRef(null)
 
-  const handleGenerateAiSummary = async (event) => {
+  const handleGenerateAiSummary = (event) => {
     const form = event.currentTarget.closest('form')
     if (!form) return
     if (!apiEnabled) {
@@ -1767,8 +1769,15 @@ function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, ap
       setAiSummaryMessage('')
       return
     }
-    const confirmed = window.confirm('Для подготовки описания текст и выбранный файл будут отправлены через сервер TEKSHER HUB в настроенный Groq API. Не продолжайте, если материал содержит налоговую тайну, персональные данные или иную закрытую информацию без разрешения. Продолжить?')
-    if (!confirmed) return
+    aiSummaryFormRef.current = form
+    setAiConsentOpen(true)
+  }
+
+  const runAiSummary = async () => {
+    const form = aiSummaryFormRef.current
+    if (!form) return
+    const fieldValue = name => String(form.elements.namedItem(name)?.value || '').trim()
+    const file = form.elements.namedItem('file')?.files?.[0]
     const requestBody = new FormData()
     ;['title', 'jurisdiction', 'kind', 'area', 'documentNumber', 'documentDate', 'effectiveFrom', 'effectiveUntil', 'sourceUrl', 'content'].forEach(name => {
       requestBody.append(name, fieldValue(name))
@@ -1778,6 +1787,7 @@ function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, ap
     setAiSummaryLoading(true)
     setAiSummaryError('')
     setAiSummaryMessage('')
+    setAiConsentOpen(false)
     try {
       const result = await apiRequest('/api/ai/summarize', { method: 'POST', body: requestBody })
       const summary = String(result?.description || result?.summary || '').trim()
@@ -1795,8 +1805,10 @@ function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, ap
       }
     } finally {
       setAiSummaryLoading(false)
+      aiSummaryFormRef.current = null
     }
   }
+  
   const initialStatus = ['DRAFT','UNDER_REVIEW','ACTIVE','EXPIRED','ARCHIVED'].includes(initialDoc?.status) ? initialDoc.status : ''
   const applyTemplate = (event) => {
     const template = knowledgeTemplates[event.target.value]
@@ -1809,7 +1821,8 @@ function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, ap
     if (form.elements.namedItem('kind')) form.elements.namedItem('kind').value = template.kind
     if (form.elements.namedItem('area') && !form.elements.namedItem('area').value.trim()) form.elements.namedItem('area').value = template.area
   }
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose() }}>
+  return <>
+  <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose() }}>
     <section className="create-modal" role="dialog" aria-modal="true" aria-labelledby="create-document-title">
       <header className="modal-header"><div><div className="section-kicker">КАТАЛОГ / НОРМАТИВНЫЙ ФОНД</div><h2 id="create-document-title">{initialDoc ? 'Редактировать карточку' : 'Добавить документ'}</h2><p>Укажите реквизиты и официальный источник. Перед отметкой «Действует» проверьте документ вручную.</p></div><button type="button" className="icon-button" onClick={onClose} aria-label="Закрыть" disabled={saving}><X size={20} /></button></header>
       <form onSubmit={onSubmit}>
@@ -1846,6 +1859,15 @@ function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, ap
       </form>
     </section>
   </div>
+  {aiConsentOpen && <ConfirmActionModal
+    title="Передать материал в ИИ?"
+    message="Для подготовки краткого описания текст и выбранный файл будут отправлены через сервер TEKSHER HUB в настроенный Groq API. Не продолжайте, если материал содержит налоговую тайну, персональные данные или иную закрытую информацию без разрешения организации."
+    confirmLabel="Продолжить"
+    tone="warning"
+    onClose={() => setAiConsentOpen(false)}
+    onConfirm={runAiSummary}
+  />}
+  </>
 }
 
 
