@@ -163,10 +163,15 @@ public class DocumentService {
         }
     }
 
-    private static String searchable(DocumentRecord d) {
+    private String searchable(DocumentRecord d) {
+        String attachmentText = files.findAllByDocumentIdOrderByUploadedAtDesc(d.getId()).stream()
+                .map(DocumentFile::getExtractedText)
+                .filter(text -> text != null && !text.isBlank())
+                .collect(java.util.stream.Collectors.joining(" "));
         return (d.getTitle() + " " + d.getDescription() + " " + d.getArea() + " " + d.getKind() + " "
                 + d.getJurisdiction() + " " + value(d.getProductGroup()) + " " + value(d.getKeywords()) + " "
-                + value(d.getDocumentNumber()) + " " + value(d.getSourceUrl()) + " " + value(d.getContent())).toLowerCase();
+                + value(d.getDocumentNumber()) + " " + value(d.getSourceUrl()) + " " + value(d.getContent()) + " "
+                + attachmentText).toLowerCase(java.util.Locale.ROOT);
     }
 
     private static void apply(DocumentRecord d, DocumentRequest r, boolean creating) {
