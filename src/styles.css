@@ -481,3 +481,5 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .bulk-reindex-button .spin{animation:spin 1.4s linear infinite}
 @media(max-width:1000px){.bulk-reindex-button{white-space:normal;text-align:left;line-height:1.35}}
 @media(max-width:760px){.heading-actions{width:100%;flex-wrap:wrap}.bulk-reindex-button{flex:1 1 100%;justify-content:center}}
+
+.file-index-ocr_indexed{background:#eaf0ff;color:#4b5f9c}
