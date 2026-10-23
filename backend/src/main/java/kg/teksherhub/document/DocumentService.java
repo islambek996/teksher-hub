@@ -28,9 +28,11 @@ public class DocumentService {
 
     @Transactional(readOnly = true)
     public List<DocumentResponse> list(String query, String jurisdiction, String kind, String status) {
-        String q = query == null ? "" : query.trim().toLowerCase();
+        String q = query == null ? "" : query.trim().toLowerCase(java.util.Locale.ROOT);
+        java.util.Set<UUID> attachmentMatches = q.isBlank() ? java.util.Set.of()
+                : new java.util.HashSet<>(files.findDocumentIdsWithExtractedTextContaining(q));
         return documents.findAllByOrderByUpdatedAtDesc().stream()
-                .filter(d -> q.isBlank() || searchable(d).contains(q))
+                .filter(d -> q.isBlank() || searchableMetadata(d).contains(q) || attachmentMatches.contains(d.getId()))
                 .filter(d -> jurisdiction == null || jurisdiction.isBlank() || jurisdiction.equalsIgnoreCase(d.getJurisdiction()))
                 .filter(d -> kind == null || kind.isBlank() || kind.equalsIgnoreCase(d.getKind()))
                 .filter(d -> status == null || status.isBlank() || status.equalsIgnoreCase(d.getStatus().name()))
@@ -163,15 +165,11 @@ public class DocumentService {
         }
     }
 
-    private String searchable(DocumentRecord d) {
-        String attachmentText = files.findAllByDocumentIdOrderByUploadedAtDesc(d.getId()).stream()
-                .map(DocumentFile::getExtractedText)
-                .filter(text -> text != null && !text.isBlank())
-                .collect(java.util.stream.Collectors.joining(" "));
+    private static String searchableMetadata(DocumentRecord d) {
         return (d.getTitle() + " " + d.getDescription() + " " + d.getArea() + " " + d.getKind() + " "
                 + d.getJurisdiction() + " " + value(d.getProductGroup()) + " " + value(d.getKeywords()) + " "
-                + value(d.getDocumentNumber()) + " " + value(d.getSourceUrl()) + " " + value(d.getContent()) + " "
-                + attachmentText).toLowerCase(java.util.Locale.ROOT);
+                + value(d.getDocumentNumber()) + " " + value(d.getSourceUrl()) + " " + value(d.getContent()))
+                .toLowerCase(java.util.Locale.ROOT);
     }
 
     private static void apply(DocumentRecord d, DocumentRequest r, boolean creating) {
