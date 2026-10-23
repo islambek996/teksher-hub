@@ -76,6 +76,7 @@ function App() {
   const [actionError, setActionError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [isBulkReindexing, setIsBulkReindexing] = useState(false)
   const [monitorModalOpen, setMonitorModalOpen] = useState(false)
   const [userModalOpen, setUserModalOpen] = useState(false)
   const [passwordResetTarget, setPasswordResetTarget] = useState(null)
@@ -378,6 +379,31 @@ function App() {
     }
   }
 
+  const handleBulkReindex = async () => {
+    if (!API_ENABLED || currentUser?.role !== 'ADMIN' || isBulkReindexing) return
+    setIsBulkReindexing(true)
+    setActionError('')
+    setSuccessMessage('')
+    try {
+      const result = await apiRequest('/api/admin/attachments/reindex-unindexed?limit=25', { method: 'POST' })
+      await refreshDocuments()
+      if (selectedDoc) {
+        const refreshedFiles = await apiRequest('/api/documents/' + selectedDoc.id + '/files')
+        setApiFiles(refreshedFiles)
+      }
+      setSuccessMessage('Переиндексация старых вложений: обработано ' + result.processed
+        + ', индексировано ' + result.indexed
+        + ', частично ' + result.partiallyIndexed
+        + ', пустых / неподдерживаемых ' + result.emptyOrUnsupported
+        + ', ошибок ' + result.failed
+        + '. В очереди без индекса осталось: ' + result.remainingUnindexed + '.')
+    } catch (error) {
+      setActionError(error.message || 'Не удалось запустить пакетную переиндексацию.')
+    } finally {
+      setIsBulkReindexing(false)
+    }
+  }
+
   const handleSaveMonitor = async (event) => {
     event.preventDefault()
     const data = new FormData(event.currentTarget)
@@ -584,7 +610,7 @@ function App() {
             : <>
             <div className="page-heading">
               <div><div className="section-kicker">БАЗА ЗНАНИЙ / {jurisdictions[active]?.short || 'TEKSHER HUB'}</div><h1>{pageTitle}</h1><p>{jurisdictions[active] ? `Документы и материалы: ${jurisdictions[active].label}. ` : 'Поиск по нормативным актам и рабочим материалам платформы.'}{API_ENABLED ? ' Проверяйте реквизиты и статус каждого документа перед применением.' : ' Демонстрационные записи не являются официальной нормативной базой.'}</p></div>
-              <div className="heading-actions"><span className="record-count">{filteredDocuments.length} записей</span>{(!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)) && <button className="primary-button" onClick={openNewDocumentModal}><FilePlus2 size={16} /> Добавить запись</button>}</div>
+              <div className="heading-actions"><span className="record-count">{filteredDocuments.length} записей</span>{active === 'documents' && API_ENABLED && currentUser?.role === 'ADMIN' && <button className="secondary-button bulk-reindex-button" type="button" onClick={handleBulkReindex} disabled={isBulkReindexing}><RefreshCw size={14} className={isBulkReindexing ? 'spin' : ''}/>{isBulkReindexing ? 'Обработка…' : 'Индексировать старые файлы'}</button>}{(!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)) && <button className="primary-button" onClick={openNewDocumentModal}><FilePlus2 size={16} /> Добавить запись</button>}</div>
             </div>
             <div className="search-panel">
               <div className="search-input-wrap"><Search size={19} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск по названию, реквизитам, содержанию карточек и вложений..." /></div>
