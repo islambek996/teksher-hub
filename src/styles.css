@@ -471,3 +471,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .file-reindex-button{align-self:flex-start;min-height:30px;margin-top:2px;padding:6px 8px;font-size:10px;font-weight:600}
 .file-reindex-button:disabled{opacity:.6;cursor:wait}
 @media(max-width:600px){.file-reindex-button{white-space:normal;text-align:left}}
+
+.search-match-origin{display:inline-flex!important;align-items:center;align-self:flex-start;gap:5px;width:max-content;max-width:100%;padding:4px 7px;border-radius:6px;background:#eef5fc;color:#315d8d!important;font-size:10px!important;line-height:1.4!important;font-weight:600}
+.search-match-origin svg{flex:0 0 auto}
+@media(max-width:600px){.search-match-origin{font-size:9px!important}}
