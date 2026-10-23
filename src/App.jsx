@@ -66,6 +66,7 @@ function App() {
   const [apiSearchResults, setApiSearchResults] = useState([])
   const [apiSearchTerm, setApiSearchTerm] = useState('')
   const [apiFiles, setApiFiles] = useState([])
+  const [reindexingFileId, setReindexingFileId] = useState(null)
   const [documentVersions, setDocumentVersions] = useState([])
   const [monitors, setMonitors] = useState([])
   const [users, setUsers] = useState([])
@@ -360,6 +361,23 @@ function App() {
     } catch (error) { setActionError(error.message || 'Не удалось скачать файл.') }
   }
 
+  const handleReindexFile = async (file) => {
+    if (!API_ENABLED || !selectedDoc) return
+    setReindexingFileId(file.id)
+    setActionError('')
+    setSuccessMessage('')
+    try {
+      const updated = await apiRequest('/api/documents/' + selectedDoc.id + '/files/' + file.id + '/reindex', { method: 'POST' })
+      setApiFiles(current => current.map(item => item.id === file.id ? updated : item))
+      await refreshDocuments()
+      setSuccessMessage('Индексация завершена: ' + fileIndexLabel(updated))
+    } catch (error) {
+      setActionError(error.message || 'Не удалось переиндексировать файл.')
+    } finally {
+      setReindexingFileId(null)
+    }
+  }
+
   const handleSaveMonitor = async (event) => {
     event.preventDefault()
     const data = new FormData(event.currentTarget)
@@ -557,7 +575,7 @@ function App() {
               canEdit={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)}
               canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'}
               canReview={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)}
-              files={apiFiles} versions={documentVersions} documents={documents} onOpenRelated={docId => { const related = documents.find(item => item.id === docId); if (related) openDocument(related) }} onDownload={handleDownloadFile} onReview={handleReviewDocument} />
+              files={apiFiles} versions={documentVersions} documents={documents} onOpenRelated={docId => { const related = documents.find(item => item.id === docId); if (related) openDocument(related) }} onDownload={handleDownloadFile} onReview={handleReviewDocument} canReindex={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)} onReindexFile={handleReindexFile} reindexingFileId={reindexingFileId} />
             : active === 'knowledge' ? <KnowledgeCenterSection documents={documents} onSelectKind={(kind) => { setActive('documents'); setSelectedDoc(null); setQuery(''); setFilter(kind); setStatusFilter('Все статусы'); syncRoute('documents') }} onOpenAll={() => openSection('documents')} onAdd={openNewDocumentModal} canAdd={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} />
             : active === 'groups' ? <ProductGroupsSection onOpen={openSection} />
             : active === 'monitoring' ? <MonitorSection monitors={monitors} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
@@ -768,7 +786,7 @@ function formatDate(value) {
   return Number.isNaN(date.getTime()) ? 'Не указана' : date.toLocaleDateString('ru-RU')
 }
 
-function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, canReview, files = [], versions = [], documents = [], onOpenRelated, onDownload, onReview }) {
+function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, canReview, canReindex, files = [], versions = [], documents = [], onOpenRelated, onDownload, onReview, onReindexFile, reindexingFileId }) {
   const jurisdiction = jurisdictions[doc.jurisdiction] || { label: doc.jurisdiction || 'Не указана', flag: '🌐', className: 'eaeu' }
   const statusLabel = doc.statusLabel || doc.status || 'Черновик'
   return <section className="detail-page">
@@ -815,7 +833,7 @@ function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, can
       </section>}
       {!doc.isDemo && <section className="detail-subsection">
         <div className="subsection-heading"><div><Paperclip size={17} /><b>Файлы документа</b></div><span>{files.length}</span></div>
-        {files.length ? <div className="attached-files">{files.map(file => <div className="attached-file" key={file.id}><FileText size={18} /><div className="attached-file-copy"><b>{file.originalName}</b><small>{formatBytes(file.sizeBytes)} · {file.uploadedBy || 'пользователь'} · {formatDate(file.uploadedAt)}</small><small className={'file-index-status file-index-' + (file.textExtractionStatus || 'NOT_INDEXED').toLowerCase()}>{fileIndexLabel(file)}</small>{file.textExtractionNote && <small className="file-index-note">{file.textExtractionNote}</small>}</div><button type="button" className="icon-button" onClick={() => onDownload(file)} aria-label="Скачать файл"><Download size={16} /></button></div>)}
+        {files.length ? <div className="attached-files">{files.map(file => <div className="attached-file" key={file.id}><FileText size={18} /><div className="attached-file-copy"><b>{file.originalName}</b><small>{formatBytes(file.sizeBytes)} · {file.uploadedBy || 'пользователь'} · {formatDate(file.uploadedAt)}</small><small className={'file-index-status file-index-' + (file.textExtractionStatus || 'NOT_INDEXED').toLowerCase()}>{fileIndexLabel(file)}</small>{file.textExtractionNote && <small className="file-index-note">{file.textExtractionNote}</small>}{canReindex && ['NOT_INDEXED', 'FAILED'].includes(file.textExtractionStatus || 'NOT_INDEXED') && <button type="button" className="secondary-button file-reindex-button" onClick={() => onReindexFile(file)} disabled={reindexingFileId === file.id}><RefreshCw size={13}/>{reindexingFileId === file.id ? 'Индексация…' : 'Индексировать файл'}</button>}</div><button type="button" className="icon-button" onClick={() => onDownload(file)} aria-label="Скачать файл"><Download size={16} /></button></div>)}
         </div> : <p className="subsection-empty">К файлу документа пока ничего не прикреплено. Файл можно добавить через форму редактирования.</p>}
       </section>}
       {!doc.isDemo && <section className="detail-subsection">
