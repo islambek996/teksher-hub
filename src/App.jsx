@@ -137,9 +137,24 @@ function normalizeImportJurisdiction(value) {
 function normalizeImportDate(value, rowNumber, columnName) {
   const raw = String(value || '').trim()
   if (!raw) return null
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw
-  const match = raw.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/)
-  if (match) return match[3] + '-' + match[2].padStart(2, '0') + '-' + match[1].padStart(2, '0')
+  let iso = ''
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    iso = raw
+  } else {
+    const match = raw.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/)
+    if (match) iso = match[3] + '-' + match[2].padStart(2, '0') + '-' + match[1].padStart(2, '0')
+  }
+
+  const parts = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (parts) {
+    const year = Number(parts[1])
+    const month = Number(parts[2])
+    const day = Number(parts[3])
+    const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+    const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    if (month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth[month - 1]) return iso
+  }
+
   throw new Error('Строка CSV ' + rowNumber + ': некорректная дата в столбце «' + columnName + '»: ' + raw + '. Используйте ГГГГ-ММ-ДД или ДД.ММ.ГГГГ.')
 }
 
@@ -158,6 +173,11 @@ function parseDocumentCsv(text) {
 
   const dataRows = grid.slice(1).filter(row => row.some(value => value.trim() !== ''))
   if (dataRows.length > 100) throw new Error('За один раз можно импортировать не более 100 строк. Разделите файл на несколько частей.')
+  const wrongWidth = dataRows.findIndex(row => row.length !== headers.length)
+  if (wrongWidth >= 0) {
+    throw new Error('Строка CSV ' + (wrongWidth + 2) + ' содержит ' + dataRows[wrongWidth].length
+      + ' полей при ' + headers.length + ' столбцах заголовка. Проверьте разделители и кавычки.')
+  }
 
   const read = (row, key) => {
     const index = fieldIndexes[key]
