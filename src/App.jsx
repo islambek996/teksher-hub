@@ -771,6 +771,7 @@ function App() {
 
   const handleReviewDocument = (status) => {
     if (!selectedDoc || !API_ENABLED) return
+    setActionError('')
     setReviewNote('Проверено вручную')
     setReviewDialog({ status, documentId: selectedDoc.id, documentTitle: selectedDoc.title })
   }
@@ -1169,7 +1170,7 @@ function App() {
       {userModalOpen && <UserModal onClose={() => setUserModalOpen(false)} onSubmit={handleSaveUser} saving={isSaving} error={actionError} />}
       {passwordResetTarget && <UserPasswordModal user={passwordResetTarget} onClose={() => setPasswordResetTarget(null)} onSubmit={handleResetPassword} saving={isSaving} error={actionError} />}
       {confirmDialog && <ConfirmActionModal {...confirmDialog} onClose={() => setConfirmDialog(null)} onConfirm={async () => { const action = confirmDialog?.onConfirm; setConfirmDialog(null); if (action) await action() }} />}
-      {reviewDialog && <ReviewSourceModal documentTitle={reviewDialog.documentTitle} status={reviewDialog.status} note={reviewNote} onNoteChange={setReviewNote} onClose={() => { if (!isReviewSaving) setReviewDialog(null) }} onSubmit={handleSubmitReview} saving={isReviewSaving} />}
+      {reviewDialog && <ReviewSourceModal documentTitle={reviewDialog.documentTitle} status={reviewDialog.status} note={reviewNote} onNoteChange={setReviewNote} onClose={() => { if (!isReviewSaving) setReviewDialog(null) }} onSubmit={handleSubmitReview} saving={isReviewSaving} error={actionError} />}
     </div>
   )
 }
@@ -1207,7 +1208,7 @@ function ConfirmActionModal({ title, message, confirmLabel = 'Подтверди
   </div>
 }
 
-function ReviewSourceModal({ documentTitle, status, note, onNoteChange, onClose, onSubmit, saving }) {
+function ReviewSourceModal({ documentTitle, status, note, onNoteChange, onClose, onSubmit, saving, error }) {
   const reviewing = status === 'UNDER_REVIEW'
   return <div className="modal-backdrop action-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !saving) onClose?.() }}>
     <section className="action-confirm-modal review-source-modal" role="dialog" aria-modal="true" aria-labelledby="review-source-title">
@@ -1221,6 +1222,7 @@ function ReviewSourceModal({ documentTitle, status, note, onNoteChange, onClose,
         <textarea autoFocus maxLength={1000} rows={4} value={note} onChange={event => onNoteChange(event.target.value)} placeholder="Что проверено: редакция акта, даты действия, товарная группа, ссылка на первоисточник…" />
         <small>Комментарий сохраняется вместе со статусом проверки и помогает коллегам понять, что именно было проверено.</small>
       </label>
+      {error && <div className="feedback feedback-error review-modal-error" role="alert"><CircleHelp size={15}/><span>{error}</span></div>}
       <div className="modal-actions action-confirm-buttons">
         <button type="button" className="secondary-button" onClick={onClose} disabled={saving}>Отмена</button>
         <button type="button" className="primary-button" onClick={onSubmit} disabled={saving}>
