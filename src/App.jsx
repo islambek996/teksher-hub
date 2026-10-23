@@ -223,6 +223,7 @@ function App() {
   const [actionError, setActionError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   const [isBulkReindexing, setIsBulkReindexing] = useState(false)
   const [monitorModalOpen, setMonitorModalOpen] = useState(false)
   const [userModalOpen, setUserModalOpen] = useState(false)
@@ -577,6 +578,29 @@ function App() {
     }
   }
 
+  const handleExportDocuments = async () => {
+    if (!API_ENABLED || !['ADMIN', 'EDITOR'].includes(currentUser?.role) || isExporting) return
+    setIsExporting(true)
+    setActionError('')
+    setSuccessMessage('')
+    try {
+      const blob = await apiRequest('/api/documents/export.csv', { responseType: 'blob' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'teksher-hub-export.csv'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      setSuccessMessage('Экспорт карточек подготовлен. CSV содержит реквизиты и текст карточек, но не является резервной копией вложенных файлов или базы данных.')
+    } catch (error) {
+      setActionError(error.message || 'Не удалось экспортировать CSV.')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   const handleSaveMonitor = async (event) => {
     event.preventDefault()
     const data = new FormData(event.currentTarget)
@@ -783,7 +807,7 @@ function App() {
             : <>
             <div className="page-heading">
               <div><div className="section-kicker">БАЗА ЗНАНИЙ / {jurisdictions[active]?.short || 'TEKSHER HUB'}</div><h1>{pageTitle}</h1><p>{jurisdictions[active] ? `Документы и материалы: ${jurisdictions[active].label}. ` : 'Поиск по нормативным актам и рабочим материалам платформы.'}{API_ENABLED ? ' Проверяйте реквизиты и статус каждого документа перед применением.' : ' Демонстрационные записи не являются официальной нормативной базой.'}</p></div>
-              <div className="heading-actions"><span className="record-count">{filteredDocuments.length} записей</span>{active === 'documents' && API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role) && <button className="secondary-button csv-import-trigger" type="button" onClick={() => setShowImportModal(true)}><FileText size={14}/> Импорт CSV</button>}{active === 'documents' && API_ENABLED && currentUser?.role === 'ADMIN' && <button className="secondary-button bulk-reindex-button" type="button" onClick={handleBulkReindex} disabled={isBulkReindexing}><RefreshCw size={14} className={isBulkReindexing ? 'spin' : ''}/>{isBulkReindexing ? 'Обработка…' : 'Индексировать старые файлы'}</button>}{(!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)) && <button className="primary-button" onClick={openNewDocumentModal}><FilePlus2 size={16} /> Добавить запись</button>}</div>
+              <div className="heading-actions"><span className="record-count">{filteredDocuments.length} записей</span>{active === 'documents' && API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role) && <button className="secondary-button csv-import-trigger" type="button" onClick={() => setShowImportModal(true)}><FileText size={14}/> Импорт CSV</button>}{active === 'documents' && API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role) && <button className="secondary-button csv-export-trigger" type="button" onClick={handleExportDocuments} disabled={isExporting}><Download size={14}/>{isExporting ? 'Экспорт…' : 'Экспорт CSV'}</button>}{active === 'documents' && API_ENABLED && currentUser?.role === 'ADMIN' && <button className="secondary-button bulk-reindex-button" type="button" onClick={handleBulkReindex} disabled={isBulkReindexing}><RefreshCw size={14} className={isBulkReindexing ? 'spin' : ''}/>{isBulkReindexing ? 'Обработка…' : 'Индексировать старые файлы'}</button>}{(!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)) && <button className="primary-button" onClick={openNewDocumentModal}><FilePlus2 size={16} /> Добавить запись</button>}</div>
             </div>
             <div className="search-panel">
               <div className="search-input-wrap"><Search size={19} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск по названию, реквизитам, содержанию карточек и вложений..." /></div>
@@ -1108,7 +1132,7 @@ function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, ap
           <label className="form-field full-field"><span>Ссылка на официальный источник</span><input name="sourceUrl" type="url" maxLength="2000" defaultValue={initialDoc?.sourceUrl || ''} placeholder="https://..." /></label>
           {apiEnabled && <label className="form-field"><span>Статус карточки</span><select name="status" defaultValue={initialStatus}><option value="">Автоматически: черновик / на проверку</option><option value="DRAFT">Черновик</option><option value="UNDER_REVIEW">На проверке</option><option value="ACTIVE">Действует</option><option value="EXPIRED">Срок действия истёк</option><option value="ARCHIVED">В архиве</option></select></label>}
           <label className="form-field full-field"><span>Краткое описание *</span><textarea name="description" required rows="3" maxLength="3000" defaultValue={initialDoc?.description || ''} placeholder="Что регулирует документ и когда его использовать" /></label>
-          <label className="form-field full-field"><span>Содержание / рабочая инструкция</span><textarea name="content" rows="8" maxLength="50000" defaultValue={initialDoc?.content || ''} placeholder="Добавьте текст инструкции, порядок действий, решение ошибки, выдержку или другие сведения для поиска..." /><small className="form-help">Текст будет доступен для поиска. До 50 000 символов; вложенные файлы пока не индексируются автоматически.</small></label>
+          <label className="form-field full-field"><span>Содержание / рабочая инструкция</span><textarea name="content" rows="8" maxLength="50000" defaultValue={initialDoc?.content || ''} placeholder="Добавьте текст инструкции, порядок действий, решение ошибки, выдержку или другие сведения для поиска..." /><small className="form-help">Текст будет доступен для поиска (до 50 000 символов). Текстовые PDF/Word/Excel/TXT/CSV индексируются автоматически; для сканов PDF и изображений используется OCR с пометкой результата.</small></label>
           {apiEnabled && <label className="form-field full-field"><span>Комментарий к редакции</span><input name="changeNote" maxLength="1000" placeholder="Например, обновлена дата вступления в силу" /></label>}
           {apiEnabled && <label className="form-field full-field upload-field"><span>Прикрепить файл (необязательно, до 30 МБ)</span><span className="file-input-wrap"><Paperclip size={16} /><input name="file" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg" /></span></label>}
         </div>
