@@ -25,11 +25,14 @@ public class DocumentFileController {
     private final DocumentService documents;
     private final DocumentFileRepository files;
     private final FileStorageService storage;
+    private final DocumentTextExtractionService textExtraction;
 
-    public DocumentFileController(DocumentService documents, DocumentFileRepository files, FileStorageService storage) {
+    public DocumentFileController(DocumentService documents, DocumentFileRepository files, FileStorageService storage,
+                                  DocumentTextExtractionService textExtraction) {
         this.documents = documents;
         this.files = files;
         this.storage = storage;
+        this.textExtraction = textExtraction;
     }
 
     @GetMapping
@@ -53,6 +56,10 @@ public class DocumentFileController {
             file.setContentType(stored.contentType());
             file.setSizeBytes(stored.sizeBytes());
             file.setUploadedBy(user.getUsername());
+            DocumentTextExtractionService.ExtractionResult extracted = textExtraction.extract(stored.path(), stored.originalName());
+            file.setExtractedText(extracted.text());
+            file.setTextExtractionStatus(extracted.status());
+            file.setTextExtractionNote(extracted.note());
             return FileResponse.from(files.save(file));
         } catch (RuntimeException ex) {
             storage.delete(stored.storedName());
@@ -85,10 +92,15 @@ public class DocumentFileController {
     }
 
     public record FileResponse(UUID id, String originalName, String contentType, long sizeBytes,
-                               String uploadedBy, java.time.Instant uploadedAt, String downloadPath) {
+                               String uploadedBy, java.time.Instant uploadedAt,
+                               String textExtractionStatus, String textExtractionNote, int extractedCharacters,
+                               String downloadPath) {
         static FileResponse from(DocumentFile f) {
+            String extracted = f.getExtractedText();
             return new FileResponse(f.getId(), f.getOriginalName(), f.getContentType(), f.getSizeBytes(), f.getUploadedBy(),
-                    f.getUploadedAt(), "/api/documents/" + f.getDocument().getId() + "/files/" + f.getId() + "/download");
+                    f.getUploadedAt(), f.getTextExtractionStatus(), f.getTextExtractionNote(),
+                    extracted == null ? 0 : extracted.length(),
+                    "/api/documents/" + f.getDocument().getId() + "/files/" + f.getId() + "/download");
         }
     }
 }
