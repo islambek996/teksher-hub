@@ -4,7 +4,7 @@ import {
   ArrowDownRight, ArrowUpRight, BookOpen, Boxes, CalendarDays, ChevronDown,
   CircleHelp, ExternalLink, FileCheck2, FilePlus2, FileText, Globe2, Home,
   Landmark, Layers3, LibraryBig, Link2, Search, ShieldCheck, SlidersHorizontal,
-  Sparkles, Workflow, X, Pencil, Trash2, RefreshCw, UsersRound, LogOut, Paperclip, Download, History, CheckCircle2, UserPlus, Moon, Sun, Copy, ListTree, Clock3, Printer
+  Sparkles, Bot, Send, Workflow, X, Pencil, Trash2, RefreshCw, UsersRound, LogOut, Paperclip, Download, History, CheckCircle2, UserPlus, Moon, Sun, Copy, ListTree, Clock3, Printer
 } from 'lucide-react'
 
 const demoDocuments = [
@@ -24,6 +24,7 @@ const jurisdictions = {
 const navGroups = [
   { title: 'ПЛАТФОРМА', items: [
     { id: 'home', label: 'Главная', icon: Home },
+    { id: 'assistant', label: 'ИИ-помощник', icon: Bot },
     { id: 'documents', label: 'Все документы', icon: LibraryBig },
   ]},
   { title: 'ЮРИСДИКЦИИ', items: [
@@ -518,7 +519,7 @@ function App() {
   }, [currentUser, selectedDoc?.id, selectedDoc?.versionNumber])
 
   const pageTitle = active === 'home' ? 'База знаний оператора маркировки'
-    : jurisdictions[active]?.label || ({ documents: 'Все документы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний', monitoring: 'Мониторинг официальных источников', users: 'Управление пользователями' }[active] || 'TEKSHER HUB')
+    : jurisdictions[active]?.label || ({ assistant: 'ИИ-помощник', documents: 'Все документы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний', monitoring: 'Мониторинг официальных источников', users: 'Управление пользователями' }[active] || 'TEKSHER HUB')
 
   const syncRoute = (section, docId = null, replace = false) => {
     const route = { app: 'teksher-hub', section, docId }
@@ -1080,6 +1081,7 @@ function App() {
               canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'}
               canReview={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)}
               files={API_ENABLED ? apiFiles : localAttachmentFiles} versions={documentVersions} documents={documents} onOpenRelated={docId => { const related = documents.find(item => item.id === docId); if (related) openDocument(related) }} onDownload={handleDownloadFile} onUploadFile={handleUploadAttachment} uploadingFile={isUploadingAttachment} canUploadFiles={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} onReview={handleReviewDocument} canReindex={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)} onReindexFile={handleReindexFile} reindexingFileId={reindexingFileId} />
+            : active === 'assistant' ? <AiAssistantSection apiEnabled={API_ENABLED} onOpenDocument={docId => { const target = documents.find(item => String(item.id) === String(docId)); if (target) { setActive('documents'); setSelectedDoc(target); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы'); syncRoute('documents', target.id) } }} />
             : active === 'knowledge' ? <KnowledgeCenterSection documents={documents} onSelectKind={(kind) => { setActive('documents'); setSelectedDoc(null); setQuery(''); setFilter(kind); setStatusFilter('Все статусы'); syncRoute('documents') }} onOpenAll={() => openSection('documents')} onAdd={openNewDocumentModal} canAdd={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} />
             : active === 'groups' ? <ProductGroupsSection onOpen={openSection} />
             : active === 'monitoring' ? <MonitorSection monitors={monitors} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
@@ -1771,6 +1773,129 @@ function LoginScreen({ onSubmit, error, loading = false }) {
       <div className="auth-footnote">Доступ предоставляется администратором. Самостоятельная регистрация отключена.</div>
     </section>
   </main>
+}
+
+
+function AiAssistantSection({ apiEnabled, onOpenDocument }) {
+  const [question, setQuestion] = useState('')
+  const [messages, setMessages] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const inputRef = useRef(null)
+  const messagesEndRef = useRef(null)
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  }, [messages, loading])
+
+  const suggestions = [
+    'Что делать, если не заказываются коды маркировки?',
+    'Как проверить актуальность документа?',
+    'Найди инструкции по работе с карточкой товара',
+    'Какие материалы относятся к ГАИС МТ в Кыргызстане?'
+  ]
+
+  const sendQuestion = async (value) => {
+    const text = String(value || '').trim()
+    if (!text || loading) return
+    if (!apiEnabled) {
+      setError('Для ИИ-помощника нужно подключить общую базу через VITE_API_URL и настроить GROQ_API_KEY на backend.')
+      return
+    }
+    setQuestion('')
+    setError('')
+    setMessages(previous => [...previous, { role: 'user', answer: text }])
+    setLoading(true)
+    try {
+      const result = await apiRequest('/api/ai/ask', { method: 'POST', body: { question: text } })
+      setMessages(previous => [...previous, {
+        role: 'assistant',
+        answer: result.answer || 'Не удалось получить ответ.',
+        sources: Array.isArray(result.sources) ? result.sources : [],
+        insufficientEvidence: Boolean(result.insufficientEvidence)
+      }])
+    } catch (requestError) {
+      setError(requestError.message || 'Не удалось получить ответ ИИ. Попробуйте ещё раз.')
+    } finally {
+      setLoading(false)
+      window.setTimeout(() => inputRef.current?.focus(), 0)
+    }
+  }
+
+  const handleSubmit = (event) => {
+    event.preventDefault()
+    sendQuestion(question)
+  }
+
+  return (
+    <section className="assistant-page">
+      <div className="page-heading">
+        <div>
+          <div className="section-kicker">TEKSHER HUB / ПОИСК ПО ЗНАНИЯМ</div>
+          <h1>ИИ-помощник</h1>
+          <p>Задайте вопрос обычным языком. Помощник найдёт релевантные материалы базы знаний и ответит со ссылками на источники.</p>
+        </div>
+      </div>
+      <div className="assistant-layout">
+        <aside className="assistant-info-panel">
+          <div className="assistant-info-icon"><Bot size={25} /></div>
+          <h2>Ответы с опорой на документы</h2>
+          <p>Помощник сначала ищет совпадения в карточках и извлечённом тексте вложений, затем формирует ответ на основании найденных материалов.</p>
+          <div className="assistant-info-point"><span><CheckCircle2 size={16}/></span><div><b>Ссылки на источники</b><small>Можно открыть исходную карточку и официальный источник.</small></div></div>
+          <div className="assistant-info-point"><span><ShieldCheck size={16}/></span><div><b>Статус документа учитывается</b><small>Материалы на проверке или в архиве не должны выдаваться за действующие требования.</small></div></div>
+          <div className="assistant-info-point"><span><CircleHelp size={16}/></span><div><b>Без найденного подтверждения</b><small>Если в базе недостаточно данных, помощник должен прямо об этом сообщить.</small></div></div>
+          <div className="assistant-privacy-note">
+            <b>Важно для внутренних материалов</b>
+            <span>Для генерации ответа релевантный текст отправляется в Groq через backend. Не используйте помощника для закрытых сведений, налоговой тайны или персональных данных без разрешения организации.</span>
+          </div>
+          {!apiEnabled && <div className="assistant-unavailable"><CircleHelp size={15}/> Общая база и серверный ИИ не подключены в демо-режиме.</div>}
+        </aside>
+
+        <div className="assistant-chat-panel">
+          <div className="assistant-chat-heading">
+            <div className="assistant-chat-avatar"><Bot size={19}/></div>
+            <div><b>TEKSHER AI</b><small>Помощник по базе знаний</small></div>
+            <span className="assistant-online-dot">Поиск по источникам</span>
+          </div>
+          <div className="assistant-messages" aria-live="polite">
+            {!messages.length && <div className="assistant-welcome">
+              <div className="assistant-welcome-icon"><Sparkles size={23}/></div>
+              <h2>Что нужно найти?</h2>
+              <p>Опишите вопрос, ошибку или рабочую ситуацию. Начать можно с примеров ниже.</p>
+              <div className="assistant-suggestions">
+                {suggestions.map(item => <button type="button" key={item} onClick={() => sendQuestion(item)} disabled={loading || !apiEnabled}>{item}<ArrowUpRight size={14}/></button>)}
+              </div>
+            </div>}
+            {messages.map((message, index) => <div className={'assistant-message assistant-message-' + message.role} key={index}>
+              <div className="assistant-message-label">{message.role === 'user' ? 'Вы' : <><Bot size={14}/> TEKSHER AI</>}</div>
+              <div className="assistant-message-bubble">
+                <div className="assistant-answer-text">{message.answer}</div>
+                {message.role === 'assistant' && message.insufficientEvidence && <div className="assistant-evidence-warning"><CircleHelp size={15}/> Ответ не удалось полностью подтвердить материалами базы.</div>}
+              </div>
+              {message.role === 'assistant' && message.sources?.length > 0 && <div className="assistant-sources">
+                <div className="assistant-sources-heading"><BookOpen size={15}/> Источники в базе ({message.sources.length})</div>
+                {message.sources.map(source => <article className="assistant-source-card" key={source.id}>
+                  <div className="assistant-source-top"><span className="assistant-source-number">[{source.number}]</span><span className={'assistant-source-status assistant-status-' + String(source.status || '').toLowerCase()}>{source.statusLabel || 'Статус не указан'}</span></div>
+                  <button type="button" className="assistant-source-title" onClick={() => onOpenDocument(source.id)}>{source.title}<ArrowUpRight size={14}/></button>
+                  <div className="assistant-source-meta">{source.jurisdiction || 'Юрисдикция не указана'}{source.kind ? ' · ' + source.kind : ''}{source.effectiveFrom ? ' · с ' + source.effectiveFrom : ''}{source.effectiveUntil ? ' · по ' + source.effectiveUntil : ''}</div>
+                  {source.excerpt && <p className="assistant-source-excerpt">{source.excerpt}</p>}
+                  {source.sourceUrl && <a className="assistant-source-link" href={source.sourceUrl} target="_blank" rel="noreferrer"><ExternalLink size={13}/> Официальный источник</a>}
+                  {source.checkedAt && <small className="assistant-source-checked">Последняя отметка проверки: {new Date(source.checkedAt).toLocaleDateString('ru-RU')}</small>}
+                </article>)}
+              </div>}
+            </div>)}
+            {loading && <div className="assistant-message assistant-message-assistant"><div className="assistant-message-label"><Bot size={14}/> TEKSHER AI</div><div className="assistant-typing"><span/><span/><span/> Ищу материалы и готовлю ответ…</div></div>}
+            <div ref={messagesEndRef}/>
+          </div>
+          {error && <div className="assistant-error" role="alert"><CircleHelp size={15}/><span>{error}</span><button type="button" onClick={() => setError('')} aria-label="Закрыть сообщение"><X size={14}/></button></div>}
+          <form className="assistant-composer" onSubmit={handleSubmit}>
+            <textarea ref={inputRef} rows={2} maxLength={2000} value={question} onChange={event => setQuestion(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); handleSubmit(event) } }} placeholder="Напишите вопрос по маркировке, документам или рабочему процессу…" disabled={!apiEnabled || loading} aria-label="Ваш вопрос"/>
+            <div className="assistant-composer-footer"><span>Enter – отправить · Shift + Enter – новая строка · до 2 000 символов</span><button type="submit" className="primary-button" disabled={!apiEnabled || loading || !question.trim()}><Send size={15}/>{loading ? 'Думаю…' : 'Спросить'}</button></div>
+          </form>
+        </div>
+      </div>
+    </section>
+  )
 }
 
 function MonitorSection({ monitors, canManage, onAdd, onCheck, onDelete }) {
