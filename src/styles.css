@@ -420,3 +420,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   white-space: pre-wrap;
   padding: 4px 0 8px;
 }
+
+
+/* Structured knowledge templates */
+.knowledge-template-picker {
+  padding: 13px 14px;
+  border: 1px solid #dce8f5;
+  border-radius: 11px;
+  background: #f6f9fd;
+}
+.knowledge-template-picker select {
+  background: #fff;
+}
+.knowledge-template-picker .form-help {
+  line-height: 1.55;
+}
