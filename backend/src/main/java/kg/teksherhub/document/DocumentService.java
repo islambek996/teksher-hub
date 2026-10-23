@@ -80,10 +80,12 @@ public class DocumentService {
         if (next == DocumentStatus.ACTIVE && (d.getSourceUrl() == null || d.getSourceUrl().isBlank())) {
             throw new IllegalArgumentException("Нельзя отметить документ действующим без ссылки на источник");
         }
-        if (next == DocumentStatus.DRAFT && d.getOfficialSourceCheckedAt() != null) {
-            d.setOfficialSourceCheckedAt(null);
-        } else {
+        // Only explicit confirmation of currentness records a source-check timestamp.
+        // Moving a document to "under review" must not look like a completed legal check.
+        if (next == DocumentStatus.ACTIVE) {
             d.setOfficialSourceCheckedAt(Instant.now());
+        } else if (next == DocumentStatus.DRAFT) {
+            d.setOfficialSourceCheckedAt(null);
         }
         d.setStatus(next);
         d.setSourceCheckNote(text(request.note(), "Проверено вручную"));
