@@ -226,6 +226,11 @@ function downloadCsvTemplate() {
 
 function App() {
   const [theme, setTheme] = useState(loadTheme)
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false)
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('')
+  const [globalSearchResults, setGlobalSearchResults] = useState([])
+  const [globalSearchLoading, setGlobalSearchLoading] = useState(false)
+  const [globalSearchError, setGlobalSearchError] = useState('')
   const [active, setActive] = useState('home')
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('Все типы')
@@ -260,7 +265,53 @@ function App() {
     try { window.localStorage.setItem(THEME_STORAGE_KEY, theme) } catch { /* storage unavailable */ }
   }, [theme])
 
+  useEffect(() => {
+    const onShortcut = (event) => {
+      const target = event.target
+      const typing = target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setShowGlobalSearch(true)
+      } else if (event.key === '/' && !typing && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        event.preventDefault()
+        setShowGlobalSearch(true)
+      } else if (event.key === 'Escape') {
+        setShowGlobalSearch(false)
+      }
+    }
+    window.addEventListener('keydown', onShortcut)
+    return () => window.removeEventListener('keydown', onShortcut)
+  }, [])
+
   const documents = useMemo(() => API_ENABLED ? apiDocuments : [...userDocuments, ...demoDocuments], [apiDocuments, userDocuments])
+
+  useEffect(() => {
+    if (!showGlobalSearch) return
+    const term = globalSearchQuery.trim()
+    if (term.length < 2) {
+      setGlobalSearchResults([])
+      setGlobalSearchLoading(false)
+      setGlobalSearchError('')
+      return
+    }
+    if (!API_ENABLED) {
+      const normalized = term.toLocaleLowerCase('ru-RU')
+      setGlobalSearchResults(documents.filter(doc => [doc.title, doc.description, doc.content || '', doc.area, doc.kind, doc.productGroup || '', doc.keywords || '', doc.documentNumber || '', doc.statusLabel || doc.status || ''].join(' ').toLocaleLowerCase('ru-RU').includes(normalized)).slice(0, 8))
+      setGlobalSearchLoading(false)
+      setGlobalSearchError('')
+      return
+    }
+    let cancelled = false
+    setGlobalSearchLoading(true)
+    setGlobalSearchError('')
+    const timeout = window.setTimeout(() => {
+      apiRequest('/api/documents?q=' + encodeURIComponent(term))
+        .then(rows => { if (!cancelled) setGlobalSearchResults(rows.slice(0, 8)) })
+        .catch(error => { if (!cancelled) { setGlobalSearchResults([]); setGlobalSearchError(error.message || 'Не удалось выполнить поиск.') } })
+        .finally(() => { if (!cancelled) setGlobalSearchLoading(false) })
+    }, 180)
+    return () => { cancelled = true; window.clearTimeout(timeout) }
+  }, [showGlobalSearch, globalSearchQuery, documents, currentUser])
 
   const filteredDocuments = useMemo(() => {
     const searchSource = API_ENABLED && query.trim()
@@ -358,6 +409,19 @@ function App() {
     syncRoute(active, doc.id)
     setSelectedDoc(doc)
     setActionError(''); setSuccessMessage('')
+  }
+
+  const openGlobalSearchResult = (doc) => {
+    setShowGlobalSearch(false)
+    setGlobalSearchQuery('')
+    setActive('documents')
+    setSelectedDoc(doc)
+    setQuery('')
+    setFilter('Все типы')
+    setStatusFilter('Все статусы')
+    syncRoute('documents', doc.id)
+    setActionError('')
+    setSuccessMessage('')
   }
 
   useEffect(() => {
@@ -746,6 +810,7 @@ function App() {
       <main className="main-area">
         <header className="topbar">
           <div className="breadcrumbs"><span>TEKSHER HUB</span><span className="crumb-slash">/</span><strong>{selectedDoc ? 'Карточка документа' : pageTitle}</strong></div>
+          <button className="global-search-trigger" type="button" onClick={() => setShowGlobalSearch(true)} aria-label="Поиск по базе документов"><Search size={15}/><span>Поиск по базе</span><kbd>Ctrl K</kbd></button>
           <div className="topbar-right"><button className="theme-toggle" type="button" onClick={() => setTheme(current => current === 'dark' ? 'light' : 'dark')} aria-label={theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'} aria-pressed={theme === 'dark'} title={theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'}>{theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}<span>{theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}</span></button><span className="internal-badge"><ShieldCheck size={14} /> {API_ENABLED ? currentUser?.role || 'Пользователь' : 'Демо-режим'}</span><div className="avatar">{currentUser?.displayName ? currentUser.displayName.split(' ').map(part => part[0]).join('').slice(0,2).toUpperCase() : 'ОП'}</div>{API_ENABLED && <button className="logout-button" onClick={handleLogout} title="Выйти"><LogOut size={15} /><span>Выход</span></button>}</div>
         </header>
 
@@ -852,6 +917,26 @@ function App() {
         </div>
       </main>
 
+      {showGlobalSearch && <div className="global-search-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setShowGlobalSearch(false) }}>
+        <section className="global-search-dialog" role="dialog" aria-modal="true" aria-labelledby="global-search-title">
+          <div className="global-search-heading"><div><div className="section-kicker">TEKSHER HUB / ПОИСК</div><h2 id="global-search-title">Найти материал</h2></div><button className="icon-button" type="button" onClick={() => setShowGlobalSearch(false)} aria-label="Закрыть поиск"><X size={18}/></button></div>
+          <label className="global-search-input"><Search size={18}/><input autoFocus value={globalSearchQuery} onChange={event => setGlobalSearchQuery(event.target.value)} placeholder="Название, номер, инструкция или ключевые слова…" /><kbd>ESC</kbd></label>
+          <div className="global-search-helper">Введите минимум 2 символа. Поиск доступен из любого раздела.</div>
+          <div className="global-search-results" aria-live="polite">
+            {!globalSearchQuery.trim() && <div className="global-search-prompt"><Search size={22}/><b>Поиск по всей базе знаний</b><span>Можно искать материалы из любого контура: РФ, КР и ЕАЭС.</span><small>Быстрый вызов: Ctrl K или /</small></div>}
+            {globalSearchQuery.trim().length === 1 && <div className="global-search-message">Введите ещё хотя бы один символ.</div>}
+            {globalSearchLoading && <div className="global-search-message"><RefreshCw size={16} className="spin"/> Ищем материалы…</div>}
+            {globalSearchError && <div className="global-search-message error"><CircleHelp size={16}/>{globalSearchError}</div>}
+            {!globalSearchLoading && !globalSearchError && globalSearchQuery.trim().length >= 2 && globalSearchResults.length === 0 && <div className="global-search-message">Ничего не найдено. Попробуйте другое название или ключевое слово.</div>}
+            {globalSearchResults.map(doc => <button className="global-search-result" type="button" key={doc.id} onClick={() => openGlobalSearchResult(doc)}>
+              <span className={'global-search-result-icon ' + (jurisdictions[doc.jurisdiction]?.className || '')}><FileText size={17}/></span>
+              <span className="global-search-result-copy"><b>{doc.title}</b><small>{jurisdictions[doc.jurisdiction]?.short || 'Материал'} · {doc.kind || 'Документ'}{doc.documentNumber ? ' · № ' + doc.documentNumber : ''}</small><span>{doc.description || 'Без краткого описания'}</span></span>
+              <ArrowUpRight size={16} className="global-search-result-arrow"/>
+            </button>)}
+          </div>
+          <div className="global-search-footer"><span><kbd>Enter</kbd> Открыть материал</span><span>Все результаты ведут к карточке документа</span></div>
+        </section>
+      </div>}
       {showCreateModal && <CreateDocumentModal initialDoc={editingDoc} documents={documents.filter(item => !item.isDemo && item.id !== editingDoc?.id)} onClose={closeDocumentModal} onSubmit={handleSaveDocument} apiEnabled={API_ENABLED} saving={isSaving} error={actionError} />}
       {showImportModal && <DocumentImportModal onClose={() => setShowImportModal(false)} onImport={handleImportDocuments} />}
       {monitorModalOpen && <MonitorModal onClose={() => setMonitorModalOpen(false)} onSubmit={handleSaveMonitor} saving={isSaving} error={actionError} />}
