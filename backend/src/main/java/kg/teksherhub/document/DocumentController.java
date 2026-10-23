@@ -2,19 +2,26 @@ package kg.teksherhub.document;
 
 import kg.teksherhub.user.UserAccount;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.ArrayList;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/documents")
 public class DocumentController {
     private final DocumentService service;
+    private final DocumentImportService importer;
 
-    public DocumentController(DocumentService service) { this.service = service; }
+    public DocumentController(DocumentService service, DocumentImportService importer) {
+        this.service = service;
+        this.importer = importer;
+    }
 
     @GetMapping
     public List<DocumentResponse> list(@RequestParam(required = false) String q,
@@ -32,6 +39,29 @@ public class DocumentController {
     public DocumentResponse create(@Valid @RequestBody DocumentRequest request,
                                    @AuthenticationPrincipal UserAccount user) {
         return service.create(request, user.getUsername());
+    }
+
+    @PostMapping("/import")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    public BulkImportResponse importDocuments(@Valid @RequestBody BulkImportRequest request,
+                                              @AuthenticationPrincipal UserAccount user) {
+        List<ImportRowResult> results = new ArrayList<>();
+        int rowNumber = 1;
+        for (DocumentRequest item : request.documents()) {
+            rowNumber++;
+            String title = item == null ? "" : item.title();
+            try {
+                DocumentResponse imported = importer.importOne(item, user.getUsername(), rowNumber);
+                results.add(new ImportRowResult(rowNumber, title, true, imported.id(),
+                        imported.statusLabel(), "Добавлено в общую базу"));
+            } catch (Exception ex) {
+                String message = ex.getMessage();
+                results.add(new ImportRowResult(rowNumber, title, false, null, null,
+                        message == null || message.isBlank() ? "Не удалось импортировать строку" : message));
+            }
+        }
+        int imported = (int) results.stream().filter(ImportRowResult::imported).count();
+        return new BulkImportResponse(imported, results.size() - imported, List.copyOf(results));
     }
 
     @PutMapping("/{id}")
@@ -54,4 +84,13 @@ public class DocumentController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public void delete(@PathVariable UUID id) { service.delete(id); }
+
+    public record BulkImportRequest(
+            @NotEmpty @Size(max = 100) List<DocumentRequest> documents
+    ) {}
+
+    public record BulkImportResponse(int imported, int rejected, List<ImportRowResult> rows) {}
+
+    public record ImportRowResult(int rowNumber, String title, boolean imported, UUID documentId,
+                                  String statusLabel, String message) {}
 }
