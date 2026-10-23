@@ -34,6 +34,8 @@ services:
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?Set BOOTSTRAP_ADMIN_PASSWORD in .env}
       APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:-http://localhost:5173,http://localhost:4173}
       UPLOAD_DIR: /app/uploads
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5-mini}
       MONITOR_ALLOWED_HOSTS: ${MONITOR_ALLOWED_HOSTS:-publication.pravo.gov.ru,pravo.gov.ru,docs.eaeunion.org,eec.eaeunion.org,cbd.minjust.gov.kg,minjust.gov.kg,gov.kg}
     ports:
       - "8080:8080"
