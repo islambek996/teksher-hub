@@ -10,7 +10,7 @@ public record VersionResponse(
         Long id, int versionNumber, String title, String jurisdiction, String kind, String area,
         String productGroup, String keywords, List<UUID> relatedDocumentIds,
         String documentNumber, LocalDate documentDate, LocalDate effectiveFrom, LocalDate effectiveUntil,
-        String sourceUrl, String description, String status, String statusLabel,
+        String sourceUrl, String description, String content, String status, String statusLabel,
         String changeNote, String changedBy, Instant createdAt
 ) {
     public static VersionResponse from(DocumentVersion v) {
@@ -19,7 +19,7 @@ public record VersionResponse(
                 : Arrays.stream(v.getRelatedDocumentIds().split(",")).filter(s -> !s.isBlank()).map(UUID::fromString).toList();
         return new VersionResponse(v.getId(), v.getVersionNumber(), v.getTitle(), v.getJurisdiction(), v.getKind(),
                 v.getArea(), v.getProductGroup(), v.getKeywords(), related, v.getDocumentNumber(), v.getDocumentDate(),
-                v.getEffectiveFrom(), v.getEffectiveUntil(), v.getSourceUrl(), v.getDescription(),
+                v.getEffectiveFrom(), v.getEffectiveUntil(), v.getSourceUrl(), v.getDescription(), v.getContent(),
                 v.getStatus().name(), v.getStatus().label(), v.getChangeNote(), v.getChangedBy(), v.getCreatedAt());
     }
 }
