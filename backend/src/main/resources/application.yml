@@ -37,3 +37,6 @@ app:
     allowed-hosts: ${MONITOR_ALLOWED_HOSTS:publication.pravo.gov.ru,pravo.gov.ru,docs.eaeunion.org,eec.eaeunion.org,cbd.minjust.gov.kg,minjust.gov.kg,gov.kg}
     scheduler-delay-ms: ${MONITOR_SCHEDULER_DELAY_MS:900000}
     initial-delay-ms: ${MONITOR_INITIAL_DELAY_MS:60000}
+  ai:
+    openai-api-key: ${OPENAI_API_KEY:}
+    model: ${OPENAI_MODEL:gpt-5-mini}
