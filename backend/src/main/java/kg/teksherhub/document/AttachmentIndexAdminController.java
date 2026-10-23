@@ -60,7 +60,7 @@ public class AttachmentIndexAdminController {
                 files.save(file);
 
                 switch (extracted.status()) {
-                    case "INDEXED" -> indexed++;
+                    case "INDEXED", "OCR_INDEXED" -> indexed++;
                     case "TRUNCATED" -> partiallyIndexed++;
                     case "EMPTY", "NOT_SUPPORTED" -> emptyOrUnsupported++;
                     default -> failed++;
