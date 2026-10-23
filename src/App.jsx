@@ -883,6 +883,7 @@ function fileIndexLabel(file) {
   const count = Number(file.extractedCharacters || 0).toLocaleString('ru-RU')
   switch (file.textExtractionStatus) {
     case 'INDEXED': return 'Текст проиндексирован · ' + count + ' симв.'
+    case 'OCR_INDEXED': return 'Текст распознан OCR · ' + count + ' симв.'
     case 'TRUNCATED': return 'Текст индексирован частично · ' + count + ' симв.'
     case 'EMPTY': return 'Текст не обнаружен'
     case 'NOT_SUPPORTED': return 'Формат не индексируется автоматически'
