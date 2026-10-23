@@ -53,6 +53,149 @@ function loadUserDocuments() {
   }
 }
 
+const csvImportFields = [
+  { key: 'title', header: 'Название', aliases: ['title', 'название', 'наименование'], required: true },
+  { key: 'jurisdiction', header: 'Юрисдикция', aliases: ['jurisdiction', 'юрисдикция', 'контур'], required: true },
+  { key: 'kind', header: 'Тип материала', aliases: ['kind', 'тип', 'типматериала', 'тип материала'], required: true },
+  { key: 'area', header: 'Тематическая область', aliases: ['area', 'тема', 'область', 'тематическая область'], required: true },
+  { key: 'productGroup', header: 'Товарная группа', aliases: ['productGroup', 'product_group', 'товарная группа'] },
+  { key: 'keywords', header: 'Ключевые слова', aliases: ['keywords', 'ключевые слова', 'теги'] },
+  { key: 'documentNumber', header: 'Номер документа', aliases: ['documentNumber', 'document_number', 'номер документа', 'номер'] },
+  { key: 'documentDate', header: 'Дата документа', aliases: ['documentDate', 'document_date', 'дата документа'] },
+  { key: 'effectiveFrom', header: 'Действует с', aliases: ['effectiveFrom', 'effective_from', 'действует с'] },
+  { key: 'effectiveUntil', header: 'Действует по', aliases: ['effectiveUntil', 'effective_until', 'действует по'] },
+  { key: 'sourceUrl', header: 'Официальный источник', aliases: ['sourceUrl', 'source_url', 'официальный источник', 'ссылка на источник', 'источник'] },
+  { key: 'description', header: 'Описание', aliases: ['description', 'описание', 'краткое описание'], required: true },
+  { key: 'content', header: 'Содержание', aliases: ['content', 'содержание', 'полный текст', 'текст материала', 'инструкция'] },
+]
+
+function normalizeCsvHeader(value) {
+  return String(value ?? '').replace(/^\uFEFF/, '').trim().toLocaleLowerCase('ru-RU').replace(/[\s._-]+/g, '')
+}
+
+function detectCsvDelimiter(text) {
+  const firstLine = String(text).split(/\r?\n/, 1)[0] || ''
+  let quoted = false
+  let commas = 0
+  let semicolons = 0
+  for (let i = 0; i < firstLine.length; i++) {
+    const char = firstLine[i]
+    if (char === '"' && quoted && firstLine[i + 1] === '"') { i++; continue }
+    if (char === '"') quoted = !quoted
+    else if (!quoted && char === ',') commas++
+    else if (!quoted && char === ';') semicolons++
+  }
+  return semicolons > commas ? ';' : ','
+}
+
+function parseCsvGrid(text) {
+  const input = String(text || '').replace(/^\uFEFF/, '')
+  if (!input.trim()) throw new Error('CSV-файл пустой.')
+  const delimiter = detectCsvDelimiter(input)
+  const rows = []
+  let row = []
+  let field = ''
+  let quoted = false
+
+  for (let i = 0; i < input.length; i++) {
+    const char = input[i]
+    if (quoted) {
+      if (char === '"' && input[i + 1] === '"') { field += '"'; i++ }
+      else if (char === '"') quoted = false
+      else field += char
+    } else if (char === '"' && field.length === 0) {
+      quoted = true
+    } else if (char === delimiter) {
+      row.push(field); field = ''
+    } else if (char === '\n' || char === '\r') {
+      if (char === '\r' && input[i + 1] === '\n') i++
+      row.push(field)
+      if (row.some(value => value.trim() !== '')) rows.push(row)
+      row = []; field = ''
+    } else {
+      field += char
+    }
+  }
+  if (quoted) throw new Error('В CSV найдена незакрытая кавычка. Проверьте поле с запятыми или переносами строк.')
+  row.push(field)
+  if (row.some(value => value.trim() !== '')) rows.push(row)
+  if (rows.length < 2) throw new Error('В CSV должна быть строка заголовков и хотя бы одна строка данных.')
+  return rows
+}
+
+function normalizeImportJurisdiction(value) {
+  const raw = String(value || '').trim()
+  const normalized = normalizeCsvHeader(raw).toUpperCase()
+  const aliases = {
+    RU: 'RU', РФ: 'RU', РОССИЙСКАЯФЕДЕРАЦИЯ: 'RU',
+    KG: 'KG', КР: 'KG', КЫРГЫЗСКАЯРЕСПУБЛИКА: 'KG',
+    EAEU: 'EAEU', ЕАЭС: 'EAEU', ЕВРАЗИЙСКИЙЭКОНОМИЧЕСКИЙСОЮЗ: 'EAEU',
+  }
+  return aliases[normalized] || raw.toUpperCase()
+}
+
+function normalizeImportDate(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return null
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw
+  const match = raw.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/)
+  if (match) return match[3] + '-' + match[2].padStart(2, '0') + '-' + match[1].padStart(2, '0')
+  return raw
+}
+
+function parseDocumentCsv(text) {
+  const grid = parseCsvGrid(text)
+  const headers = grid[0].map(normalizeCsvHeader)
+  const fieldIndexes = {}
+  for (const field of csvImportFields) {
+    fieldIndexes[field.key] = headers.findIndex(header =>
+      field.aliases.some(alias => normalizeCsvHeader(alias) === header))
+  }
+  const missingHeaders = csvImportFields.filter(field => field.required && fieldIndexes[field.key] < 0)
+  if (missingHeaders.length) {
+    throw new Error('Не найдены обязательные столбцы: ' + missingHeaders.map(field => field.header).join(', ') + '. Скачайте шаблон CSV и перенесите в него данные.')
+  }
+
+  const dataRows = grid.slice(1).filter(row => row.some(value => value.trim() !== ''))
+  if (dataRows.length > 100) throw new Error('За один раз можно импортировать не более 100 строк. Разделите файл на несколько частей.')
+
+  const read = (row, key) => {
+    const index = fieldIndexes[key]
+    return index < 0 ? '' : String(row[index] ?? '').trim()
+  }
+  return dataRows.map(row => ({
+    title: read(row, 'title'),
+    jurisdiction: normalizeImportJurisdiction(read(row, 'jurisdiction')),
+    kind: read(row, 'kind'),
+    area: read(row, 'area'),
+    productGroup: read(row, 'productGroup') || null,
+    keywords: read(row, 'keywords') || null,
+    relatedDocumentIds: [],
+    documentNumber: read(row, 'documentNumber') || null,
+    documentDate: normalizeImportDate(read(row, 'documentDate')),
+    effectiveFrom: normalizeImportDate(read(row, 'effectiveFrom')),
+    effectiveUntil: normalizeImportDate(read(row, 'effectiveUntil')),
+    sourceUrl: read(row, 'sourceUrl') || null,
+    description: read(row, 'description'),
+    content: read(row, 'content'),
+    status: '',
+    changeNote: 'CSV импорт',
+  }))
+}
+
+function downloadCsvTemplate() {
+  const headers = csvImportFields.map(field => field.header).join(';')
+  const blob = new Blob(['\uFEFF' + headers + '\r\n'], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'teksher-hub-import-template.csv'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
 function App() {
   const [active, setActive] = useState('home')
   const [query, setQuery] = useState('')
@@ -60,6 +203,7 @@ function App() {
   const [statusFilter, setStatusFilter] = useState('Все статусы')
   const [selectedDoc, setSelectedDoc] = useState(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
   const [editingDoc, setEditingDoc] = useState(null)
   const [userDocuments, setUserDocuments] = useState(loadUserDocuments)
   const [apiDocuments, setApiDocuments] = useState([])
@@ -404,6 +548,32 @@ function App() {
     }
   }
 
+  const handleImportDocuments = async (rows) => {
+    if (!API_ENABLED || !['ADMIN', 'EDITOR'].includes(currentUser?.role)) {
+      throw new Error('Импорт доступен только редакторам и администраторам подключённой общей базы.')
+    }
+    setActionError('')
+    setSuccessMessage('')
+    try {
+      const result = await apiRequest('/api/documents/import', {
+        method: 'POST',
+        body: { documents: rows },
+      })
+      const refreshed = await apiRequest('/api/documents')
+      setApiDocuments(refreshed)
+      setApiSearchResults([])
+      setApiSearchTerm('')
+      setQuery('')
+      setFilter('Все типы')
+      setStatusFilter('Все статусы')
+      setSuccessMessage('CSV импорт завершён: добавлено ' + result.imported + ', отклонено ' + result.rejected + '. Импортированные материалы не получают статус «Действует» автоматически.')
+      return result
+    } catch (error) {
+      setActionError(error.message || 'Не удалось импортировать CSV.')
+      throw error
+    }
+  }
+
   const handleSaveMonitor = async (event) => {
     event.preventDefault()
     const data = new FormData(event.currentTarget)
@@ -610,7 +780,7 @@ function App() {
             : <>
             <div className="page-heading">
               <div><div className="section-kicker">БАЗА ЗНАНИЙ / {jurisdictions[active]?.short || 'TEKSHER HUB'}</div><h1>{pageTitle}</h1><p>{jurisdictions[active] ? `Документы и материалы: ${jurisdictions[active].label}. ` : 'Поиск по нормативным актам и рабочим материалам платформы.'}{API_ENABLED ? ' Проверяйте реквизиты и статус каждого документа перед применением.' : ' Демонстрационные записи не являются официальной нормативной базой.'}</p></div>
-              <div className="heading-actions"><span className="record-count">{filteredDocuments.length} записей</span>{active === 'documents' && API_ENABLED && currentUser?.role === 'ADMIN' && <button className="secondary-button bulk-reindex-button" type="button" onClick={handleBulkReindex} disabled={isBulkReindexing}><RefreshCw size={14} className={isBulkReindexing ? 'spin' : ''}/>{isBulkReindexing ? 'Обработка…' : 'Индексировать старые файлы'}</button>}{(!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)) && <button className="primary-button" onClick={openNewDocumentModal}><FilePlus2 size={16} /> Добавить запись</button>}</div>
+              <div className="heading-actions"><span className="record-count">{filteredDocuments.length} записей</span>{active === 'documents' && API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role) && <button className="secondary-button csv-import-trigger" type="button" onClick={() => setShowImportModal(true)}><FileText size={14}/> Импорт CSV</button>}{active === 'documents' && API_ENABLED && currentUser?.role === 'ADMIN' && <button className="secondary-button bulk-reindex-button" type="button" onClick={handleBulkReindex} disabled={isBulkReindexing}><RefreshCw size={14} className={isBulkReindexing ? 'spin' : ''}/>{isBulkReindexing ? 'Обработка…' : 'Индексировать старые файлы'}</button>}{(!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)) && <button className="primary-button" onClick={openNewDocumentModal}><FilePlus2 size={16} /> Добавить запись</button>}</div>
             </div>
             <div className="search-panel">
               <div className="search-input-wrap"><Search size={19} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск по названию, реквизитам, содержанию карточек и вложений..." /></div>
@@ -625,6 +795,7 @@ function App() {
       </main>
 
       {showCreateModal && <CreateDocumentModal initialDoc={editingDoc} documents={documents.filter(item => !item.isDemo && item.id !== editingDoc?.id)} onClose={closeDocumentModal} onSubmit={handleSaveDocument} apiEnabled={API_ENABLED} saving={isSaving} error={actionError} />}
+      {showImportModal && <DocumentImportModal onClose={() => setShowImportModal(false)} onImport={handleImportDocuments} />}
       {monitorModalOpen && <MonitorModal onClose={() => setMonitorModalOpen(false)} onSubmit={handleSaveMonitor} saving={isSaving} error={actionError} />}
       {userModalOpen && <UserModal onClose={() => setUserModalOpen(false)} onSubmit={handleSaveUser} saving={isSaving} error={actionError} />}
       {passwordResetTarget && <UserPasswordModal user={passwordResetTarget} onClose={() => setPasswordResetTarget(null)} onSubmit={handleResetPassword} saving={isSaving} error={actionError} />}
