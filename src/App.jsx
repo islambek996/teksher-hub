@@ -236,6 +236,7 @@ function App() {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('Все типы')
   const [statusFilter, setStatusFilter] = useState('Все статусы')
+  const [sortBy, setSortBy] = useState('updated')
   const [selectedDoc, setSelectedDoc] = useState(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
@@ -320,7 +321,7 @@ function App() {
     const searchSource = API_ENABLED && query.trim()
       ? (apiSearchTerm === query.trim() ? apiSearchResults : [])
       : documents
-    return searchSource.filter((doc) => {
+    const filtered = searchSource.filter((doc) => {
       const matchesJurisdiction = ['RU', 'KG', 'EAEU'].includes(active) ? doc.jurisdiction === active : true
       const matchesQuery = API_ENABLED || [doc.title, doc.description, doc.content || '', doc.area, doc.kind, doc.productGroup || '', doc.keywords || '', doc.documentNumber || ''].join(' ').toLowerCase().includes(query.toLowerCase())
       const matchesFilter = filter === 'Все типы' || doc.kind === filter
@@ -332,7 +333,26 @@ function App() {
         : true
       return matchesJurisdiction && matchesQuery && matchesFilter && matchesStatus && matchesSection
     })
-  }, [documents, apiSearchResults, apiSearchTerm, active, query, filter, statusFilter])
+    const updatedAt = doc => {
+      const value = doc.updatedAt || doc.createdAt || doc.documentDate
+      const parsed = value ? Date.parse(value) : 0
+      return Number.isNaN(parsed) ? 0 : parsed
+    }
+    if (sortBy === 'title') return filtered.sort((a, b) => (a.title || '').localeCompare(b.title || '', 'ru-RU', { sensitivity: 'base' }))
+    if (sortBy === 'review') {
+      const reviewPriority = doc => ['UNDER_REVIEW', 'НА ПРОВЕРКЕ'].includes(String(doc.status || doc.statusLabel || '').toLocaleUpperCase('ru-RU')) || doc.statusLabel === 'На проверке' ? 0 : 1
+      return filtered.sort((a, b) => reviewPriority(a) - reviewPriority(b) || updatedAt(b) - updatedAt(a))
+    }
+    if (sortBy === 'expires') {
+      const endDate = doc => {
+        if (!doc.effectiveUntil) return Number.POSITIVE_INFINITY
+        const parsed = Date.parse(doc.effectiveUntil)
+        return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed
+      }
+      return filtered.sort((a, b) => endDate(a) - endDate(b) || updatedAt(b) - updatedAt(a))
+    }
+    return filtered.sort((a, b) => updatedAt(b) - updatedAt(a))
+  }, [documents, apiSearchResults, apiSearchTerm, active, query, filter, statusFilter, sortBy])
 
   useEffect(() => {
     if (!API_ENABLED) { setAuthInitializing(false); return }
@@ -911,8 +931,10 @@ function App() {
             <div className="search-panel">
               <div className="search-input-wrap"><Search size={19} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск по названию, реквизитам, содержанию карточек и вложений..." /></div>
               <div className="filter-wrap"><SlidersHorizontal size={16} /><select value={filter} onChange={(e) => setFilter(e.target.value)}><option>Все типы</option><option>Обзор</option><option>Нормативный акт</option><option>Товарная группа</option><option>Инструкция</option><option>Техническая документация</option><option>Известная ошибка</option><option>Шаблон</option><option>Внутренний документ</option><option>Бизнес-процесс</option></select><ChevronDown size={14} /></div>
-              <div className="filter-wrap status-select"><select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}><option>Все статусы</option><option>Демонстрационная запись</option><option>Черновик</option><option>Источник указан</option><option>На проверке</option><option>Действует</option><option>Срок действия истёк</option><option>В архиве</option></select><ChevronDown size={14} /></div>
+              <div className="filter-wrap status-select"><select aria-label="Фильтр по статусу" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}><option>Все статусы</option><option>Демонстрационная запись</option><option>Черновик</option><option>Источник указан</option><option>На проверке</option><option>Действует</option><option>Срок действия истёк</option><option>В архиве</option></select><ChevronDown size={14} /></div>
+              <div className="filter-wrap sort-select"><ArrowDownRight size={16}/><select aria-label="Сортировка материалов" value={sortBy} onChange={event => setSortBy(event.target.value)}><option value="updated">Сначала обновлённые</option><option value="title">По названию А–Я</option><option value="review">Сначала на проверке</option><option value="expires">По дате окончания</option></select><ChevronDown size={14}/></div>
             </div>
+            {(query.trim() || filter !== 'Все типы' || statusFilter !== 'Все статусы' || sortBy !== 'updated') && <div className="catalog-filter-summary"><span>Найдено материалов: <b>{filteredDocuments.length}</b></span><button type="button" onClick={() => { setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы'); setSortBy('updated') }}><X size={13}/> Сбросить поиск и фильтры</button></div>}
             <div className="notice"><CircleHelp size={17} /><div><b>{API_ENABLED ? 'Единая база документов' : 'Локальный демонстрационный режим'}</b><span>{API_ENABLED ? 'Данные загружаются из PostgreSQL через защищённый API. Перед публикацией проверяйте официальный источник и дату действия.' : 'Карточки сохраняются только в этом браузере. Чтобы включить общую базу, вход по ролям, версии и загрузку файлов, задайте VITE_API_URL после развёртывания backend.'}</span></div></div>
             <div className="document-list">{filteredDocuments.length ? filteredDocuments.map(doc => <DocumentRow key={doc.id} doc={doc} onClick={() => openDocument(doc)} />) : <div className="empty-state"><Search size={28} /><b>{active === 'groups' ? 'Справочник товарных групп пока пуст' : active === 'processes' ? 'Бизнес-процессы ещё не добавлены' : 'Ничего не найдено'}</b><span>{['groups', 'processes'].includes(active) ? 'Добавь первую карточку через форму. Она сохранится в этом браузере.' : 'Измени поисковый запрос или фильтр.'}</span>{['groups', 'processes'].includes(active) && (!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)) && <button className="secondary-button" onClick={openNewDocumentModal}>Добавить первую запись</button>}</div>}</div>
           </>}
