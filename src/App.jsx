@@ -1186,64 +1186,211 @@ function formatDate(value) {
   return Number.isNaN(date.getTime()) ? 'Не указана' : date.toLocaleDateString('ru-RU')
 }
 
-function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, canReview, canReindex, files = [], versions = [], documents = [], onOpenRelated, onDownload, onReview, onReindexFile, reindexingFileId }) {
-  const jurisdiction = jurisdictions[doc.jurisdiction] || { label: doc.jurisdiction || 'Не указана', flag: '🌐', className: 'eaeu' }
+function buildWikiBlocks(content) {
+  const blocks = []
+  let paragraph = []
+  let pendingList = null
+  const flushParagraph = () => {
+    if (paragraph.length) {
+      blocks.push({ type: 'paragraph', text: paragraph.join('\n') })
+      paragraph = []
+    }
+  }
+  const flushList = () => {
+    if (pendingList) {
+      blocks.push(pendingList)
+      pendingList = null
+    }
+  }
+  const slugify = value => String(value || '').toLocaleLowerCase('ru-RU')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zа-яё0-9]+/gi, '-').replace(/^-|-$/g, '').slice(0, 48) || 'section'
+
+  String(content || '').replace(/\r/g, '').split('\n').forEach((rawLine, lineIndex) => {
+    const line = rawLine.trim()
+    if (!line) {
+      flushParagraph()
+      flushList()
+      return
+    }
+    const markdownHeading = line.match(/^#{1,3}\s+(.+)$/)
+    const colonHeading = !/^\d+[.)]\s/.test(line) && line.length <= 90 && /:$/.test(line)
+    if (markdownHeading || colonHeading) {
+      flushParagraph()
+      flushList()
+      const title = (markdownHeading ? markdownHeading[1] : line).replace(/:$/, '').trim()
+      blocks.push({ type: 'heading', title, id: 'wiki-section-' + lineIndex + '-' + slugify(title) })
+      return
+    }
+    const listMatch = line.match(/^(\d+[.)]|[-*•])\s+(.*)$/)
+    if (listMatch) {
+      flushParagraph()
+      const ordered = /^\d/.test(listMatch[1])
+      if (!pendingList || pendingList.ordered !== ordered) {
+        flushList()
+        pendingList = { type: 'list', ordered, items: [] }
+      }
+      pendingList.items.push(listMatch[2])
+      return
+    }
+    flushList()
+    paragraph.push(line)
+  })
+  flushParagraph()
+  flushList()
+  return blocks
+}
+
+function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, canReview, canReindex, canUploadFiles, files = [], versions = [], documents = [], onOpenRelated, onDownload, onUploadFile, uploadingFile, onReview, onReindexFile, reindexingFileId }) {
+  const jurisdiction = jurisdictions[doc.jurisdiction] || { label: doc.jurisdiction || 'Не указана', short: doc.jurisdiction || '—', flag: '🌐', className: 'eaeu' }
   const statusLabel = doc.statusLabel || doc.status || 'Черновик'
-  return <section className="detail-page">
-    <button className="back-button" onClick={onBack}>← Назад к списку</button>
-    <div className="detail-card">
-      <span className={`tag ${jurisdiction.className}`}>{jurisdiction.flag} {jurisdiction.label}</span>
-      <div className="detail-icon"><FileCheck2 size={28} /></div>
-      <div className="detail-status-row"><span className={`status-pill ${statusClass(doc)}`}>{statusLabel}</span>{doc.isDemo && <span className="detail-muted">Пример интерфейса, не официальный документ</span>}</div>
-      <h1>{doc.title}</h1><p>{doc.description}</p>
-      {!doc.isDemo && (canEdit || canDelete) && <div className="detail-actions">
-        {canEdit && <button type="button" className="secondary-button" onClick={onEdit}><Pencil size={15} /> Редактировать</button>}
-        {canDelete && <button type="button" className="danger-button" onClick={onDelete}><Trash2 size={15} /> Удалить карточку</button>}
-      </div>}
-      {canReview && !doc.isDemo && <div className="review-actions">
-        <span>Проверка источника</span>
-        <button type="button" className="secondary-button" onClick={() => onReview('UNDER_REVIEW')}><RefreshCw size={14} /> На проверку</button>
-        <button type="button" className="primary-button" onClick={() => onReview('ACTIVE')}><CheckCircle2 size={14} /> Подтвердить актуальность</button>
-      </div>}
-      {doc.content && <section className="detail-subsection document-content"><div className="subsection-heading"><div><BookOpen size={17}/><b>Содержание материала</b></div></div><div className="document-content-body">{doc.content}</div></section>}
-      <div className="detail-meta">
-        <div><small>Тип материала</small><b>{doc.kind}</b></div>
-        <div><small>Юрисдикция</small><b>{jurisdiction.label}</b></div>
-        <div><small>Тематическая область</small><b>{doc.area || 'Не указана'}</b></div>
-        <div><small>Товарная группа</small><b>{doc.productGroup || 'Не указана'}</b></div>
-        <div><small>Ключевые слова</small><b>{doc.keywords || 'Не указаны'}</b></div>
-        <div><small>Номер документа</small><b>{doc.documentNumber || 'Не указан'}</b></div>
-        <div><small>Дата документа</small><b>{formatDate(doc.documentDate)}</b></div>
-        <div><small>Действует с</small><b>{formatDate(doc.effectiveFrom)}</b></div>
-        <div><small>Действует по</small><b>{formatDate(doc.effectiveUntil)}</b></div>
-        <div><small>Версия карточки</small><b>{doc.versionNumber || 1}</b></div>
-        <div><small>Последняя проверка источника</small><b>{formatDate(doc.officialSourceCheckedAt)}</b></div>
-        <div><small>Добавил</small><b>{doc.createdBy || 'Локальная запись'}</b></div>
-        <div><small>Обновил</small><b>{doc.updatedBy || '–'}</b></div>
-        <div><small>Последнее изменение</small><b>{formatDate(doc.updatedAt || doc.createdAt)}</b></div>
+  const attachmentInputRef = useRef(null)
+  const [copyMessage, setCopyMessage] = useState('')
+  const wikiBlocks = useMemo(() => buildWikiBlocks(doc.content), [doc.content])
+  const articleHeadings = wikiBlocks.filter(block => block.type === 'heading')
+  const relatedDocs = (doc.relatedDocumentIds || []).map(id => documents.find(item => item.id === id)).filter(Boolean)
+
+  const copyArticleLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setCopyMessage('Ссылка скопирована')
+    } catch {
+      setCopyMessage('Не удалось скопировать ссылку в этом браузере')
+    }
+  }
+  const handleAttachmentChange = async event => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (file && onUploadFile) await onUploadFile(file)
+  }
+
+  const staticToc = [
+    { id: 'wiki-overview', label: 'Краткое содержание' },
+    ...(doc.content ? [{ id: 'wiki-content', label: 'Содержание материала' }] : []),
+    { id: 'wiki-details', label: 'Сведения о материале' },
+    { id: 'wiki-source', label: 'Источники и проверка' },
+    ...(relatedDocs.length ? [{ id: 'wiki-related', label: 'Связанные материалы' }] : []),
+    ...(!doc.isDemo ? [{ id: 'wiki-files', label: 'Документы и вложения' }, { id: 'wiki-history', label: 'История редакций' }] : []),
+  ]
+
+  return <section className="detail-page wiki-detail-page">
+    <div className="wiki-toolbar">
+      <button className="back-button" onClick={onBack}><ArrowUpRight className="wiki-back-arrow" size={15}/> Назад к каталогу</button>
+      <div className="wiki-toolbar-actions">
+        <button type="button" className="secondary-button wiki-copy-button" onClick={copyArticleLink}><Copy size={14}/>{copyMessage === 'Ссылка скопирована' ? 'Скопировано' : 'Скопировать ссылку'}</button>
+        {copyMessage && <span className="wiki-copy-status" role="status">{copyMessage}</span>}
       </div>
-      {doc.sourceUrl ? <a className="source-link" href={doc.sourceUrl} target="_blank" rel="noreferrer"><ExternalLink size={17} /><span><b>Открыть источник документа</b><small>{doc.sourceUrl}</small></span><ArrowUpRight size={16} /></a> : <div className="notice"><CircleHelp size={17} /><div><b>{doc.isDemo ? 'Это демонстрационная запись' : 'Официальный источник не указан'}</b><span>{doc.isDemo ? 'Не используйте эту запись как юридическое основание. Добавьте проверенный документ с реквизитами и ссылкой на источник.' : 'Добавьте ссылку на официальный источник и проведите проверку перед использованием.'}</span></div></div>}
-      {doc.sourceCheckNote && <div className="check-note"><b>Комментарий проверки</b><span>{doc.sourceCheckNote}</span></div>}
-      {doc.relatedDocumentIds?.length > 0 && <section className="detail-subsection">
-        <div className="subsection-heading"><div><Link2 size={17} /><b>Связанные документы</b></div><span>{doc.relatedDocumentIds.length}</span></div>
-        <div className="related-document-list">{doc.relatedDocumentIds.map(id => {
-          const related = documents.find(item => item.id === id)
-          return related ? <button key={id} className="related-document" type="button" onClick={() => onOpenRelated?.(id)}><FileText size={16} /><span><b>{related.title}</b><small>{jurisdictions[related.jurisdiction]?.short || related.jurisdiction} · {related.kind}</small></span><ArrowUpRight size={15} /></button> : <div className="subsection-empty" key={id}>Связанный документ {id} не найден в текущем списке.</div>
-        })}</div>
-      </section>}
-      {!doc.isDemo && <section className="detail-subsection">
-        <div className="subsection-heading"><div><Paperclip size={17} /><b>Файлы документа</b></div><span>{files.length}</span></div>
-        {files.length ? <div className="attached-files">{files.map(file => <div className="attached-file" key={file.id}><FileText size={18} /><div className="attached-file-copy"><b>{file.originalName}</b><small>{formatBytes(file.sizeBytes)} · {file.uploadedBy || 'пользователь'} · {formatDate(file.uploadedAt)}</small><small className={'file-index-status file-index-' + (file.textExtractionStatus || 'NOT_INDEXED').toLowerCase()}>{fileIndexLabel(file)}</small>{file.textExtractionNote && <small className="file-index-note">{file.textExtractionNote}</small>}{canReindex && ['NOT_INDEXED', 'FAILED'].includes(file.textExtractionStatus || 'NOT_INDEXED') && <button type="button" className="secondary-button file-reindex-button" onClick={() => onReindexFile(file)} disabled={reindexingFileId === file.id}><RefreshCw size={13}/>{reindexingFileId === file.id ? 'Индексация…' : 'Индексировать файл'}</button>}</div><button type="button" className="icon-button" onClick={() => onDownload(file)} aria-label="Скачать файл"><Download size={16} /></button></div>)}
-        </div> : <p className="subsection-empty">К файлу документа пока ничего не прикреплено. Файл можно добавить через форму редактирования.</p>}
-      </section>}
-      {!doc.isDemo && <section className="detail-subsection">
-        <div className="subsection-heading"><div><History size={17} /><b>История редакций</b></div><span>{versions.length || 0}</span></div>
-        {versions.length ? <div className="version-list">{versions.map(version => <div className="version-row" key={version.id}><span className="version-number">v{version.versionNumber}</span><div><b>{version.changeNote || 'Изменение карточки'}</b><small>{version.changedBy} · {formatDate(version.createdAt)} · {version.statusLabel || version.status}</small></div></div>)}</div>
-          : <p className="subsection-empty">История появится после первого сохранения в серверной базе.</p>}
-      </section>}
-      {doc.isDemo && <div className="notice"><CircleHelp size={17} /><div><b>Демонстрационная запись</b><span>Не используйте её как юридическое основание. В общей базе должны находиться реальные документы, проверенные по официальным источникам.</span></div></div>}
-      {!API_ENABLED && !doc.isDemo && <p className="storage-note">Эта пользовательская карточка хранится только в локальном браузере и не видна другим сотрудникам.</p>}
     </div>
+
+    <article className="detail-card wiki-article">
+      <header className="wiki-article-header">
+        <div className="wiki-article-labels">
+          <span className={'tag ' + jurisdiction.className}>{jurisdiction.flag} {jurisdiction.label}</span>
+          <span className={'status-pill ' + statusClass(doc)}>{statusLabel}</span>
+          {doc.isDemo && <span className="wiki-demo-label">Демонстрационная запись</span>}
+        </div>
+        <div className="wiki-article-title-row">
+          <div className="wiki-article-title-copy">
+            <div className="section-kicker">TEKSHER HUB / ВНУТРЕННЯЯ ЭНЦИКЛОПЕДИЯ</div>
+            <h1>{doc.title}</h1>
+            <p className="wiki-article-subtitle">{jurisdiction.short} · {doc.kind || 'Материал'}{doc.documentNumber ? ' · № ' + doc.documentNumber : ''}{doc.area ? ' · ' + doc.area : ''}</p>
+          </div>
+          <div className="wiki-article-mark"><BookOpen size={29}/></div>
+        </div>
+        <div className="wiki-article-actions">
+          {!doc.isDemo && canEdit && <button type="button" className="secondary-button" onClick={onEdit}><Pencil size={14}/> Редактировать</button>}
+          {!doc.isDemo && canDelete && <button type="button" className="danger-button" onClick={onDelete}><Trash2 size={14}/> Удалить карточку</button>}
+          <span className="wiki-updated"><Clock3 size={13}/> Обновлено {formatDate(doc.updatedAt || doc.createdAt)}</span>
+        </div>
+      </header>
+
+      <section className="wiki-summary" id="wiki-overview">
+        <div className="wiki-summary-heading"><span className="wiki-summary-icon"><Sparkles size={16}/></span><div><span>КРАТКОЕ СОДЕРЖАНИЕ</span><small>{doc.description ? 'Справка по материалу' : 'Описание ещё не заполнено'}</small></div></div>
+        <p>{doc.description || 'Краткое описание не добавлено. Редактор может заполнить его вручную или подготовить по загруженному документу с помощью ИИ, когда сервис будет подключён.'}</p>
+      </section>
+
+      {doc.isDemo && <div className="notice wiki-demo-notice"><CircleHelp size={17}/><div><b>Демонстрационная запись</b><span>Этот материал показывает структуру внутренней базы. Не используйте его как юридическое основание и не считайте официальной инструкцией.</span></div></div>}
+
+      {canReview && !doc.isDemo && <section className="review-actions wiki-review-actions" id="wiki-review">
+        <span>Контроль актуальности источника</span>
+        <button type="button" className="secondary-button" onClick={() => onReview('UNDER_REVIEW')}><RefreshCw size={14}/> На проверку</button>
+        <button type="button" className="primary-button" onClick={() => onReview('ACTIVE')}><CheckCircle2 size={14}/> Подтвердить актуальность</button>
+      </section>}
+
+      <div className="wiki-page-layout">
+        <aside className="wiki-side-column">
+          <nav className="wiki-toc" aria-label="Содержание карточки">
+            <div className="wiki-side-title"><ListTree size={15}/><b>В этой статье</b></div>
+            {staticToc.map(item => <a key={item.id} href={'#' + item.id}>{item.label}</a>)}
+            {articleHeadings.length > 0 && <div className="wiki-toc-subhead">Разделы текста</div>}
+            {articleHeadings.map(block => <a className="wiki-toc-nested" key={block.id} href={'#' + block.id}>{block.title}</a>)}
+          </nav>
+
+          <section className="wiki-infobox" id="wiki-details">
+            <div className="wiki-side-title"><FileText size={15}/><b>Сведения о материале</b></div>
+            <dl className="wiki-facts">
+              <div><dt>Тип материала</dt><dd>{doc.kind || 'Не указан'}</dd></div>
+              <div><dt>Юрисдикция</dt><dd>{jurisdiction.label}</dd></div>
+              <div><dt>Тематическая область</dt><dd>{doc.area || 'Не указана'}</dd></div>
+              <div><dt>Товарная группа</dt><dd>{doc.productGroup || 'Не указана'}</dd></div>
+              <div><dt>Ключевые слова</dt><dd>{doc.keywords || 'Не указаны'}</dd></div>
+              <div><dt>Номер документа</dt><dd>{doc.documentNumber || 'Не указан'}</dd></div>
+              <div><dt>Дата документа</dt><dd>{formatDate(doc.documentDate)}</dd></div>
+              <div><dt>Действует с</dt><dd>{formatDate(doc.effectiveFrom)}</dd></div>
+              <div><dt>Действует по</dt><dd>{formatDate(doc.effectiveUntil)}</dd></div>
+              <div><dt>Версия карточки</dt><dd>{doc.versionNumber || 1}</dd></div>
+              <div><dt>Источник проверен</dt><dd>{formatDate(doc.officialSourceCheckedAt)}</dd></div>
+              <div><dt>Добавил</dt><dd>{doc.createdBy || 'Локальная запись'}</dd></div>
+              <div><dt>Последнее изменение</dt><dd>{formatDate(doc.updatedAt || doc.createdAt)}</dd></div>
+            </dl>
+          </section>
+        </aside>
+
+        <div className="wiki-main-column">
+          <section className="detail-subsection wiki-content-section" id="wiki-content">
+            <div className="wiki-section-heading"><div><BookOpen size={18}/><div><h2>Содержание материала</h2><p>Основной текст, порядок работы и полезные заметки</p></div></div></div>
+            {wikiBlocks.length ? <div className="document-content-body wiki-prose">
+              {wikiBlocks.map((block, index) => {
+                if (block.type === 'heading') return <h3 id={block.id} key={block.id}>{block.title}</h3>
+                if (block.type === 'list' && block.ordered) return <ol key={'list-' + index}>{block.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}</ol>
+                if (block.type === 'list') return <ul key={'list-' + index}>{block.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}</ul>
+                return <p key={'paragraph-' + index}>{block.text}</p>
+              })}
+            </div> : <div className="wiki-empty-content"><BookOpen size={22}/><b>Пока нет основного текста</b><span>Добавьте выдержку из документа, инструкцию или практический порядок действий. Текст будет доступен для поиска по базе знаний.</span>{canEdit && !doc.isDemo && <button type="button" className="secondary-button" onClick={onEdit}><Pencil size={14}/> Заполнить содержание</button>}</div>}
+          </section>
+
+          <section className="detail-subsection wiki-source-section" id="wiki-source">
+            <div className="wiki-section-heading"><div><ExternalLink size={17}/><div><h2>Источник и проверка</h2><p>Основание, по которому подготовлена эта статья</p></div></div></div>
+            {doc.sourceUrl ? <a className="source-link" href={doc.sourceUrl} target="_blank" rel="noreferrer"><ExternalLink size={17}/><span><b>Открыть официальный источник</b><small>{doc.sourceUrl}</small></span><ArrowUpRight size={16}/></a> : <div className="notice"><CircleHelp size={17}/><div><b>Источник не указан</b><span>Добавьте официальный источник или внутренний утверждённый документ. До проверки не используйте содержание как подтверждённое нормативное требование.</span></div></div>}
+            {doc.sourceCheckNote && <div className="check-note"><b>Комментарий проверки</b><span>{doc.sourceCheckNote}</span></div>}
+            {!doc.isDemo && <div className="wiki-source-meta"><span><b>Добавил:</b> {doc.createdBy || 'Не указано'}</span><span><b>Изменил:</b> {doc.updatedBy || 'Не указано'}</span><span><b>Проверка источника:</b> {formatDate(doc.officialSourceCheckedAt)}</span></div>}
+          </section>
+
+          {relatedDocs.length > 0 && <section className="detail-subsection wiki-related-section" id="wiki-related">
+            <div className="wiki-section-heading"><div><Link2 size={17}/><div><h2>Связанные материалы</h2><p>Другие статьи и документы по этой теме</p></div></div><span className="wiki-section-count">{relatedDocs.length}</span></div>
+            <div className="related-document-list">{relatedDocs.map(related => <button key={related.id} className="related-document" type="button" onClick={() => onOpenRelated?.(related.id)}><FileText size={16}/><span><b>{related.title}</b><small>{jurisdictions[related.jurisdiction]?.short || related.jurisdiction} · {related.kind}</small></span><ArrowUpRight size={15}/></button>)}</div>
+          </section>}
+
+          {!doc.isDemo && <section className="detail-subsection wiki-files-section" id="wiki-files">
+            <div className="wiki-section-heading"><div><Paperclip size={17}/><div><h2>Документы и вложения</h2><p>Оригиналы и дополнительные рабочие файлы</p></div></div><span className="wiki-section-count">{files.length}</span></div>
+            {canUploadFiles && <div className="wiki-upload-panel">
+              <input ref={attachmentInputRef} className="wiki-hidden-file-input" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg" onChange={handleAttachmentChange} />
+              <div><b>Добавить оригинал или приложение</b><small>PDF, Word, Excel, CSV, TXT, PNG или JPG · до 30 МБ</small></div>
+              <button type="button" className="secondary-button" onClick={() => attachmentInputRef.current?.click()} disabled={uploadingFile}><Paperclip size={14}/>{uploadingFile ? 'Загрузка…' : 'Прикрепить файл'}</button>
+            </div>}
+            {files.length ? <div className="attached-files">{files.map(file => <div className="attached-file" key={file.id}><span className="wiki-attached-file-icon"><FileText size={18}/></span><div className="attached-file-copy"><b>{file.originalName}</b><small>{formatBytes(file.sizeBytes)} · {file.uploadedBy || 'пользователь'} · {formatDate(file.uploadedAt)}</small><small className={'file-index-status file-index-' + (file.textExtractionStatus || 'NOT_INDEXED').toLowerCase()}>{fileIndexLabel(file)}</small>{file.textExtractionNote && <small className="file-index-note">{file.textExtractionNote}</small>}{canReindex && ['NOT_INDEXED', 'FAILED'].includes(file.textExtractionStatus || 'NOT_INDEXED') && <button type="button" className="secondary-button file-reindex-button" onClick={() => onReindexFile(file)} disabled={reindexingFileId === file.id}><RefreshCw size={13}/>{reindexingFileId === file.id ? 'Индексация…' : 'Индексировать файл'}</button>}</div><button type="button" className="icon-button" onClick={() => onDownload(file)} aria-label="Скачать файл"><Download size={16}/></button></div>)}</div>
+              : <div className="wiki-empty-content compact"><Paperclip size={19}/><span>Вложения пока не добавлены.</span>{canUploadFiles && <small>Загрузите оригинал, чтобы он хранился рядом с карточкой.</small>}</div>}
+          </section>}
+
+          {!doc.isDemo && <section className="detail-subsection wiki-history-section" id="wiki-history">
+            <div className="wiki-section-heading"><div><History size={17}/><div><h2>История редакций</h2><p>Кто и когда менял карточку</p></div></div><span className="wiki-section-count">{versions.length || 0}</span></div>
+            {versions.length ? <div className="version-list">{versions.map(version => <div className="version-row" key={version.id}><span className="version-number">v{version.versionNumber}</span><div><b>{version.changeNote || 'Изменение карточки'}</b><small>{version.changedBy} · {formatDate(version.createdAt)} · {version.statusLabel || version.status}</small></div></div>)}</div>
+              : <p className="subsection-empty">История появится после первого сохранения в серверной базе.</p>}
+          </section>}
+        </div>
+      </div>
+      {!API_ENABLED && !doc.isDemo && <p className="storage-note">Эта пользовательская карточка хранится только в локальном браузере и не видна другим сотрудникам.</p>}
+    </article>
   </section>
 }
 
