@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { API_ENABLED, API_BASE, apiRequest, clearStoredToken, getStoredToken, storeToken } from './lib/api.js'
 import {
   ArrowDownRight, ArrowUpRight, BookOpen, Boxes, CalendarDays, ChevronDown,
   CircleHelp, ExternalLink, FileCheck2, FilePlus2, FileText, Globe2, Home,
   Landmark, Layers3, LibraryBig, Link2, Search, ShieldCheck, SlidersHorizontal,
-  Sparkles, Workflow, X, Pencil, Trash2, RefreshCw, UsersRound, LogOut, Paperclip, Download, History, CheckCircle2, UserPlus, Moon, Sun
+  Sparkles, Workflow, X, Pencil, Trash2, RefreshCw, UsersRound, LogOut, Paperclip, Download, History, CheckCircle2, UserPlus, Moon, Sun, Copy, ListTree, Clock3
 } from 'lucide-react'
 
 const demoDocuments = [
@@ -258,6 +258,7 @@ function App() {
   const [isSaving, setIsSaving] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [isBulkReindexing, setIsBulkReindexing] = useState(false)
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false)
   const [monitorModalOpen, setMonitorModalOpen] = useState(false)
   const [userModalOpen, setUserModalOpen] = useState(false)
   const [passwordResetTarget, setPasswordResetTarget] = useState(null)
@@ -505,6 +506,40 @@ function App() {
     setDocumentVersions([])
     setSelectedDoc(null)
     setActive('home')
+  }
+
+  const handleUploadAttachment = async (file) => {
+    if (!file || !selectedDoc || selectedDoc.isDemo) return
+    if (!API_ENABLED) {
+      setActionError('Загрузка вложений станет доступна после подключения общей базы через VITE_API_URL.')
+      return
+    }
+    if (!['ADMIN', 'EDITOR'].includes(currentUser?.role)) {
+      setActionError('Для загрузки вложений нужна роль редактора или администратора.')
+      return
+    }
+    if (file.size > 30 * 1024 * 1024) {
+      setActionError('Размер файла превышает 30 МБ.')
+      return
+    }
+    setIsUploadingAttachment(true)
+    setActionError('')
+    setSuccessMessage('')
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      await apiRequest('/api/documents/' + selectedDoc.id + '/files', { method: 'POST', body: formData })
+      const [updatedFiles] = await Promise.all([
+        apiRequest('/api/documents/' + selectedDoc.id + '/files'),
+        refreshDocuments()
+      ])
+      setApiFiles(updatedFiles)
+      setSuccessMessage('Документ прикреплён. Текстовое содержимое будет доступно в поиске после обработки.')
+    } catch (error) {
+      setActionError(error.message || 'Не удалось прикрепить документ.')
+    } finally {
+      setIsUploadingAttachment(false)
+    }
   }
 
   const handleSaveDocument = async (event) => {
@@ -917,7 +952,7 @@ function App() {
               canEdit={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)}
               canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'}
               canReview={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)}
-              files={apiFiles} versions={documentVersions} documents={documents} onOpenRelated={docId => { const related = documents.find(item => item.id === docId); if (related) openDocument(related) }} onDownload={handleDownloadFile} onReview={handleReviewDocument} canReindex={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)} onReindexFile={handleReindexFile} reindexingFileId={reindexingFileId} />
+              files={apiFiles} versions={documentVersions} documents={documents} onOpenRelated={docId => { const related = documents.find(item => item.id === docId); if (related) openDocument(related) }} onDownload={handleDownloadFile} onUploadFile={handleUploadAttachment} uploadingFile={isUploadingAttachment} canUploadFiles={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)} onReview={handleReviewDocument} canReindex={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)} onReindexFile={handleReindexFile} reindexingFileId={reindexingFileId} />
             : active === 'knowledge' ? <KnowledgeCenterSection documents={documents} onSelectKind={(kind) => { setActive('documents'); setSelectedDoc(null); setQuery(''); setFilter(kind); setStatusFilter('Все статусы'); syncRoute('documents') }} onOpenAll={() => openSection('documents')} onAdd={openNewDocumentModal} canAdd={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} />
             : active === 'groups' ? <ProductGroupsSection onOpen={openSection} />
             : active === 'monitoring' ? <MonitorSection monitors={monitors} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
