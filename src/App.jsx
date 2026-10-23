@@ -272,10 +272,10 @@ function App() {
       const typing = target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault()
-        setShowGlobalSearch(true)
+        setGlobalSearchQuery(''); setGlobalSearchActiveIndex(0); setGlobalSearchError(''); setShowGlobalSearch(true)
       } else if (event.key === '/' && !typing && !event.metaKey && !event.ctrlKey && !event.altKey) {
         event.preventDefault()
-        setShowGlobalSearch(true)
+        setGlobalSearchQuery(''); setGlobalSearchActiveIndex(0); setGlobalSearchError(''); setShowGlobalSearch(true)
       } else if (event.key === 'Escape') {
         setShowGlobalSearch(false)
       }
@@ -303,6 +303,8 @@ function App() {
       return
     }
     let cancelled = false
+    setGlobalSearchResults([])
+    setGlobalSearchActiveIndex(0)
     setGlobalSearchLoading(true)
     setGlobalSearchError('')
     const timeout = window.setTimeout(() => {
@@ -811,7 +813,7 @@ function App() {
       <main className="main-area">
         <header className="topbar">
           <div className="breadcrumbs"><span>TEKSHER HUB</span><span className="crumb-slash">/</span><strong>{selectedDoc ? 'Карточка документа' : pageTitle}</strong></div>
-          <button className="global-search-trigger" type="button" onClick={() => setShowGlobalSearch(true)} aria-label="Поиск по базе документов"><Search size={15}/><span>Поиск по базе</span><kbd>Ctrl K</kbd></button>
+          <button className="global-search-trigger" type="button" onClick={() => setGlobalSearchQuery(''); setGlobalSearchActiveIndex(0); setGlobalSearchError(''); setShowGlobalSearch(true)} aria-label="Поиск по базе документов"><Search size={15}/><span>Поиск по базе</span><kbd>Ctrl K</kbd></button>
           <div className="topbar-right"><button className="theme-toggle" type="button" onClick={() => setTheme(current => current === 'dark' ? 'light' : 'dark')} aria-label={theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'} aria-pressed={theme === 'dark'} title={theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'}>{theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}<span>{theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}</span></button><span className="internal-badge"><ShieldCheck size={14} /> {API_ENABLED ? currentUser?.role || 'Пользователь' : 'Демо-режим'}</span><div className="avatar">{currentUser?.displayName ? currentUser.displayName.split(' ').map(part => part[0]).join('').slice(0,2).toUpperCase() : 'ОП'}</div>{API_ENABLED && <button className="logout-button" onClick={handleLogout} title="Выйти"><LogOut size={15} /><span>Выход</span></button>}</div>
         </header>
 
