@@ -12,14 +12,19 @@ public record DocumentResponse(
         String sourceUrl, String description, String content, String status, String statusLabel,
         Instant officialSourceCheckedAt, String sourceCheckNote,
         String createdBy, String updatedBy, Instant createdAt, Instant updatedAt, int versionNumber,
-        long fileCount
+        long fileCount, boolean matchedInAttachment
 ) {
     public static DocumentResponse from(DocumentRecord d, long fileCount, List<UUID> relatedDocumentIds) {
+        return from(d, fileCount, relatedDocumentIds, false);
+    }
+
+    public static DocumentResponse from(DocumentRecord d, long fileCount, List<UUID> relatedDocumentIds,
+                                        boolean matchedInAttachment) {
         return new DocumentResponse(d.getId(), d.getTitle(), d.getJurisdiction(), d.getKind(), d.getArea(),
                 d.getProductGroup(), d.getKeywords(), List.copyOf(relatedDocumentIds),
                 d.getDocumentNumber(), d.getDocumentDate(), d.getEffectiveFrom(), d.getEffectiveUntil(),
                 d.getSourceUrl(), d.getDescription(), d.getContent(), d.getStatus().name(), d.getStatus().label(),
                 d.getOfficialSourceCheckedAt(), d.getSourceCheckNote(), d.getCreatedBy(), d.getUpdatedBy(),
-                d.getCreatedAt(), d.getUpdatedAt(), d.getVersionNumber(), fileCount);
+                d.getCreatedAt(), d.getUpdatedAt(), d.getVersionNumber(), fileCount, matchedInAttachment);
     }
 }
