@@ -81,7 +81,7 @@ function App() {
 
   const filteredDocuments = useMemo(() => documents.filter((doc) => {
     const matchesJurisdiction = ['RU', 'KG', 'EAEU'].includes(active) ? doc.jurisdiction === active : true
-    const matchesQuery = [doc.title, doc.description, doc.area, doc.kind, doc.productGroup || '', doc.keywords || '', doc.documentNumber || ''].join(' ').toLowerCase().includes(query.toLowerCase())
+    const matchesQuery = [doc.title, doc.description, doc.content || '', doc.area, doc.kind, doc.productGroup || '', doc.keywords || '', doc.documentNumber || ''].join(' ').toLowerCase().includes(query.toLowerCase())
     const matchesFilter = filter === 'Все типы' || doc.kind === filter
     const displayStatus = doc.statusLabel || doc.status
     const matchesStatus = statusFilter === 'Все статусы' || displayStatus === statusFilter
@@ -224,6 +224,7 @@ function App() {
       effectiveUntil: String(data.get('effectiveUntil') || '') || null,
       sourceUrl: sourceUrl || null,
       description: String(data.get('description') || '').trim(),
+      content: String(data.get('content') || '').trim(),
       status: String(data.get('status') || ''),
       changeNote: String(data.get('changeNote') || '').trim() || (editingDoc ? 'Редактирование карточки' : 'Создание карточки'),
     }
@@ -658,6 +659,7 @@ function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, can
         <button type="button" className="secondary-button" onClick={() => onReview('UNDER_REVIEW')}><RefreshCw size={14} /> На проверку</button>
         <button type="button" className="primary-button" onClick={() => onReview('ACTIVE')}><CheckCircle2 size={14} /> Подтвердить актуальность</button>
       </div>}
+      {doc.content && <section className="detail-subsection document-content"><div className="subsection-heading"><div><BookOpen size={17}/><b>Содержание материала</b></div></div><div className="document-content-body">{doc.content}</div></section>}
       <div className="detail-meta">
         <div><small>Тип материала</small><b>{doc.kind}</b></div>
         <div><small>Юрисдикция</small><b>{jurisdiction.label}</b></div>
@@ -726,6 +728,7 @@ function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, ap
           <label className="form-field full-field"><span>Ссылка на официальный источник</span><input name="sourceUrl" type="url" maxLength="2000" defaultValue={initialDoc?.sourceUrl || ''} placeholder="https://..." /></label>
           {apiEnabled && <label className="form-field"><span>Статус карточки</span><select name="status" defaultValue={initialStatus}><option value="">Автоматически: черновик / на проверку</option><option value="DRAFT">Черновик</option><option value="UNDER_REVIEW">На проверке</option><option value="ACTIVE">Действует</option><option value="EXPIRED">Срок действия истёк</option><option value="ARCHIVED">В архиве</option></select></label>}
           <label className="form-field full-field"><span>Краткое описание *</span><textarea name="description" required rows="3" maxLength="3000" defaultValue={initialDoc?.description || ''} placeholder="Что регулирует документ и когда его использовать" /></label>
+          <label className="form-field full-field"><span>Содержание / рабочая инструкция</span><textarea name="content" rows="8" maxLength="50000" defaultValue={initialDoc?.content || ''} placeholder="Добавьте текст инструкции, порядок действий, решение ошибки, выдержку или другие сведения для поиска..." /><small className="form-help">Текст будет доступен для поиска. До 50 000 символов; вложенные файлы пока не индексируются автоматически.</small></label>
           {apiEnabled && <label className="form-field full-field"><span>Комментарий к редакции</span><input name="changeNote" maxLength="1000" placeholder="Например, обновлена дата вступления в силу" /></label>}
           {apiEnabled && <label className="form-field full-field upload-field"><span>Прикрепить файл (необязательно, до 30 МБ)</span><span className="file-input-wrap"><Paperclip size={16} /><input name="file" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg" /></span></label>}
         </div>
