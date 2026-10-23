@@ -85,5 +85,5 @@ jobs:
           FILE_ID=$(printf '%s' "$UPLOADED" | jq -r '.id')
           REINDEXED=$(curl --silent --show-error --fail -X POST "http://localhost:8080/api/documents/$DOC_ID/files/$FILE_ID/reindex" -H "Authorization: Bearer $TOKEN")
           echo "$REINDEXED" | jq -e '.textExtractionStatus == "INDEXED" and .extractedCharacters > 0'
-          curl --silent --show-error --fail "http://localhost:8080/api/documents?q=attachment-search-marker-unique-9876" -H "Authorization: Bearer $TOKEN" | jq -e --arg id "$DOC_ID" 'any(.[]; .id == $id)'
+          curl --silent --show-error --fail "http://localhost:8080/api/documents?q=attachment-search-marker-unique-9876" -H "Authorization: Bearer $TOKEN" | jq -e --arg id "$DOC_ID" 'any(.[]; .id == $id and .matchedInAttachment == true)'
           kill "$(cat /tmp/teksher-hub-api.pid)" || true
