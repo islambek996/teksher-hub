@@ -87,7 +87,7 @@ function App() {
     const matchesStatus = statusFilter === 'Все статусы' || displayStatus === statusFilter
     const matchesSection = active === 'groups' ? (doc.kind === 'Товарная группа' || doc.area === 'Товарные группы')
       : active === 'processes' ? doc.kind === 'Бизнес-процесс'
-      : active === 'knowledge' ? ['Инструкция', 'Внутренний документ', 'Техническая документация', 'Известная ошибка', 'Шаблон'].includes(doc.kind)
+      : active === 'knowledge' ? ['Нормативный акт', 'Товарная группа', 'Инструкция', 'Внутренний документ', 'Техническая документация', 'Известная ошибка', 'Шаблон', 'Бизнес-процесс', 'Обзор'].includes(doc.kind)
       : true
     return matchesJurisdiction && matchesQuery && matchesFilter && matchesStatus && matchesSection
   }), [documents, active, query, filter, statusFilter])
@@ -552,12 +552,15 @@ function App() {
 
 function KnowledgeCenterSection({ documents, onSelectKind, onOpenAll, onAdd, canAdd }) {
   const categories = [
+    { kind: 'Нормативный акт', title: 'Нормативные акты', description: 'Законы, постановления, решения ЕЭК и официальные основания требований.', icon: Landmark, tone: 'purple' },
+    { kind: 'Товарная группа', title: 'Товарные группы', description: 'Требования по группам товаров с учётом юрисдикции и периода действия.', icon: Boxes, tone: 'green' },
     { kind: 'Инструкция', title: 'Инструкции и руководства', description: 'Пошаговая работа в МЗКМ, ГАИС МТ и связанных сервисах.', icon: BookOpen, tone: 'blue' },
     { kind: 'Бизнес-процесс', title: 'Бизнес-процессы', description: 'Последовательности действий, роли, входы, результаты и исключения.', icon: Workflow, tone: 'green' },
     { kind: 'Техническая документация', title: 'Техническая документация', description: 'Интеграции, API, обмен данными, ограничения и технические решения.', icon: Layers3, tone: 'purple' },
     { kind: 'Известная ошибка', title: 'Ошибки и решения', description: 'Текст ошибки, причина, диагностика и подтверждённый способ устранения.', icon: CircleHelp, tone: 'amber' },
     { kind: 'Шаблон', title: 'Шаблоны документов', description: 'Формы писем, уведомлений, служебных записок и технических заданий.', icon: FileCheck2, tone: 'blue' },
     { kind: 'Внутренний документ', title: 'Регламенты и внутренние материалы', description: 'Правила работы оператора, инструкции подразделений и рабочие памятки.', icon: FileText, tone: 'green' },
+    { kind: 'Обзор', title: 'Обзоры и справочные материалы', description: 'Объяснения, вводные материалы и сводная информация по системам.', icon: LibraryBig, tone: 'amber' },
   ]
   return <section className="knowledge-center">
     <div className="page-heading">
