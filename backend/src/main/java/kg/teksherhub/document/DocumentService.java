@@ -40,6 +40,43 @@ public class DocumentService {
                 .toList();
     }
 
+
+    /**
+     * Exports card metadata and authored text for review/transfer. This is not a database
+     * backup and intentionally does not embed binary attachment contents.
+     */
+    @Transactional(readOnly = true)
+    public byte[] exportCsv() {
+        StringBuilder csv = new StringBuilder("\\uFEFF");
+        appendCsvRow(csv,
+                "ID", "Название", "Юрисдикция", "Тип материала", "Тематическая область",
+                "Товарная группа", "Ключевые слова", "Номер документа", "Дата документа",
+                "Действует с", "Действует по", "Официальный источник", "Описание", "Содержание",
+                "Статус", "Код статуса", "Последняя проверка источника", "Комментарий проверки",
+                "Добавил", "Обновил", "Создано", "Последнее изменение", "Версия карточки", "Количество файлов");
+
+        for (DocumentRecord d : documents.findAllByOrderByUpdatedAtDesc()) {
+            appendCsvRow(csv,
+                    d.getId(), d.getTitle(), d.getJurisdiction(), d.getKind(), d.getArea(),
+                    d.getProductGroup(), d.getKeywords(), d.getDocumentNumber(), d.getDocumentDate(),
+                    d.getEffectiveFrom(), d.getEffectiveUntil(), d.getSourceUrl(), d.getDescription(),
+                    d.getContent(), d.getStatus() == null ? null : d.getStatus().label(),
+                    d.getStatus() == null ? null : d.getStatus().name(), d.getOfficialSourceCheckedAt(),
+                    d.getSourceCheckNote(), d.getCreatedBy(), d.getUpdatedBy(), d.getCreatedAt(),
+                    d.getUpdatedAt(), d.getVersionNumber(), files.countByDocumentId(d.getId()));
+        }
+        return csv.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    private static void appendCsvRow(StringBuilder output, Object... values) {
+        for (int i = 0; i < values.length; i++) {
+            if (i > 0) output.append(';');
+            String value = values[i] == null ? "" : values[i].toString();
+            output.append('"').append(value.replace("\\\"", "\\\"\\\"")).append('"');
+        }
+        output.append("\\r\\n");
+    }
+
     @Transactional(readOnly = true)
     public DocumentResponse get(UUID id) { return toResponse(findEntity(id)); }
 
