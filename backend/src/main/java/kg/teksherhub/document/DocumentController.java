@@ -7,6 +7,12 @@ import jakarta.validation.constraints.Size;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+
+import java.nio.charset.StandardCharsets;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -29,6 +35,17 @@ public class DocumentController {
                                        @RequestParam(required = false) String kind,
                                        @RequestParam(required = false) String status) {
         return service.list(q, jurisdiction, kind, status);
+    }
+
+    @GetMapping(value = "/export.csv", produces = "text/csv")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    public ResponseEntity<byte[]> exportCsv() {
+        byte[] csv = service.exportCsv();
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename("teksher-hub-export.csv", StandardCharsets.UTF_8).build().toString())
+                .body(csv);
     }
 
     @GetMapping("/{id}")
