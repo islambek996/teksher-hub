@@ -229,6 +229,7 @@ function App() {
   const [showGlobalSearch, setShowGlobalSearch] = useState(false)
   const [globalSearchQuery, setGlobalSearchQuery] = useState('')
   const [globalSearchResults, setGlobalSearchResults] = useState([])
+  const [globalSearchActiveIndex, setGlobalSearchActiveIndex] = useState(0)
   const [globalSearchLoading, setGlobalSearchLoading] = useState(false)
   const [globalSearchError, setGlobalSearchError] = useState('')
   const [active, setActive] = useState('home')
@@ -920,7 +921,7 @@ function App() {
       {showGlobalSearch && <div className="global-search-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setShowGlobalSearch(false) }}>
         <section className="global-search-dialog" role="dialog" aria-modal="true" aria-labelledby="global-search-title">
           <div className="global-search-heading"><div><div className="section-kicker">TEKSHER HUB / ПОИСК</div><h2 id="global-search-title">Найти материал</h2></div><button className="icon-button" type="button" onClick={() => setShowGlobalSearch(false)} aria-label="Закрыть поиск"><X size={18}/></button></div>
-          <label className="global-search-input"><Search size={18}/><input autoFocus value={globalSearchQuery} onChange={event => setGlobalSearchQuery(event.target.value)} placeholder="Название, номер, инструкция или ключевые слова…" /><kbd>ESC</kbd></label>
+          <label className="global-search-input"><Search size={18}/><input autoFocus value={globalSearchQuery} onChange={event => { setGlobalSearchQuery(event.target.value); setGlobalSearchActiveIndex(0) }} onKeyDown={event => { if (event.key === 'ArrowDown' && globalSearchResults.length) { event.preventDefault(); setGlobalSearchActiveIndex(index => (index + 1) % globalSearchResults.length) } else if (event.key === 'ArrowUp' && globalSearchResults.length) { event.preventDefault(); setGlobalSearchActiveIndex(index => (index - 1 + globalSearchResults.length) % globalSearchResults.length) } else if (event.key === 'Enter' && globalSearchResults.length) { event.preventDefault(); openGlobalSearchResult(globalSearchResults[Math.min(globalSearchActiveIndex, globalSearchResults.length - 1)]) } }} placeholder="Название, номер, инструкция или ключевые слова…" /><kbd>ESC</kbd></label>
           <div className="global-search-helper">Введите минимум 2 символа. Поиск доступен из любого раздела.</div>
           <div className="global-search-results" aria-live="polite">
             {!globalSearchQuery.trim() && <div className="global-search-prompt"><Search size={22}/><b>Поиск по всей базе знаний</b><span>Можно искать материалы из любого контура: РФ, КР и ЕАЭС.</span><small>Быстрый вызов: Ctrl K или /</small></div>}
@@ -928,7 +929,7 @@ function App() {
             {globalSearchLoading && <div className="global-search-message"><RefreshCw size={16} className="spin"/> Ищем материалы…</div>}
             {globalSearchError && <div className="global-search-message error"><CircleHelp size={16}/>{globalSearchError}</div>}
             {!globalSearchLoading && !globalSearchError && globalSearchQuery.trim().length >= 2 && globalSearchResults.length === 0 && <div className="global-search-message">Ничего не найдено. Попробуйте другое название или ключевое слово.</div>}
-            {globalSearchResults.map(doc => <button className="global-search-result" type="button" key={doc.id} onClick={() => openGlobalSearchResult(doc)}>
+            {globalSearchResults.map((doc, index) => <button className={'global-search-result ' + (globalSearchActiveIndex === index ? 'active' : '')} type="button" role="option" aria-selected={globalSearchActiveIndex === index} key={doc.id} onMouseEnter={() => setGlobalSearchActiveIndex(index)} onClick={() => openGlobalSearchResult(doc)}>
               <span className={'global-search-result-icon ' + (jurisdictions[doc.jurisdiction]?.className || '')}><FileText size={17}/></span>
               <span className="global-search-result-copy"><b>{doc.title}</b><small>{jurisdictions[doc.jurisdiction]?.short || 'Материал'} · {doc.kind || 'Документ'}{doc.documentNumber ? ' · № ' + doc.documentNumber : ''}</small><span>{doc.description || 'Без краткого описания'}</span></span>
               <ArrowUpRight size={16} className="global-search-result-arrow"/>
