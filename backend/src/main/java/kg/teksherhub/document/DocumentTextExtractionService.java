@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Set;
@@ -32,6 +33,14 @@ public class DocumentTextExtractionService {
         if (!SUPPORTED_EXTENSIONS.contains(extension)) {
             return new ExtractionResult("", "NOT_SUPPORTED",
                     "Автоматическое извлечение текста из этого формата не поддерживается. Для изображений нужен OCR.");
+        }
+        try {
+            if (Files.size(path) == 0) {
+                return new ExtractionResult("", "EMPTY", "Файл пустой – извлекать текст нечего.");
+            }
+        } catch (java.io.IOException ex) {
+            log.warn("Could not inspect attachment size for {}", safeResourceName(originalName), ex);
+            return new ExtractionResult("", "FAILED", "Не удалось прочитать файл для извлечения текста.");
         }
 
         BodyContentHandler handler = new BodyContentHandler(MAX_EXTRACTED_CHARACTERS);
