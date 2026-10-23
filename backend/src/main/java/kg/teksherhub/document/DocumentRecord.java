@@ -39,6 +39,8 @@ public class DocumentRecord {
     private String sourceUrl;
     @Column(nullable = false, length = 3000)
     private String description;
+    @Column(columnDefinition = "text", nullable = false)
+    private String content = "";
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 24)
     private DocumentStatus status = DocumentStatus.DRAFT;
