@@ -1118,6 +1118,95 @@ function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, ap
 }
 
 
+function DocumentImportModal({ onClose, onImport }) {
+  const [fileName, setFileName] = useState('')
+  const [records, setRecords] = useState([])
+  const [localError, setLocalError] = useState('')
+  const [results, setResults] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  const handleFileChange = async (event) => {
+    const file = event.target.files?.[0]
+    setResults(null)
+    setRecords([])
+    setLocalError('')
+    setFileName(file?.name || '')
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      setLocalError('CSV-файл должен быть не больше 5 МБ.')
+      return
+    }
+    if (!file.name.toLowerCase().endsWith('.csv') && !file.type.includes('csv') && file.type !== 'text/plain') {
+      setLocalError('Выберите файл формата CSV.')
+      return
+    }
+    try {
+      const parsed = parseDocumentCsv(await file.text())
+      setRecords(parsed)
+    } catch (error) {
+      setLocalError(error.message || 'Не удалось прочитать CSV-файл.')
+    }
+  }
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    if (!records.length || loading || results) return
+    setLoading(true)
+    setLocalError('')
+    try {
+      setResults(await onImport(records))
+    } catch (error) {
+      setLocalError(error.message || 'Импорт не выполнен.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return <div className="modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !loading) onClose() }}>
+    <section className="create-modal csv-import-modal" role="dialog" aria-modal="true" aria-labelledby="csv-import-title">
+      <header className="modal-header">
+        <div><div className="section-kicker">БАЗА ЗНАНИЙ / МАССОВОЕ ДОБАВЛЕНИЕ</div><h2 id="csv-import-title">Импорт материалов из CSV</h2><p>Загрузите таблицу существующих инструкций, регламентов и других рабочих материалов.</p></div>
+        <button type="button" className="icon-button" onClick={onClose} aria-label="Закрыть" disabled={loading}><X size={20}/></button>
+      </header>
+      <div className="notice csv-import-notice"><ShieldCheck size={17}/><div><b>Импорт не подтверждает юридическую актуальность</b><span>Материалы с источником получат статус «На проверке», без источника – «Черновик». Статус «Действует» через CSV не устанавливается.</span></div></div>
+      <form onSubmit={handleSubmit}>
+        <div className="csv-import-file-row">
+          <label className="form-field full-field"><span>CSV-файл, до 5 МБ *</span><span className="file-input-wrap"><Paperclip size={16}/><input type="file" accept=".csv,text/csv,text/plain" onChange={handleFileChange} disabled={loading}/></span></label>
+          <button className="secondary-button csv-template-button" type="button" onClick={downloadCsvTemplate}><Download size={14}/> Скачать шаблон CSV</button>
+        </div>
+        {fileName && <div className="csv-import-file-name"><FileText size={14}/>{fileName}</div>}
+        <div className="form-help csv-import-help">Обязательные столбцы: Название, Юрисдикция, Тип материала, Тематическая область и Описание. Даты указывайте как ГГГГ-ММ-ДД или ДД.ММ.ГГГГ. Юрисдикции: КР/KG, РФ/RU, ЕАЭС/EAEU. Максимум 100 строк за один импорт. CSV с разделителем «;» и «,» поддерживаются.</div>
+
+        {records.length > 0 && !results && <section className="csv-import-preview">
+          <div className="csv-import-section-title"><b>Предварительный просмотр</b><span>{records.length} строк готовы к отправке</span></div>
+          <div className="csv-import-table-wrap"><table className="csv-import-table"><thead><tr><th>Строка</th><th>Название</th><th>Контур</th><th>Тип</th><th>Источник</th></tr></thead><tbody>
+            {records.slice(0, 5).map((record, index) => <tr key={index}><td>{index + 2}</td><td>{record.title || 'Без названия'}</td><td>{jurisdictions[record.jurisdiction]?.short || record.jurisdiction || '–'}</td><td>{record.kind || '–'}</td><td>{record.sourceUrl ? 'Указан' : 'Не указан'}</td></tr>)}
+          </tbody></table></div>
+          {records.length > 5 && <small className="csv-import-more">Показаны первые 5 строк из {records.length}. Результат будет показан для каждой строки.</small>}
+        </section>}
+
+        {results && <section className="csv-import-results">
+          <div className="csv-import-result-summary"><b>Импорт завершён</b><div><span className="csv-result-count success">{results.imported} добавлено</span><span className="csv-result-count failure">{results.rejected} отклонено</span></div></div>
+          <div className="csv-import-result-list">
+            {results.rows.slice(0, 15).map(row => <div className={'csv-import-result-row ' + (row.imported ? 'success' : 'failure')} key={row.rowNumber}>
+              {row.imported ? <CheckCircle2 size={16}/> : <CircleHelp size={16}/>}
+              <span><b>Строка {row.rowNumber}: {row.title || 'Без названия'}</b><small>{row.message}{row.statusLabel ? ' · Статус: ' + row.statusLabel : ''}</small></span>
+            </div>)}
+          </div>
+          {results.rows.length > 15 && <div className="csv-import-more">Показаны первые 15 результатов из {results.rows.length}.</div>}
+          {results.imported > 0 && <div className="form-note"><ShieldCheck size={16}/><span>Добавленные материалы доступны в общей базе и поиске. Проверьте официальные источники перед применением.</span></div>}
+        </section>}
+
+        {localError && <div className="feedback feedback-error"><CircleHelp size={16}/><span>{localError}</span></div>}
+        <div className="modal-actions">
+          <button type="button" className="secondary-button" onClick={onClose} disabled={loading}>{results ? 'Закрыть' : 'Отмена'}</button>
+          {!results && <button type="submit" className="primary-button" disabled={!records.length || loading}>{loading ? <RefreshCw size={15} className="spin"/> : <FilePlus2 size={16}/>} {loading ? 'Импортирование…' : 'Импортировать ' + records.length + ' строк'}</button>}
+        </div>
+      </form>
+    </section>
+  </div>
+}
+
 function LoginScreen({ onSubmit, error, loading = false }) {
   return <main className="auth-screen">
     <section className="auth-card">
