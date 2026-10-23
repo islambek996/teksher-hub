@@ -80,10 +80,10 @@ public class DocumentTextExtractionService {
 
     private static String normalize(String value) {
         if (value == null) return "";
-        return value.replace('\u0000', ' ')
+        return value.replace((char) 0, ' ')
                 .replaceAll("[\\t\\r ]+", " ")
-                .replaceAll(" *\\n *", "\\n")
-                .replaceAll("\\n{3,}", "\\n\\n")
+                .replaceAll(" *\\n *", "\n")
+                .replaceAll("\\n{3,}", "\n\n")
                 .trim();
     }
 
