@@ -7,7 +7,6 @@ import kg.teksherhub.document.DocumentFile;
 import kg.teksherhub.document.DocumentFileRepository;
 import kg.teksherhub.document.DocumentRecord;
 import kg.teksherhub.document.DocumentRepository;
-import kg.teksherhub.document.DocumentStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,10 +22,8 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -343,7 +340,9 @@ public class AiAssistantService {
     private static boolean looksInsufficient(String answer) {
         String text = answer.toLowerCase(Locale.ROOT);
         return text.contains("недостаточно данных") || text.contains("недостаточно информации")
-                || text.contains("не найден") || text.contains("нет подтверждения")
+                || text.contains("недостаточно сведений") || text.contains("нет достаточных сведений")
+                || text.contains("не удалось найти") || text.contains("не найден") || text.contains("не подтверждается")
+                || text.contains("не содержат сведений") || text.contains("нет подтверждения")
                 || text.contains("маалымат жетишсиз") || text.contains("так маалымат жок");
     }
 
