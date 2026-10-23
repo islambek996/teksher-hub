@@ -467,3 +467,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .file-index-empty,.file-index-not_supported,.file-index-not_indexed{background:#f2f5f8;color:#65788e}
 .file-index-failed{background:#fff0ef;color:#9d4540}
 .file-index-note{font-size:10px;line-height:1.5;color:#8493a5;overflow-wrap:anywhere}
+
+.file-reindex-button{align-self:flex-start;min-height:30px;margin-top:2px;padding:6px 8px;font-size:10px;font-weight:600}
+.file-reindex-button:disabled{opacity:.6;cursor:wait}
+@media(max-width:600px){.file-reindex-button{white-space:normal;text-align:left}}
