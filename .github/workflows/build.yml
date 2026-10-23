@@ -79,4 +79,8 @@ jobs:
           test -n "$DOC_ID" && test "$DOC_ID" != "null"
           curl --silent --show-error --fail "http://localhost:8080/api/documents/$DOC_ID/versions" -H "Authorization: Bearer $TOKEN" | jq -e 'length == 1'
           curl --silent --show-error --fail "http://localhost:8080/api/documents" -H "Authorization: Bearer $TOKEN" | jq -e --arg title "CI smoke test document" 'any(.[]; .title == $title)'
+          printf '%s\n' 'attachment-search-marker-unique-9876' > /tmp/ci-attachment.txt
+          UPLOADED=$(curl --silent --show-error --fail -X POST "http://localhost:8080/api/documents/$DOC_ID/files" -H "Authorization: Bearer $TOKEN" -F "file=@/tmp/ci-attachment.txt;type=text/plain")
+          echo "$UPLOADED" | jq -e '.textExtractionStatus == "INDEXED" and .extractedCharacters > 0'
+          curl --silent --show-error --fail "http://localhost:8080/api/documents?q=attachment-search-marker-unique-9876" -H "Authorization: Bearer $TOKEN" | jq -e --arg id "$DOC_ID" 'any(.[]; .id == $id)'
           kill "$(cat /tmp/teksher-hub-api.pid)" || true
