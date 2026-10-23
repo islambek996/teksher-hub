@@ -134,13 +134,13 @@ function normalizeImportJurisdiction(value) {
   return aliases[normalized] || raw.toUpperCase()
 }
 
-function normalizeImportDate(value) {
+function normalizeImportDate(value, rowNumber, columnName) {
   const raw = String(value || '').trim()
   if (!raw) return null
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw
   const match = raw.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/)
   if (match) return match[3] + '-' + match[2].padStart(2, '0') + '-' + match[1].padStart(2, '0')
-  return raw
+  throw new Error('Строка CSV ' + rowNumber + ': некорректная дата в столбце «' + columnName + '»: ' + raw + '. Используйте ГГГГ-ММ-ДД или ДД.ММ.ГГГГ.')
 }
 
 function parseDocumentCsv(text) {
@@ -163,24 +163,27 @@ function parseDocumentCsv(text) {
     const index = fieldIndexes[key]
     return index < 0 ? '' : String(row[index] ?? '').trim()
   }
-  return dataRows.map(row => ({
-    title: read(row, 'title'),
-    jurisdiction: normalizeImportJurisdiction(read(row, 'jurisdiction')),
-    kind: read(row, 'kind'),
-    area: read(row, 'area'),
-    productGroup: read(row, 'productGroup') || null,
-    keywords: read(row, 'keywords') || null,
-    relatedDocumentIds: [],
-    documentNumber: read(row, 'documentNumber') || null,
-    documentDate: normalizeImportDate(read(row, 'documentDate')),
-    effectiveFrom: normalizeImportDate(read(row, 'effectiveFrom')),
-    effectiveUntil: normalizeImportDate(read(row, 'effectiveUntil')),
-    sourceUrl: read(row, 'sourceUrl') || null,
-    description: read(row, 'description'),
-    content: read(row, 'content'),
-    status: '',
-    changeNote: 'CSV импорт',
-  }))
+  return dataRows.map((row, index) => {
+    const rowNumber = index + 2
+    return {
+      title: read(row, 'title'),
+      jurisdiction: normalizeImportJurisdiction(read(row, 'jurisdiction')),
+      kind: read(row, 'kind'),
+      area: read(row, 'area'),
+      productGroup: read(row, 'productGroup') || null,
+      keywords: read(row, 'keywords') || null,
+      relatedDocumentIds: [],
+      documentNumber: read(row, 'documentNumber') || null,
+      documentDate: normalizeImportDate(read(row, 'documentDate'), rowNumber, 'Дата документа'),
+      effectiveFrom: normalizeImportDate(read(row, 'effectiveFrom'), rowNumber, 'Действует с'),
+      effectiveUntil: normalizeImportDate(read(row, 'effectiveUntil'), rowNumber, 'Действует по'),
+      sourceUrl: read(row, 'sourceUrl') || null,
+      description: read(row, 'description'),
+      content: read(row, 'content'),
+      status: '',
+      changeNote: 'CSV импорт',
+    }
+  })
 }
 
 function downloadCsvTemplate() {
