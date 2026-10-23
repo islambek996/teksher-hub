@@ -29,4 +29,10 @@ public class DocumentFile {
     private String uploadedBy;
     @Column(name = "uploaded_at", nullable = false)
     private Instant uploadedAt = Instant.now();
+    @Column(name = "extracted_text", columnDefinition = "text", nullable = false)
+    private String extractedText = "";
+    @Column(name = "text_extraction_status", nullable = false, length = 24)
+    private String textExtractionStatus = "NOT_INDEXED";
+    @Column(name = "text_extraction_note", length = 500)
+    private String textExtractionNote;
 }
