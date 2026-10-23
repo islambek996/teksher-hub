@@ -67,6 +67,24 @@ public class DocumentFileController {
         }
     }
 
+    @PostMapping("/{fileId}/reindex")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    @Transactional
+    public FileResponse reindex(@PathVariable UUID documentId, @PathVariable UUID fileId) {
+        DocumentFile file = files.findByIdAndDocumentId(fileId, documentId)
+                .orElseThrow(() -> new IllegalArgumentException("Файл не найден"));
+        var path = storage.resolve(file.getStoredName());
+        if (!Files.isRegularFile(path) || !Files.isReadable(path)) {
+            throw new IllegalArgumentException("Файл недоступен для индексации");
+        }
+        DocumentTextExtractionService.ExtractionResult extracted =
+                textExtraction.extract(path, file.getOriginalName());
+        file.setExtractedText(extracted.text());
+        file.setTextExtractionStatus(extracted.status());
+        file.setTextExtractionNote(extracted.note());
+        return FileResponse.from(files.save(file));
+    }
+
     @GetMapping("/{fileId}/download")
     @Transactional(readOnly = true)
     public ResponseEntity<Resource> download(@PathVariable UUID documentId, @PathVariable UUID fileId) throws IOException {
