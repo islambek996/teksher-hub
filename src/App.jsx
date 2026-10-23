@@ -4,7 +4,7 @@ import {
   ArrowDownRight, ArrowUpRight, BookOpen, Boxes, CalendarDays, ChevronDown,
   CircleHelp, ExternalLink, FileCheck2, FilePlus2, FileText, Globe2, Home,
   Landmark, Layers3, LibraryBig, Link2, Search, ShieldCheck, SlidersHorizontal,
-  Sparkles, Workflow, X, Pencil, Trash2, RefreshCw, UsersRound, LogOut, Paperclip, Download, History, CheckCircle2, UserPlus, Moon, Sun, Copy, ListTree, Clock3
+  Sparkles, Workflow, X, Pencil, Trash2, RefreshCw, UsersRound, LogOut, Paperclip, Download, History, CheckCircle2, UserPlus, Moon, Sun, Copy, ListTree, Clock3, Printer
 } from 'lucide-react'
 
 const demoDocuments = [
@@ -1248,6 +1248,7 @@ function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, can
   const [copyMessage, setCopyMessage] = useState('')
   const wikiBlocks = useMemo(() => buildWikiBlocks(doc.content), [doc.content])
   const articleHeadings = wikiBlocks.filter(block => block.type === 'heading')
+  const readingMinutes = Math.max(1, Math.ceil(String(doc.content || doc.description || '').split(/\s+/).filter(Boolean).length / 200))
   const relatedDocs = (doc.relatedDocumentIds || []).map(id => documents.find(item => item.id === id)).filter(Boolean)
 
   const copyArticleLink = async () => {
@@ -1277,6 +1278,7 @@ function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, can
     <div className="wiki-toolbar">
       <button className="back-button" onClick={onBack}><ArrowUpRight className="wiki-back-arrow" size={15}/> Назад к каталогу</button>
       <div className="wiki-toolbar-actions">
+        <button type="button" className="secondary-button wiki-print-button" onClick={() => window.print()}><Printer size={14}/> Печать</button>
         <button type="button" className="secondary-button wiki-copy-button" onClick={copyArticleLink}><Copy size={14}/>{copyMessage === 'Ссылка скопирована' ? 'Скопировано' : 'Скопировать ссылку'}</button>
         {copyMessage && <span className="wiki-copy-status" role="status">{copyMessage}</span>}
       </div>
@@ -1293,7 +1295,7 @@ function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, can
           <div className="wiki-article-title-copy">
             <div className="section-kicker">TEKSHER HUB / ВНУТРЕННЯЯ ЭНЦИКЛОПЕДИЯ</div>
             <h1>{doc.title}</h1>
-            <p className="wiki-article-subtitle">{jurisdiction.short} · {doc.kind || 'Материал'}{doc.documentNumber ? ' · № ' + doc.documentNumber : ''}{doc.area ? ' · ' + doc.area : ''}</p>
+            <p className="wiki-article-subtitle">{jurisdiction.short} · {doc.kind || 'Материал'}{doc.documentNumber ? ' · № ' + doc.documentNumber : ''}{doc.area ? ' · ' + doc.area : ''}{doc.content ? ' · около ' + readingMinutes + ' мин чтения' : ''}</p>
           </div>
           <div className="wiki-article-mark"><BookOpen size={29}/></div>
         </div>
