@@ -63,6 +63,8 @@ function App() {
   const [editingDoc, setEditingDoc] = useState(null)
   const [userDocuments, setUserDocuments] = useState(loadUserDocuments)
   const [apiDocuments, setApiDocuments] = useState([])
+  const [apiSearchResults, setApiSearchResults] = useState([])
+  const [apiSearchTerm, setApiSearchTerm] = useState('')
   const [apiFiles, setApiFiles] = useState([])
   const [documentVersions, setDocumentVersions] = useState([])
   const [monitors, setMonitors] = useState([])
@@ -79,18 +81,23 @@ function App() {
 
   const documents = useMemo(() => API_ENABLED ? apiDocuments : [...userDocuments, ...demoDocuments], [apiDocuments, userDocuments])
 
-  const filteredDocuments = useMemo(() => documents.filter((doc) => {
-    const matchesJurisdiction = ['RU', 'KG', 'EAEU'].includes(active) ? doc.jurisdiction === active : true
-    const matchesQuery = [doc.title, doc.description, doc.content || '', doc.area, doc.kind, doc.productGroup || '', doc.keywords || '', doc.documentNumber || ''].join(' ').toLowerCase().includes(query.toLowerCase())
-    const matchesFilter = filter === 'Все типы' || doc.kind === filter
-    const displayStatus = doc.statusLabel || doc.status
-    const matchesStatus = statusFilter === 'Все статусы' || displayStatus === statusFilter
-    const matchesSection = active === 'groups' ? (doc.kind === 'Товарная группа' || doc.area === 'Товарные группы')
-      : active === 'processes' ? doc.kind === 'Бизнес-процесс'
-      : active === 'knowledge' ? ['Нормативный акт', 'Товарная группа', 'Инструкция', 'Внутренний документ', 'Техническая документация', 'Известная ошибка', 'Шаблон', 'Бизнес-процесс', 'Обзор'].includes(doc.kind)
-      : true
-    return matchesJurisdiction && matchesQuery && matchesFilter && matchesStatus && matchesSection
-  }), [documents, active, query, filter, statusFilter])
+  const filteredDocuments = useMemo(() => {
+    const searchSource = API_ENABLED && query.trim()
+      ? (apiSearchTerm === query.trim() ? apiSearchResults : [])
+      : documents
+    return searchSource.filter((doc) => {
+      const matchesJurisdiction = ['RU', 'KG', 'EAEU'].includes(active) ? doc.jurisdiction === active : true
+      const matchesQuery = API_ENABLED || [doc.title, doc.description, doc.content || '', doc.area, doc.kind, doc.productGroup || '', doc.keywords || '', doc.documentNumber || ''].join(' ').toLowerCase().includes(query.toLowerCase())
+      const matchesFilter = filter === 'Все типы' || doc.kind === filter
+      const displayStatus = doc.statusLabel || doc.status
+      const matchesStatus = statusFilter === 'Все статусы' || displayStatus === statusFilter
+      const matchesSection = active === 'groups' ? (doc.kind === 'Товарная группа' || doc.area === 'Товарные группы')
+        : active === 'processes' ? doc.kind === 'Бизнес-процесс'
+        : active === 'knowledge' ? ['Нормативный акт', 'Товарная группа', 'Инструкция', 'Внутренний документ', 'Техническая документация', 'Известная ошибка', 'Шаблон', 'Бизнес-процесс', 'Обзор'].includes(doc.kind)
+        : true
+      return matchesJurisdiction && matchesQuery && matchesFilter && matchesStatus && matchesSection
+    })
+  }, [documents, apiSearchResults, apiSearchTerm, active, query, filter, statusFilter])
 
   useEffect(() => {
     if (!API_ENABLED) { setAuthInitializing(false); return }
@@ -112,6 +119,31 @@ function App() {
     }
     return () => { cancelled = true }
   }, [currentUser])
+
+  useEffect(() => {
+    if (!API_ENABLED || !currentUser) return
+    const term = query.trim()
+    if (!term) {
+      setApiSearchResults([])
+      setApiSearchTerm('')
+      return
+    }
+    let cancelled = false
+    const timeout = window.setTimeout(() => {
+      apiRequest('/api/documents?q=' + encodeURIComponent(term))
+        .then(rows => {
+          if (!cancelled) {
+            setApiSearchResults(rows)
+            setApiSearchTerm(term)
+          }
+        })
+        .catch(err => { if (!cancelled) setActionError(err.message) })
+    }, 250)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeout)
+    }
+  }, [currentUser, query])
 
   useEffect(() => {
     if (!API_ENABLED || !currentUser || !selectedDoc || selectedDoc.isDemo) {
@@ -166,7 +198,17 @@ function App() {
   }, [documents])
 
   const refreshDocuments = async () => {
-    if (API_ENABLED) setApiDocuments(await apiRequest('/api/documents'))
+    if (!API_ENABLED) return
+    const term = query.trim()
+    const [rows, searchRows] = await Promise.all([
+      apiRequest('/api/documents'),
+      term ? apiRequest('/api/documents?q=' + encodeURIComponent(term)) : Promise.resolve([])
+    ])
+    setApiDocuments(rows)
+    if (term) {
+      setApiSearchResults(searchRows)
+      setApiSearchTerm(term)
+    }
   }
   const refreshMonitors = async () => setMonitors(await apiRequest('/api/monitors'))
   const refreshUsers = async () => setUsers(await apiRequest('/api/users'))
@@ -189,6 +231,8 @@ function App() {
     clearStoredToken()
     setCurrentUser(null)
     setApiDocuments([])
+    setApiSearchResults([])
+    setApiSearchTerm('')
     setApiFiles([])
     setDocumentVersions([])
     setSelectedDoc(null)
@@ -771,7 +815,7 @@ function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, can
       </section>}
       {!doc.isDemo && <section className="detail-subsection">
         <div className="subsection-heading"><div><Paperclip size={17} /><b>Файлы документа</b></div><span>{files.length}</span></div>
-        {files.length ? <div className="attached-files">{files.map(file => <div className="attached-file" key={file.id}><FileText size={18} /><div><b>{file.originalName}</b><small>{formatBytes(file.sizeBytes)} · {file.uploadedBy || 'пользователь'} · {formatDate(file.uploadedAt)}</small></div><button type="button" className="icon-button" onClick={() => onDownload(file)} aria-label="Скачать файл"><Download size={16} /></button></div>)}
+        {files.length ? <div className="attached-files">{files.map(file => <div className="attached-file" key={file.id}><FileText size={18} /><div className="attached-file-copy"><b>{file.originalName}</b><small>{formatBytes(file.sizeBytes)} · {file.uploadedBy || 'пользователь'} · {formatDate(file.uploadedAt)}</small><small className={'file-index-status file-index-' + (file.textExtractionStatus || 'NOT_INDEXED').toLowerCase()}>{fileIndexLabel(file)}</small>{file.textExtractionNote && <small className="file-index-note">{file.textExtractionNote}</small>}</div><button type="button" className="icon-button" onClick={() => onDownload(file)} aria-label="Скачать файл"><Download size={16} /></button></div>)}
         </div> : <p className="subsection-empty">К файлу документа пока ничего не прикреплено. Файл можно добавить через форму редактирования.</p>}
       </section>}
       {!doc.isDemo && <section className="detail-subsection">
@@ -789,6 +833,20 @@ function formatBytes(bytes = 0) {
   if (bytes < 1024) return bytes + ' Б'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' КБ'
   return (bytes / (1024 * 1024)).toFixed(1) + ' МБ'
+}
+
+function fileIndexLabel(file) {
+  const count = Number(file.extractedCharacters || 0).toLocaleString('ru-RU')
+  switch (file.textExtractionStatus) {
+    case 'INDEXED': return 'Текст проиндексирован · ' + count + ' симв.'
+    case 'TRUNCATED': return 'Текст индексирован частично · ' + count + ' симв.'
+    case 'EMPTY': return 'Текст не обнаружен'
+    case 'NOT_SUPPORTED': return 'Формат не индексируется автоматически'
+    case 'FAILED': return 'Не удалось извлечь текст'
+    case 'PENDING': return 'Извлечение текста…'
+    case 'NOT_INDEXED':
+    default: return 'Текст не индексирован (старое вложение)'
+  }
 }
 
 const knowledgeTemplates = {
