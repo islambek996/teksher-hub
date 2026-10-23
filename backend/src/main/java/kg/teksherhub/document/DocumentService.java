@@ -47,7 +47,7 @@ public class DocumentService {
      */
     @Transactional(readOnly = true)
     public byte[] exportCsv() {
-        StringBuilder csv = new StringBuilder("\\uFEFF");
+        StringBuilder csv = new StringBuilder().append((char) 0xFEFF);
         appendCsvRow(csv,
                 "ID", "Название", "Юрисдикция", "Тип материала", "Тематическая область",
                 "Товарная группа", "Ключевые слова", "Номер документа", "Дата документа",
@@ -72,9 +72,9 @@ public class DocumentService {
         for (int i = 0; i < values.length; i++) {
             if (i > 0) output.append(';');
             String value = values[i] == null ? "" : values[i].toString();
-            output.append('"').append(value.replace("\\\"", "\\\"\\\"")).append('"');
+            output.append('"').append(value.replace("\"", "\"\"")).append('"');
         }
-        output.append("\\r\\n");
+        output.append("\r\n");
     }
 
     @Transactional(readOnly = true)
