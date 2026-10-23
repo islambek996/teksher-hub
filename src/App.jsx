@@ -1423,6 +1423,59 @@ const knowledgeTemplates = {
   template: { kind: 'Шаблон', area: 'Документы и коммуникации', description: 'Назначение шаблона, кто использует и когда его применять.', content: 'Когда использовать:\n\nКто заполняет / согласует:\n\nОбязательные поля:\n\nТекст / структура шаблона:\n\nПорядок согласования и отправки:\n\nСвязанные регламенты:' },
 }
 function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, apiEnabled, saving, error }) {
+  const [aiSummaryLoading, setAiSummaryLoading] = useState(false)
+  const [aiSummaryMessage, setAiSummaryMessage] = useState('')
+  const [aiSummaryError, setAiSummaryError] = useState('')
+
+  const handleGenerateAiSummary = async (event) => {
+    const form = event.currentTarget.closest('form')
+    if (!form) return
+    if (!apiEnabled) {
+      setAiSummaryMessage('Генерация ИИ требует подключённого API и серверной модели. Интерфейс уже подготовлен, подключение добавим на этапе бэкенда.')
+      setAiSummaryError('')
+      return
+    }
+    const fieldValue = name => String(form.elements.namedItem(name)?.value || '').trim()
+    const file = form.elements.namedItem('file')?.files?.[0]
+    const content = fieldValue('content')
+    if (!file && !content) {
+      setAiSummaryError('Сначала приложите документ или вставьте текст в поле «Содержание».')
+      setAiSummaryMessage('')
+      return
+    }
+    if (file && file.size > 30 * 1024 * 1024) {
+      setAiSummaryError('Размер документа превышает 30 МБ.')
+      setAiSummaryMessage('')
+      return
+    }
+    const requestBody = new FormData()
+    ;['title', 'jurisdiction', 'kind', 'area', 'documentNumber', 'documentDate', 'effectiveFrom', 'effectiveUntil', 'sourceUrl', 'content'].forEach(name => {
+      requestBody.append(name, fieldValue(name))
+    })
+    requestBody.append('language', 'ru')
+    if (file) requestBody.append('file', file)
+    setAiSummaryLoading(true)
+    setAiSummaryError('')
+    setAiSummaryMessage('')
+    try {
+      const result = await apiRequest('/api/ai/summarize', { method: 'POST', body: requestBody })
+      const summary = String(result?.description || result?.summary || '').trim()
+      if (!summary) throw new Error('ИИ не вернул краткое описание. Попробуйте другой документ или заполните описание вручную.')
+      const descriptionField = form.elements.namedItem('description')
+      if (descriptionField) descriptionField.value = summary
+      setAiSummaryMessage('Черновик краткого описания подготовлен. Проверьте даты, номера и формулировки по оригиналу перед сохранением.')
+    } catch (requestError) {
+      const message = requestError?.message || ''
+      if (/404|no static resource|not found|not_found/i.test(message)) {
+        setAiSummaryMessage('Маршрут ИИ ещё не подключён в бэкенде. Фронтенд готов к интеграции; до подключения сервиса заполните описание вручную.')
+        setAiSummaryError('')
+      } else {
+        setAiSummaryError(message || 'Не удалось подготовить описание. Попробуйте ещё раз или заполните его вручную.')
+      }
+    } finally {
+      setAiSummaryLoading(false)
+    }
+  }
   const initialStatus = ['DRAFT','UNDER_REVIEW','ACTIVE','EXPIRED','ARCHIVED'].includes(initialDoc?.status) ? initialDoc.status : ''
   const applyTemplate = (event) => {
     const template = knowledgeTemplates[event.target.value]
@@ -1454,7 +1507,13 @@ function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, ap
           {apiEnabled && <label className="form-field full-field"><span>Связанные документы</span><select name="relatedDocumentIds" className="related-select" multiple defaultValue={initialDoc?.relatedDocumentIds || []}>{documents.map(item => <option key={item.id} value={item.id}>{jurisdictions[item.jurisdiction]?.short || item.jurisdiction} · {item.title}</option>)}</select><small className="form-help">Чтобы выбрать несколько документов, удерживай Ctrl (Windows) или Command (Mac).</small></label>}
           <label className="form-field full-field"><span>Ссылка на официальный источник</span><input name="sourceUrl" type="url" maxLength="2000" defaultValue={initialDoc?.sourceUrl || ''} placeholder="https://..." /></label>
           {apiEnabled && <label className="form-field"><span>Статус карточки</span><select name="status" defaultValue={initialStatus}><option value="">Автоматически: черновик / на проверку</option><option value="DRAFT">Черновик</option><option value="UNDER_REVIEW">На проверке</option><option value="ACTIVE">Действует</option><option value="EXPIRED">Срок действия истёк</option><option value="ARCHIVED">В архиве</option></select></label>}
-          <label className="form-field full-field"><span>Краткое описание *</span><textarea name="description" required rows="3" maxLength="3000" defaultValue={initialDoc?.description || ''} placeholder="Что регулирует документ и когда его использовать" /></label>
+          <div className="form-field full-field ai-summary-field">
+            <div className="ai-summary-field-heading"><label htmlFor="document-description">Краткое описание *</label><button type="button" className="secondary-button ai-summary-button" onClick={handleGenerateAiSummary} disabled={aiSummaryLoading || saving}><Sparkles size={14}/>{aiSummaryLoading ? 'Готовим описание…' : 'Подготовить с ИИ'}</button></div>
+            <textarea id="document-description" name="description" required rows="4" maxLength="3000" defaultValue={initialDoc?.description || ''} placeholder="Кратко: о чём документ, к кому относится и что важно сотруднику знать" />
+            <small className="form-help">ИИ-описание – только черновик. Проверьте факты, номера, даты и область применения по исходному документу.</small>
+            {aiSummaryMessage && <div className="ai-summary-message" role="status"><Sparkles size={14}/><span>{aiSummaryMessage}</span></div>}
+            {aiSummaryError && <div className="feedback feedback-error ai-summary-feedback" role="alert"><CircleHelp size={14}/><span>{aiSummaryError}</span></div>}
+          </div>
           <label className="form-field full-field"><span>Содержание / рабочая инструкция</span><textarea name="content" rows="8" maxLength="50000" defaultValue={initialDoc?.content || ''} placeholder="Добавьте текст инструкции, порядок действий, решение ошибки, выдержку или другие сведения для поиска..." /><small className="form-help">Текст будет доступен для поиска (до 50 000 символов). Текстовые PDF/Word/Excel/TXT/CSV индексируются автоматически; для сканов PDF и изображений используется OCR с пометкой результата.</small></label>
           {apiEnabled && <label className="form-field full-field"><span>Комментарий к редакции</span><input name="changeNote" maxLength="1000" placeholder="Например, обновлена дата вступления в силу" /></label>}
           {apiEnabled && <label className="form-field full-field upload-field"><span>Прикрепить файл (необязательно, до 30 МБ)</span><span className="file-input-wrap"><Paperclip size={16} /><input name="file" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg" /></span></label>}
