@@ -15,18 +15,18 @@ class AiSummaryServiceTest {
 
     @Test
     void reportsMissingServerApiKeyWithoutMakingARequest() {
-        AiSummaryService service = new AiSummaryService("", "gpt-5-mini", objectMapper, textExtraction);
+        AiSummaryService service = new AiSummaryService("", "openai/gpt-oss-20b", objectMapper, textExtraction);
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
                 service.summarize(request("Some document text"), null));
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, exception.getStatusCode());
-        assertEquals(true, exception.getReason().contains("OPENAI_API_KEY"));
+        assertEquals(true, exception.getReason().contains("GROQ_API_KEY"));
     }
 
     @Test
     void requiresDocumentTextOrAnAttachment() {
-        AiSummaryService service = new AiSummaryService("test-key", "gpt-5-mini", objectMapper, textExtraction);
+        AiSummaryService service = new AiSummaryService("test-key", "openai/gpt-oss-20b", objectMapper, textExtraction);
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
                 service.summarize(request("  "), null));
