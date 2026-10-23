@@ -1598,7 +1598,7 @@ function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, ap
     } catch (requestError) {
       const message = requestError?.message || ''
       if (/404|no static resource|not found|not_found/i.test(message)) {
-        setAiSummaryMessage('Маршрут ИИ ещё не подключён в бэкенде. Фронтенд готов к интеграции; до подключения сервиса заполните описание вручную.')
+        setAiSummaryMessage('Маршрут ИИ не найден на подключённом backend. Обновите/redeploy backend до актуальной версии и задайте OPENAI_API_KEY в настройках сервера.')
         setAiSummaryError('')
       } else {
         setAiSummaryError(message || 'Не удалось подготовить описание. Попробуйте ещё раз или заполните его вручную.')
