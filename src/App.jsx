@@ -4,7 +4,7 @@ import {
   ArrowDownRight, ArrowUpRight, BookOpen, Boxes, CalendarDays, ChevronDown,
   CircleHelp, ExternalLink, FileCheck2, FilePlus2, FileText, Globe2, Home,
   Landmark, Layers3, LibraryBig, Link2, Search, ShieldCheck, SlidersHorizontal,
-  Sparkles, Workflow, X, Pencil, Trash2, RefreshCw, UsersRound, LogOut, Paperclip, Download, History, CheckCircle2, UserPlus
+  Sparkles, Workflow, X, Pencil, Trash2, RefreshCw, UsersRound, LogOut, Paperclip, Download, History, CheckCircle2, UserPlus, Moon, Sun
 } from 'lucide-react'
 
 const demoDocuments = [
@@ -43,6 +43,11 @@ const navGroups = [
 ]
 
 const STORAGE_KEY = 'teksher-hub-user-documents'
+const THEME_STORAGE_KEY = 'teksher-hub-theme'
+
+function loadTheme() {
+  try { return window.localStorage.getItem(THEME_STORAGE_KEY) === 'dark' ? 'dark' : 'light' } catch { return 'light' }
+}
 
 function loadUserDocuments() {
   try {
@@ -220,6 +225,7 @@ function downloadCsvTemplate() {
 }
 
 function App() {
+  const [theme, setTheme] = useState(loadTheme)
   const [active, setActive] = useState('home')
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('Все типы')
@@ -248,6 +254,11 @@ function App() {
   const [monitorModalOpen, setMonitorModalOpen] = useState(false)
   const [userModalOpen, setUserModalOpen] = useState(false)
   const [passwordResetTarget, setPasswordResetTarget] = useState(null)
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    try { window.localStorage.setItem(THEME_STORAGE_KEY, theme) } catch { /* storage unavailable */ }
+  }, [theme])
 
   const documents = useMemo(() => API_ENABLED ? apiDocuments : [...userDocuments, ...demoDocuments], [apiDocuments, userDocuments])
 
@@ -735,7 +746,7 @@ function App() {
       <main className="main-area">
         <header className="topbar">
           <div className="breadcrumbs"><span>TEKSHER HUB</span><span className="crumb-slash">/</span><strong>{selectedDoc ? 'Карточка документа' : pageTitle}</strong></div>
-          <div className="topbar-right"><span className="internal-badge"><ShieldCheck size={14} /> {API_ENABLED ? currentUser?.role || 'Пользователь' : 'Демо-режим'}</span><div className="avatar">{currentUser?.displayName ? currentUser.displayName.split(' ').map(part => part[0]).join('').slice(0,2).toUpperCase() : 'ОП'}</div>{API_ENABLED && <button className="logout-button" onClick={handleLogout} title="Выйти"><LogOut size={15} /><span>Выход</span></button>}</div>
+          <div className="topbar-right"><button className="theme-toggle" type="button" onClick={() => setTheme(current => current === 'dark' ? 'light' : 'dark')} aria-label={theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'} aria-pressed={theme === 'dark'} title={theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'}>{theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}<span>{theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}</span></button><span className="internal-badge"><ShieldCheck size={14} /> {API_ENABLED ? currentUser?.role || 'Пользователь' : 'Демо-режим'}</span><div className="avatar">{currentUser?.displayName ? currentUser.displayName.split(' ').map(part => part[0]).join('').slice(0,2).toUpperCase() : 'ОП'}</div>{API_ENABLED && <button className="logout-button" onClick={handleLogout} title="Выйти"><LogOut size={15} /><span>Выход</span></button>}</div>
         </header>
 
         <div className="page-content">
