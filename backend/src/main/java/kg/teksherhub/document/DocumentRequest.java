@@ -22,6 +22,7 @@ public record DocumentRequest(
         LocalDate effectiveUntil,
         @Size(max = 2000) String sourceUrl,
         @NotBlank @Size(max = 3000) String description,
+        @Size(max = 50000) String content,
         @Pattern(regexp = "|DRAFT|UNDER_REVIEW|ACTIVE|EXPIRED|ARCHIVED") String status,
         @Size(max = 1000) String changeNote
 ) {}
