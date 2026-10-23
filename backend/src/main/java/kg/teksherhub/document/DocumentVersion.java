@@ -43,6 +43,8 @@ public class DocumentVersion {
     private String sourceUrl;
     @Column(nullable = false, length = 3000)
     private String description;
+    @Column(columnDefinition = "text", nullable = false)
+    private String content = "";
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 24)
     private DocumentStatus status;
@@ -71,6 +73,7 @@ public class DocumentVersion {
         v.setEffectiveUntil(doc.getEffectiveUntil());
         v.setSourceUrl(doc.getSourceUrl());
         v.setDescription(doc.getDescription());
+        v.setContent(doc.getContent());
         v.setStatus(doc.getStatus());
         v.setChangeNote(note);
         v.setChangedBy(username);
