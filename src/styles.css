@@ -457,3 +457,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .freshness-footnote{margin-top:13px;padding-top:11px;border-top:1px solid #edf1f6;color:#8a98a9;font-size:10px;line-height:1.65}
 .workbench-review-button:disabled{cursor:not-allowed;opacity:.5;box-shadow:none;transform:none}
 @media(max-width:600px){.freshness-metrics{gap:5px}.freshness-metrics>span{padding:9px 7px}.freshness-metrics small{font-size:9px}.freshness-item{gap:7px}}
+
+
+/* Attachment text-index status */
+.attached-file-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:5px}
+.file-index-status{display:inline-flex;align-self:flex-start;max-width:100%;padding:4px 7px;border-radius:6px;background:#eef5fc;color:#315d8d;font-size:10px;line-height:1.45;overflow-wrap:anywhere}
+.file-index-indexed{background:#eaf6ee;color:#28714a}
+.file-index-truncated{background:#fff4df;color:#95671d}
+.file-index-empty,.file-index-not_supported,.file-index-not_indexed{background:#f2f5f8;color:#65788e}
+.file-index-failed{background:#fff0ef;color:#9d4540}
+.file-index-note{font-size:10px;line-height:1.5;color:#8493a5;overflow-wrap:anywhere}
