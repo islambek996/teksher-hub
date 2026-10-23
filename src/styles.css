@@ -1051,3 +1051,19 @@ html[data-theme="dark"] .ai-summary-message{background:#1b2e43;border-color:#355
   a{color:#1d4f82!important;text-decoration:underline!important}
 }
 html[data-theme="dark"] .wiki-print-button{background:#203249;border-color:#3b526b;color:#d2e0f0}
+
+
+.ai-summary-privacy {
+  display: block;
+  padding: 9px 11px;
+  border: 1px solid #ead9ad;
+  border-radius: 8px;
+  background: #fff9e9;
+  color: #725c2f;
+  line-height: 1.55;
+}
+[data-theme="dark"] .ai-summary-privacy {
+  border-color: #65552e;
+  background: #2c281c;
+  color: #e4d4a3;
+}
