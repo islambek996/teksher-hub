@@ -164,7 +164,7 @@ public class DocumentService {
     private static String searchable(DocumentRecord d) {
         return (d.getTitle() + " " + d.getDescription() + " " + d.getArea() + " " + d.getKind() + " "
                 + d.getJurisdiction() + " " + value(d.getProductGroup()) + " " + value(d.getKeywords()) + " "
-                + value(d.getDocumentNumber()) + " " + value(d.getSourceUrl())).toLowerCase();
+                + value(d.getDocumentNumber()) + " " + value(d.getSourceUrl()) + " " + value(d.getContent())).toLowerCase();
     }
 
     private static void apply(DocumentRecord d, DocumentRequest r, boolean creating) {
@@ -180,6 +180,7 @@ public class DocumentService {
         d.setEffectiveUntil(r.effectiveUntil());
         d.setSourceUrl(normalizeUrl(r.sourceUrl()));
         d.setDescription(r.description().trim());
+        d.setContent(r.content() == null ? "" : r.content().trim());
         if (r.effectiveFrom() != null && r.effectiveUntil() != null && r.effectiveUntil().isBefore(r.effectiveFrom())) {
             throw new IllegalArgumentException("Дата окончания действия не может быть раньше даты начала");
         }
