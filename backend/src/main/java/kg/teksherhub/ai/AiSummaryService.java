@@ -29,7 +29,7 @@ import java.util.Set;
 @Service
 public class AiSummaryService {
     private static final Logger log = LoggerFactory.getLogger(AiSummaryService.class);
-    private static final URI RESPONSES_URI = URI.create("https://api.openai.com/v1/responses");
+    private static final URI RESPONSES_URI = URI.create("https://api.groq.com/openai/v1/responses");
     private static final long MAX_UPLOAD_BYTES = 30L * 1024 * 1024;
     private static final int MAX_SOURCE_CHARACTERS = 28_000;
     private static final int MAX_METADATA_VALUE = 2_000;
@@ -43,12 +43,12 @@ public class AiSummaryService {
     private final DocumentTextExtractionService textExtraction;
 
     public AiSummaryService(
-            @Value("${app.ai.openai-api-key:}") String apiKey,
-            @Value("${app.ai.model:gpt-5-mini}") String model,
+            @Value("${app.ai.groq-api-key:}") String apiKey,
+            @Value("${app.ai.groq-model:openai/gpt-oss-20b}") String model,
             ObjectMapper objectMapper,
             DocumentTextExtractionService textExtraction) {
         this.apiKey = apiKey == null ? "" : apiKey.trim();
-        this.model = model == null || model.isBlank() ? "gpt-5-mini" : model.trim();
+        this.model = model == null || model.isBlank() ? "openai/gpt-oss-20b" : model.trim();
         this.objectMapper = objectMapper;
         this.textExtraction = textExtraction;
         this.httpClient = HttpClient.newBuilder()
@@ -59,7 +59,7 @@ public class AiSummaryService {
     public SummaryResponse summarize(SummaryRequest request, MultipartFile file) {
         if (apiKey.isBlank()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "ИИ не настроен на сервере. Администратору нужно указать OPENAI_API_KEY в настройках backend.");
+                    "ИИ не настроен на сервере. Администратору нужно указать GROQ_API_KEY в настройках backend.");
         }
 
         String title = clean(request.title());
@@ -135,7 +135,6 @@ public class AiSummaryService {
         try {
             ObjectNode payload = objectMapper.createObjectNode();
             payload.put("model", model);
-            payload.put("store", false);
             payload.put("max_output_tokens", 300);
             payload.put("instructions", """
                     Ты помогаешь редактору готовить краткие описания материалов для внутренней базы знаний оператора маркировки товаров.
@@ -156,7 +155,7 @@ public class AiSummaryService {
             HttpResponse<String> response = httpClient.send(
                     httpRequest, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                log.warn("OpenAI Responses API returned HTTP {}", response.statusCode());
+                log.warn("Groq Responses API returned HTTP {}", response.statusCode());
                 throw providerFailure(response.statusCode());
             }
 
@@ -176,7 +175,7 @@ public class AiSummaryService {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                     "Запрос к ИИ был прерван. Попробуйте ещё раз.", ex);
         } catch (IOException ex) {
-            log.warn("OpenAI Responses API request failed", ex);
+            log.warn("Groq Responses API request failed", ex);
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                     "Не удалось связаться с сервисом ИИ. Проверьте доступ backend к интернету и повторите попытку.", ex);
         }
@@ -185,7 +184,7 @@ public class AiSummaryService {
     private static ResponseStatusException providerFailure(int status) {
         if (status == 401 || status == 403) {
             return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "Сервис ИИ отклонил ключ или у него нет доступа. Проверьте OPENAI_API_KEY и доступность выбранной модели.");
+                    "Сервис ИИ отклонил ключ или у него нет доступа. Проверьте GROQ_API_KEY и доступность выбранной модели.");
         }
         if (status == 429) {
             return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
@@ -193,7 +192,7 @@ public class AiSummaryService {
         }
         if (status == 400) {
             return new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                    "Сервис ИИ отклонил запрос. Проверьте значение OPENAI_MODEL в настройках backend.");
+                    "Сервис ИИ отклонил запрос. Проверьте значение GROQ_MODEL в настройках backend.");
         }
         return new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                 "Сервис ИИ временно недоступен. Попробуйте повторить запрос позже.");
