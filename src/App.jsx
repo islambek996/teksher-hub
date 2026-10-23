@@ -707,12 +707,31 @@ function formatBytes(bytes = 0) {
   return (bytes / (1024 * 1024)).toFixed(1) + ' МБ'
 }
 
+const knowledgeTemplates = {
+  instruction: { kind: 'Инструкция', area: 'Работа в системе', description: 'Цель инструкции, для кого она предназначена и в каких случаях применяется.', content: 'Цель и область применения\n\nПеред началом:\n1. Проверьте права доступа и исходные данные.\n2. Убедитесь, что выбран правильный контур и организация.\n\nПорядок действий:\n1. \n2. \n3. \n\nОжидаемый результат:\n\nПроверка результата:\n\nТиповые ошибки и действия при их возникновении:\n\nИсточник / связанные документы:' },
+  process: { kind: 'Бизнес-процесс', area: 'Рабочий процесс', description: 'Назначение процесса, участники и результат выполнения.', content: 'Цель процесса:\n\nВладелец процесса:\n\nУчастники и роли:\n\nВходные данные:\n\nОсновной порядок:\n1. Шаг / ответственный / результат.\n2. Шаг / ответственный / результат.\n3. Шаг / ответственный / результат.\n\nКонтрольные точки:\n\nИсключения и эскалация:\n\nВыходные документы / результат:\n\nСвязанные инструкции:' },
+  error: { kind: 'Известная ошибка', area: 'Диагностика и поддержка', description: 'Точный текст ошибки, условия появления и влияние на работу.', content: 'Точный текст ошибки:\n\nГде возникает:\n\nУсловия воспроизведения:\n1. \n2. \n3. \n\nПричина (если подтверждена):\n\nКак диагностировать:\n\nПроверенное решение:\n1. \n2. \n3. \n\nВременный обходной путь (если разрешён):\n\nКогда передавать на эскалацию:\n\nСтатус решения: не проверено / проверено\n\nДата последней проверки и ответственный:\n\nСвязанные инциденты / документы:' },
+  regulation: { kind: 'Нормативный акт', area: 'Нормативная база', description: 'Кратко опишите предмет регулирования и какие требования затрагивают работу оператора.', content: 'Предмет регулирования:\n\nКлючевые требования для оператора:\n\nК кому и к каким товарам применяется:\n\nДата вступления в силу / переходные сроки:\n\nПрактическое влияние на процессы:\n\nОфициальный источник и реквизиты:\n\nСвязанные акты:\n\nДата проверки актуальности / проверивший:' },
+  template: { kind: 'Шаблон', area: 'Документы и коммуникации', description: 'Назначение шаблона, кто использует и когда его применять.', content: 'Когда использовать:\n\nКто заполняет / согласует:\n\nОбязательные поля:\n\nТекст / структура шаблона:\n\nПорядок согласования и отправки:\n\nСвязанные регламенты:' },
+}
 function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, apiEnabled, saving, error }) {
   const initialStatus = ['DRAFT','UNDER_REVIEW','ACTIVE','EXPIRED','ARCHIVED'].includes(initialDoc?.status) ? initialDoc.status : ''
+  const applyTemplate = (event) => {
+    const template = knowledgeTemplates[event.target.value]
+    if (!template) return
+    const form = event.currentTarget.form
+    Object.entries(template).forEach(([name, value]) => {
+      const field = form.elements.namedItem(name)
+      if (field && !field.value.trim()) field.value = value
+    })
+    if (form.elements.namedItem('kind')) form.elements.namedItem('kind').value = template.kind
+    if (form.elements.namedItem('area') && !form.elements.namedItem('area').value.trim()) form.elements.namedItem('area').value = template.area
+  }
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose() }}>
     <section className="create-modal" role="dialog" aria-modal="true" aria-labelledby="create-document-title">
       <header className="modal-header"><div><div className="section-kicker">КАТАЛОГ / НОРМАТИВНЫЙ ФОНД</div><h2 id="create-document-title">{initialDoc ? 'Редактировать карточку' : 'Добавить документ'}</h2><p>Укажите реквизиты и официальный источник. Перед отметкой «Действует» проверьте документ вручную.</p></div><button type="button" className="icon-button" onClick={onClose} aria-label="Закрыть" disabled={saving}><X size={20} /></button></header>
       <form onSubmit={onSubmit}>
+        {!initialDoc && <label className="form-field full-field knowledge-template-picker"><span>Быстро создать по шаблону</span><select defaultValue="" onChange={applyTemplate}><option value="">Без шаблона – заполнить вручную</option><option value="instruction">Инструкция</option><option value="process">Бизнес-процесс</option><option value="error">Известная ошибка / решение</option><option value="regulation">Нормативный акт</option><option value="template">Шаблон документа</option></select><small className="form-help">Шаблон заполнит тип, область, описание и структуру содержания. Проверьте и замените все подсказки своими данными.</small></label>}
         <label className="form-field full-field"><span>Название документа *</span><input name="title" required maxLength="240" defaultValue={initialDoc?.title || ''} placeholder="Например, постановление или инструкция" /></label>
         <div className="form-grid">
           <label className="form-field"><span>Юрисдикция *</span><select name="jurisdiction" defaultValue={initialDoc?.jurisdiction || 'KG'} required><option value="KG">Кыргызская Республика</option><option value="RU">Российская Федерация</option><option value="EAEU">ЕАЭС</option></select></label>
