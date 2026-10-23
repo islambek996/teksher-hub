@@ -36,7 +36,8 @@ public class DocumentService {
                 .filter(d -> jurisdiction == null || jurisdiction.isBlank() || jurisdiction.equalsIgnoreCase(d.getJurisdiction()))
                 .filter(d -> kind == null || kind.isBlank() || kind.equalsIgnoreCase(d.getKind()))
                 .filter(d -> status == null || status.isBlank() || status.equalsIgnoreCase(d.getStatus().name()))
-                .map(this::toResponse).toList();
+                .map(d -> toResponse(d, !q.isBlank() && attachmentMatches.contains(d.getId())))
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -133,7 +134,12 @@ public class DocumentService {
     }
 
     private DocumentResponse toResponse(DocumentRecord d) {
-        return DocumentResponse.from(d, files.countByDocumentId(d.getId()), links.findRelatedIdsByDocumentId(d.getId()));
+        return toResponse(d, false);
+    }
+
+    private DocumentResponse toResponse(DocumentRecord d, boolean matchedInAttachment) {
+        return DocumentResponse.from(d, files.countByDocumentId(d.getId()),
+                links.findRelatedIdsByDocumentId(d.getId()), matchedInAttachment);
     }
 
 
