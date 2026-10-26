@@ -100,11 +100,6 @@ public class AiAssistantService {
         if (question.length() > MAX_QUESTION_CHARACTERS) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Вопрос не должен превышать 2 000 символов.");
         }
-        if (apiKey.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "ИИ не настроен на сервере. Администратору нужно указать GROQ_API_KEY в настройках backend.");
-        }
-
         // Greetings and conversational acknowledgements should not require knowledge-base evidence.
         String conversationalReply = conversationalReply(question);
         if (conversationalReply != null) {
@@ -112,15 +107,14 @@ public class AiAssistantService {
         }
 
         String normalizedQuestion = question.toLowerCase(Locale.ROOT).replace('ё', 'е');
-        if (normalizedQuestion.contains("кто тебя создал")
-                || normalizedQuestion.contains("кто тебя разработал")
-                || normalizedQuestion.contains("кто твой создатель")
-                || normalizedQuestion.contains("кто твой разработчик")
-                || normalizedQuestion.contains("кто вас создал")
-                || normalizedQuestion.contains("кто создал тебя")) {
-            return new AssistantResponse("Меня создал самый красивый сотрудник оператора маркировки – старший специалист Жакыпбеков Исламбек Эрланович! 😎\n\n"
-                    + "Исламбек глубоко разбирается в процессах маркировки, нормативных требованиях и цифровых решениях. Он развивает TEKSHER HUB, стремится сделать сложные процессы понятнее для пользователей и ищет практичные способы автоматизировать работу. За инициативность, техническое любопытство и умение превращать идеи в работающие решения – отдельный респект! 👏",
-                    List.of(), false);
+        String identityReply = assistantIdentityReply(normalizedQuestion);
+        if (identityReply != null) {
+            return new AssistantResponse(identityReply, List.of(), false);
+        }
+
+        if (apiKey.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "ИИ не настроен на сервере. Администратору нужно указать GROQ_API_KEY в настройках backend.");
         }
 
         List<ChatTurn> history = sanitizeHistory(rawHistory);
@@ -169,11 +163,14 @@ public class AiAssistantService {
         }
 
         String answer = generateAnswer(question, evidence, history);
-        CitationCheck citationCheck = validateCitations(answer, evidence);
+        CitationCheck citationCheck = validateCitations(answer, evidence.stream().map(Evidence::number).collect(Collectors.toSet()));
         answer = citationCheck.answer();
         if (citationCheck.invalidFound()) {
             answer = answer.stripTrailing()
                     + "\n\nПримечание: часть ссылок в черновом ответе не удалось сопоставить с найденными материалами; проверьте утверждения по источникам, показанным ниже.";
+        } else if (citationCheck.missingFound()) {
+            answer = answer.stripTrailing()
+                    + "\n\nПримечание: ответ не содержит ссылок на найденные материалы. Проверьте выводы по источникам ниже перед использованием как инструкции.";
         }
         List<String> reviewStatuses = evidence.stream()
                 .filter(item -> "DOCUMENT".equals(item.sourceType()))
@@ -197,7 +194,7 @@ public class AiAssistantService {
                     + String.join("; ", dateConflicts)
                     + ". Их статус и срок действия необходимо проверить в первоисточнике.";
         }
-        boolean insufficient = looksInsufficient(answer) || citationCheck.invalidFound()
+        boolean insufficient = looksInsufficient(answer) || citationCheck.invalidFound() || citationCheck.missingFound()
                 || (!evidence.isEmpty() && evidence.stream().noneMatch(item ->
                 "WEB".equals(item.sourceType()) || isCurrentActiveDocument(item, LocalDate.now())));
         return new AssistantResponse(answer, evidence.stream().map(Evidence::reference).toList(), insufficient);
@@ -228,11 +225,12 @@ public class AiAssistantService {
         }
     }
 
-    private static CitationCheck validateCitations(String answer, List<Evidence> evidence) {
-        Set<Integer> availableNumbers = evidence.stream().map(Evidence::number).collect(Collectors.toSet());
-        java.util.regex.Matcher matcher = Pattern.compile("\\[(\\d{1,2})\\]").matcher(answer);
+    static CitationCheck validateCitations(String answer, Set<Integer> availableNumbers) {
+        Set<Integer> validNumbers = availableNumbers == null ? Set.of() : availableNumbers;
+        java.util.regex.Matcher matcher = Pattern.compile("\\[(\\d{1,2})\\]").matcher(answer == null ? "" : answer);
         StringBuffer cleaned = new StringBuffer();
         boolean invalidFound = false;
+        boolean validCitationFound = false;
         while (matcher.find()) {
             int number;
             try {
@@ -240,7 +238,8 @@ public class AiAssistantService {
             } catch (NumberFormatException ex) {
                 number = -1;
             }
-            if (availableNumbers.contains(number)) {
+            if (validNumbers.contains(number)) {
+                validCitationFound = true;
                 matcher.appendReplacement(cleaned, java.util.regex.Matcher.quoteReplacement(matcher.group()));
             } else {
                 invalidFound = true;
@@ -248,7 +247,23 @@ public class AiAssistantService {
             }
         }
         matcher.appendTail(cleaned);
-        return new CitationCheck(cleaned.toString().replaceAll(" +([,.])", "$1"), invalidFound);
+        String cleanedAnswer = cleaned.toString().replaceAll(" +([,.])", "$1").stripTrailing();
+        boolean missingFound = !cleanedAnswer.isBlank() && !validCitationFound;
+        return new CitationCheck(cleanedAnswer, invalidFound, missingFound);
+    }
+
+    static String assistantIdentityReply(String normalizedQuestion) {
+        if (normalizedQuestion == null) return null;
+        String q = normalizedQuestion.toLowerCase(Locale.ROOT).replace('ё', 'е');
+        if (q.contains("кто тебя создал")
+                || q.contains("кто тебя разработал")
+                || q.contains("кто твой создатель")
+                || q.contains("кто твой разработчик")
+                || q.contains("кто вас создал")
+                || q.contains("кто создал тебя")) {
+            return "Я – ИИ-помощник, встроенный в TEKSHER HUB. В технической конфигурации указано, что для генерации ответов используется модель через Groq API, а поиск опирается на базу знаний платформы и доступные официальные интернет-источники. Достоверных сведений о конкретном авторе или разработчике самого помощника у меня нет.";
+        }
+        return null;
     }
 
     private static String conversationalReply(String question) {
@@ -617,13 +632,20 @@ public class AiAssistantService {
         return new AssistantResponse(answer, sources, true);
     }
 
-    private static boolean looksInsufficient(String answer) {
-        String text = answer.toLowerCase(Locale.ROOT);
+    static boolean looksInsufficient(String answer) {
+        if (answer == null || answer.isBlank()) return true;
+        String text = answer.toLowerCase(Locale.ROOT).replace('ё', 'е');
         return text.contains("недостаточно данных") || text.contains("недостаточно информации")
                 || text.contains("недостаточно сведений") || text.contains("нет достаточных сведений")
                 || text.contains("не удалось найти") || text.contains("не найден") || text.contains("не подтверждается")
-                || text.contains("не содержат сведений") || text.contains("нет подтверждения")
-                || text.contains("маалымат жетишсиз") || text.contains("так маалымат жок");
+                || text.contains("не подтверждено") || text.contains("не подтвержден документ")
+                || text.contains("не содержат сведений") || text.contains("не содержит сведений")
+                || text.contains("нет подтверждения") || text.contains("не указано в источниках")
+                || text.contains("в доступных материалах это не подтверждено")
+                || text.contains("в материалах не указано") || text.contains("информация отсутствует")
+                || text.contains("нет данных в предоставленных материалах")
+                || text.contains("маалымат жетишсиз") || text.contains("так маалымат жок")
+                || text.contains("булакта көрсөтүлгөн эмес");
     }
 
     private static Instant safeInstant(Instant value) { return value == null ? Instant.EPOCH : value; }
@@ -646,7 +668,7 @@ public class AiAssistantService {
         output.append(label).append(": ").append(value.trim()).append('\n');
     }
 
-    private record CitationCheck(String answer, boolean invalidFound) {}
+    record CitationCheck(String answer, boolean invalidFound, boolean missingFound) {}
     private record RankedDocument(DocumentRecord document, int score) {}
     private record RankedProcess(BusinessProcessGuide guide, int score) {}
     private record Evidence(int number, String id, String sourceType, String title, String jurisdiction, String kind, String status,
