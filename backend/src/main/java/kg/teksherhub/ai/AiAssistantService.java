@@ -166,8 +166,50 @@ public class AiAssistantService {
         }
 
         String answer = generateAnswer(question, evidence, history);
-        boolean insufficient = looksInsufficient(answer);
+        CitationCheck citationCheck = validateCitations(answer, evidence);
+        answer = citationCheck.answer();
+        if (citationCheck.invalidFound()) {
+            answer = answer.stripTrailing()
+                    + "\\n\\nПримечание: часть ссылок в черновом ответе не удалось сопоставить с найденными материалами; проверьте утверждения по источникам, показанным ниже.";
+        }
+        List<String> reviewStatuses = evidence.stream()
+                .filter(item -> "DOCUMENT".equals(item.sourceType()))
+                .filter(item -> Set.of("DRAFT", "UNDER_REVIEW", "EXPIRED", "ARCHIVED").contains(item.status()))
+                .map(item -> item.statusLabel())
+                .distinct()
+                .toList();
+        if (!reviewStatuses.isEmpty()) {
+            answer = answer.stripTrailing() + "\\n\\nВажно: среди найденных материалов есть документы со статусом "
+                    + String.join(", ", reviewStatuses)
+                    + ". Их сведения нельзя считать подтверждёнными действующими требованиями без дополнительной проверки.";
+        }
+        boolean insufficient = looksInsufficient(answer) || citationCheck.invalidFound()
+                || (!evidence.isEmpty() && evidence.stream().noneMatch(item ->
+                "WEB".equals(item.sourceType()) || ("DOCUMENT".equals(item.sourceType()) && "ACTIVE".equals(item.status()))));
         return new AssistantResponse(answer, evidence.stream().map(Evidence::reference).toList(), insufficient);
+    }
+
+    private static CitationCheck validateCitations(String answer, List<Evidence> evidence) {
+        Set<Integer> availableNumbers = evidence.stream().map(Evidence::number).collect(Collectors.toSet());
+        java.util.regex.Matcher matcher = Pattern.compile("\\\\[(\\\\d{1,2})\\\\]").matcher(answer);
+        StringBuffer cleaned = new StringBuffer();
+        boolean invalidFound = false;
+        while (matcher.find()) {
+            int number;
+            try {
+                number = Integer.parseInt(matcher.group(1));
+            } catch (NumberFormatException ex) {
+                number = -1;
+            }
+            if (availableNumbers.contains(number)) {
+                matcher.appendReplacement(cleaned, java.util.regex.Matcher.quoteReplacement(matcher.group()));
+            } else {
+                invalidFound = true;
+                matcher.appendReplacement(cleaned, "");
+            }
+        }
+        matcher.appendTail(cleaned);
+        return new CitationCheck(cleaned.toString().replaceAll(" +([,.])", "$1"), invalidFound);
     }
 
     private static String conversationalReply(String question) {
@@ -533,6 +575,7 @@ public class AiAssistantService {
         output.append(label).append(": ").append(value.trim()).append('\n');
     }
 
+    private record CitationCheck(String answer, boolean invalidFound) {}
     private record RankedDocument(DocumentRecord document, int score) {}
     private record RankedProcess(BusinessProcessGuide guide, int score) {}
     private record Evidence(int number, String id, String sourceType, String title, String jurisdiction, String kind, String status,
