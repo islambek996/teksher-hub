@@ -669,7 +669,8 @@ public class AiAssistantService {
         String text = answer.toLowerCase(Locale.ROOT).replace('ё', 'е');
         return text.contains("недостаточно данных") || text.contains("недостаточно информации")
                 || text.contains("недостаточно сведений") || text.contains("нет достаточных сведений")
-                || text.contains("не удалось найти") || text.contains("не найден") || text.contains("не подтверждается")
+                || text.contains("не удалось найти") || text.contains("не нашлось материалов")
+                || text.contains("не хватает материалов") || text.contains("не найден") || text.contains("не подтверждается")
                 || text.contains("не подтверждено") || text.contains("не подтвержден документ")
                 || text.contains("не содержат сведений") || text.contains("не содержит сведений")
                 || text.contains("нет подтверждения") || text.contains("не указано в источниках")
