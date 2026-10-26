@@ -4,6 +4,8 @@ import kg.teksherhub.user.UserAccount;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +23,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/documents")
 public class DocumentController {
+    private static final Logger log = LoggerFactory.getLogger(DocumentController.class);
     private final DocumentService service;
     private final DocumentImportService importer;
 
@@ -76,6 +79,7 @@ public class DocumentController {
                 results.add(new ImportRowResult(rowNumber, title, false, null, null,
                         message == null || message.isBlank() ? "Некорректные данные строки" : message));
             } catch (Exception ex) {
+                log.error("Unexpected error importing document CSV row {}", rowNumber, ex);
                 results.add(new ImportRowResult(rowNumber, title, false, null, null,
                         "Внутренняя ошибка при импорте строки. Повторите попытку позже."));
             }
