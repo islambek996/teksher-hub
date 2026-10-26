@@ -65,6 +65,19 @@ class GroqRateLimitDetailsTest {
         assertFalse(message.contains("через 0 сек."));
     }
 
+    @Test
+    void doesNotChooseBetweenDifferentResetTimersWhenLimitTypeIsUnknown() {
+        HttpHeaders headers = headers(Map.of(
+                "x-ratelimit-reset-tokens", List.of("1m"),
+                "x-ratelimit-reset-requests", List.of("6s")));
+
+        String message = GroqRateLimitDetails.describe(headers, "");
+
+        assertTrue(message.contains("не сообщил срок восстановления"));
+        assertFalse(message.contains("через 6 сек."));
+        assertFalse(message.contains("через 1 мин."));
+    }
+
     private static HttpHeaders headers(Map<String, List<String>> values) {
         return HttpHeaders.of(values, (name, value) -> true);
     }
