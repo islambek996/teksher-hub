@@ -1470,10 +1470,14 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
     return () => document.removeEventListener('mousedown', handleOutsideClick)
   }, [])
 
+  // The Excel source lists razors separately, but they belong under the cosmetics product group in the UI.
+  const cosmeticsGroupName = 'Косметика, бытовая химия и товары личной гигиены'
+  const normalizeTnvedGroup = groupName => groupName === 'Бритвы' ? cosmeticsGroupName : groupName
+
   const tnvedGroupCounts = useMemo(() => {
     const counts = new Map()
     tnvedCatalog.forEach(row => {
-      const key = row.t + '|' + row.g
+      const key = row.t + '|' + normalizeTnvedGroup(row.g)
       counts.set(key, (counts.get(key) || 0) + 1)
     })
     return counts
@@ -1592,7 +1596,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
     return tnvedCatalog.filter(row => {
       if (tnvedScope === 'MZKM' && row.t !== 'MZKM') return false
       if (tnvedScope === 'INTERNAL' && row.t !== 'INTERNAL') return false
-      if (tnvedGroupFilter && row.g !== tnvedGroupFilter) return false
+      if (tnvedGroupFilter && normalizeTnvedGroup(row.g) !== tnvedGroupFilter) return false
       if (tnvedSubmitted === '__GROUP__') return true
       if (tnvedMode === 'code') return String(row.c || '').startsWith(query)
       const haystack = [row.n, row.g, row.c, row.p, row.gc, row.gn].filter(Boolean).join(' ').toLocaleLowerCase('ru-RU')
@@ -1706,7 +1710,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
                         <span>{row.n}</span>
                       </span>
                       <span className="tnved-suggestion-meta">
-                        <span>{row.g}</span>
+                        <span>{normalizeTnvedGroup(row.g)}</span>
                         <small>{row.t === 'INTERNAL' ? 'Внутренняя КР' : 'МЗКМ'}</small>
                       </span>
                     </button>
@@ -1746,7 +1750,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
                   {tnvedVisibleResults.map((row, index) => <tr key={row.t + '|' + row.c + '|' + row.g + '|' + row.r + '|' + index}>
                     <td><button type="button" className="tnved-code-link" onClick={() => { setTnvedMode('code'); setTnvedInput(row.c); setTnvedSubmitted(row.c); setTnvedGroupFilter(''); setTnvedPage(0) }}>{row.c}</button></td>
                     <td className="tnved-product-name">{row.n}</td>
-                    <td>{row.g}</td>
+                    <td>{normalizeTnvedGroup(row.g)}</td>
                     <td><span className={'tnved-list-badge ' + (row.t === 'INTERNAL' ? 'internal' : 'mzkm')}>{row.t === 'INTERNAL' ? 'Внутренняя КР' : 'МЗКМ'}</span></td>
                     <td>{row.t === 'INTERNAL' && (row.gc || row.gn) ? <button type="button" className="tnved-gskp-toggle" onClick={() => setShowInternalGskp(showInternalGskp === row.t + row.c ? '' : row.t + row.c)}>{showInternalGskp === row.t + row.c ? 'Скрыть' : 'Показать'}</button> : '—'}
                       {row.t === 'INTERNAL' && showInternalGskp === row.t + row.c && <div className="tnved-gskp-details"><b>ГСКП:</b><span>{row.gc || '—'}</span><b>Наименование ГСКП:</b><span>{row.gn || '—'}</span></div>}
@@ -1789,17 +1793,6 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
           </div>
         </article>)}
       </section>
-      <article className="tnved-supplemental-group">
-        <div className="tnved-supplemental-copy"><b>Бритвы</b><span>{getCount('Бритвы', 'MZKM')} кода в Excel. Группа есть в файле, но отсутствует в перечне 10 групп на титульной странице руководства МЗКМ v2.1.</span></div>
-        <button type="button" className="tnved-group-button primary" onClick={() => selectTnvedGroup('Бритвы', 'MZKM')}>Показать коды</button>
-      </article>
-      <div className="notice mzkm-groups-version-note">
-        <CircleHelp size={17}/>
-        <div>
-          <b>Примечание к руководству</b>
-          <span>«Бритвы» описаны в разделе атрибутов v2.1, но отсутствуют в списке из десяти групп на титульной странице. В Excel для них есть отдельные четыре кода; поэтому они доступны в проверке как дополнительный список, а не включены в основной список десяти групп.</span>
-        </div>
-      </div>
     </section>
 
     <section className="internal-product-group-section">
