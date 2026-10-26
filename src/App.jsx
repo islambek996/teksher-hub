@@ -2139,14 +2139,14 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
           <h2>Товарные группы внутренней маркировки</h2>
           <p>По официальному перечню и приложенному Excel внутренние коды представлены для алкоголя и табака.</p>
         </div>
-        <span className="record-count">{internalGroups.length} групп</span>{canManage && <button type="button" className="secondary-button" onClick={() => openGroupEditor("INTERNAL")}>＋ Добавить группу</button>
+        <span className="record-count">{internalGroups.length} групп</span>{canManage && <button type="button" className="secondary-button" onClick={() => openGroupEditor("INTERNAL")}>＋ Добавить группу</button>}
       </div>
       <section className="internal-groups-grid" aria-label="Товарные группы внутренней маркировки Кыргызстана">
         {internalGroups.map((group, index) => <article className="internal-group-card" key={group.name}>
           <div className="internal-group-badge">{String(index + 1).padStart(2, '0')}</div>
           <div className="internal-group-copy">
             <h3>{group.name}</h3>
-            <p>{group.description}</p>{canManage && <div className="internal-group-actions"><button type="button" className="internal-group-find" onClick={() => openGroupEditor("INTERNAL", index)}><Pencil size={13}/> Изменить</button><button type="button" className="internal-group-find" onClick={() => deleteGroup("INTERNAL", index)}><Trash2 size={13}/> Удалить</button></div>
+            <p>{group.description}</p>{canManage && <div className="internal-group-actions"><button type="button" className="internal-group-find" onClick={() => openGroupEditor("INTERNAL", index)}><Pencil size={13}/> Изменить</button><button type="button" className="internal-group-find" onClick={() => deleteGroup("INTERNAL", index)}><Trash2 size={13}/> Удалить</button></div>}
             <div className="internal-group-actions">
               <button type="button" className="internal-group-find" onClick={() => onSearchGroup(group.name)}><Search size={13}/> Найти материалы</button>
               <button type="button" className="internal-group-find" onClick={() => selectTnvedGroup(group.name, 'INTERNAL')}>Коды ТН ВЭД ({getCount(group.name, 'INTERNAL')})</button>
