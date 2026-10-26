@@ -540,7 +540,7 @@ public class AiAssistantService {
         return score;
     }
 
-    private static int jurisdictionRankingBoost(DocumentRecord document, String question) {
+    static int jurisdictionRankingBoost(DocumentRecord document, String question) {
         if (document == null || question == null || question.isBlank()) return 0;
         String q = question.toLowerCase(Locale.ROOT).replace('ё', 'е');
         String requested = null;
