@@ -2714,6 +2714,25 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
             </div>
             <div className="process-progress-caption"><span>{percent === 100 ? 'Все шаги отмечены' : 'Выполнено ' + percent + '%'}</span><button type="button" className="tnved-clear-button" onClick={resetGuide}>Сбросить отметки</button></div>
 
+            <section className="process-flow-preview" aria-label="Схема бизнес-процесса">
+              <div className="process-flow-preview-heading">
+                <div><span className="section-kicker">СХЕМА ПРОЦЕССА</span><strong>Последовательность действий</strong></div>
+                <span>{guide.steps.length} этапов</span>
+              </div>
+              <div className="process-flow-track">
+                {guide.steps.map((step, index) => {
+                  const isDone = completed.includes(index)
+                  return <div className={'process-flow-item' + (isDone ? ' completed' : '')} key={'flow-' + guide.id + '-' + index}>
+                    <div className="process-flow-node">
+                      <span className="process-flow-number">{isDone ? <CheckCircle2 size={17}/> : String(index + 1).padStart(2, '0')}</span>
+                      <div className="process-flow-copy"><strong>{step.title}</strong><span>{isDone ? 'Выполнено' : 'Ожидает выполнения'}</span></div>
+                    </div>
+                    {index < guide.steps.length - 1 && <div className="process-flow-connector" aria-hidden="true"><ArrowDownRight size={16}/></div>}
+                  </div>
+                })}
+              </div>
+            </section>
+
             <div className="process-step-list">
               {guide.steps.map((step, index) => {
                 const isDone = completed.includes(index)
