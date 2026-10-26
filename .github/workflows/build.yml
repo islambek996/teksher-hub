@@ -87,11 +87,11 @@ jobs:
           echo "$AI_GREETING" | jq -e '.answer | contains("TEKSHER AI")'
           AI_IDENTITY=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/ai/ask -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"question":"кто тебя создал"}')
           echo "$AI_IDENTITY" | jq -e '.answer | contains("самый красивый сотрудник оператора маркировки") and contains("развивает TEKSHER HUB")'
-          if [ -n "$GROQ_API_KEY" ]; then
-            echo "GROQ_API_KEY is configured; running live AI golden-set evaluation."
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] && [ -n "$GROQ_API_KEY" ]; then
+            echo "Manual workflow dispatch and GROQ_API_KEY are configured; running live AI golden-set evaluation."
             TEKSHER_API_BASE_URL=http://localhost:8080 TEKSHER_API_TOKEN="$TOKEN" node scripts/evaluate-ai-golden-set.mjs
           else
-            echo "Skipping live AI golden-set evaluation: repository secret GROQ_API_KEY is not configured."
+            echo "Skipping live AI golden-set evaluation during normal CI. Run this workflow manually to evaluate live Groq responses."
           fi
 
 
