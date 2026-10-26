@@ -1466,8 +1466,9 @@ html[data-theme="dark"] .tnved-copy-button{background:#1b3048;border-color:#3951
 html[data-theme="dark"] .tnved-copy-button:hover{background:#203b58;border-color:#5379a0;color:#9bc8f5}
 html[data-theme="dark"] .tnved-copy-feedback{color:#9addb5}
 @media(max-width:760px){
-  .tnved-result-actions{align-items:stretch}
-  .tnved-export-button,.tnved-clear-button{flex:1}
+  .tnved-result-actions{align-items:center}
+  .tnved-export-button{flex:1;min-width:0}
+  .tnved-clear-button{flex:0 0 auto;white-space:nowrap;padding:7px 8px}
 }
 
 /* Interactive process guides */
