@@ -2742,7 +2742,7 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
                   <span className="process-step-content"><strong>{step.title}</strong><span>{step.detail}</span>
                     {step.responsible && <span className="process-step-meta"><b>Ответственный:</b> {step.responsible}</span>}
                     {step.documents && <span className="process-step-meta"><b>Документы и условия:</b> {step.documents}</span>}
-                    {step.decision && <span className="process-step-branch"><b>Контрольный вопрос:</b> {step.decision}<span><b>Да:</b> {step.yesOutcome || 'Продолжить по инструкции'}</span><span><b>Нет:</b> {step.noOutcome || 'Устранить причину и повторить проверку'}</span></span>}
+                    {step.decision && <span className="process-step-branch"><b>Контрольный вопрос:</b> {step.decision}<span><b>Да:</b> {step.yesOutcome || 'Продолжить по инструкции'}{Number.isInteger(step.yesStepIndex) && guide.steps[step.yesStepIndex] ? ' → Шаг ' + (step.yesStepIndex + 1) + ': ' + guide.steps[step.yesStepIndex].title : ''}</span><span><b>Нет:</b> {step.noOutcome || 'Устранить причину и повторить проверку'}{Number.isInteger(step.noStepIndex) && guide.steps[step.noStepIndex] ? ' → Шаг ' + (step.noStepIndex + 1) + ': ' + guide.steps[step.noStepIndex].title : ''}</span></span>}
                   </span>
                   {isDone && <CheckCircle2 className="process-step-check" size={18}/>}
                 </label>
@@ -2813,15 +2813,26 @@ function ProcessGuideEditorModal({ guide, saving, error, onClose, onSave }) {
     ...current,
     steps: current.steps.map((step, i) => i === index ? { ...step, [field]: value } : step),
   }))
-  const removeStep = index => setForm(current => current.steps.length <= 1
-    ? current
-    : ({ ...current, steps: current.steps.filter((_, i) => i !== index) }))
+  const removeStep = index => setForm(current => {
+    if (current.steps.length <= 1) return current
+    const steps = current.steps.filter((_, i) => i !== index).map(step => ({
+      ...step,
+      yesStepIndex: step.yesStepIndex === index ? '' : Number.isInteger(step.yesStepIndex) && step.yesStepIndex > index ? step.yesStepIndex - 1 : step.yesStepIndex,
+      noStepIndex: step.noStepIndex === index ? '' : Number.isInteger(step.noStepIndex) && step.noStepIndex > index ? step.noStepIndex - 1 : step.noStepIndex,
+    }))
+    return { ...current, steps }
+  })
   const moveStep = (index, direction) => setForm(current => {
     const target = index + direction
     if (target < 0 || target >= current.steps.length) return current
+    const remapTarget = value => value === index ? target : value === target ? index : value
     const steps = [...current.steps]
     ;[steps[index], steps[target]] = [steps[target], steps[index]]
-    return { ...current, steps }
+    return { ...current, steps: steps.map(step => ({
+      ...step,
+      yesStepIndex: Number.isInteger(step.yesStepIndex) ? remapTarget(step.yesStepIndex) : step.yesStepIndex,
+      noStepIndex: Number.isInteger(step.noStepIndex) ? remapTarget(step.noStepIndex) : step.noStepIndex,
+    })) }
   })
   const addStep = () => setForm(current => current.steps.length >= 30
     ? current
