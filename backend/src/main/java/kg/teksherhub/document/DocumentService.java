@@ -1,6 +1,10 @@
 package kg.teksherhub.document;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URI;
@@ -11,6 +15,8 @@ import java.util.UUID;
 
 @Service
 public class DocumentService {
+    private static final Logger log = LoggerFactory.getLogger(DocumentService.class);
+
     private final DocumentRepository documents;
     private final DocumentVersionRepository versions;
     private final DocumentFileRepository files;
@@ -140,10 +146,47 @@ public class DocumentService {
     @Transactional
     public void delete(UUID id) {
         DocumentRecord d = findEntity(id);
-        for (DocumentFile file : files.findAllByDocumentIdOrderByUploadedAtDesc(id)) {
-            storage.delete(file.getStoredName());
-        }
+
+        // Keep the physical files until the database transaction commits. Otherwise a failed
+        // database delete could leave the document row in place while its attachments are gone.
+        List<String> storedNames = files.findAllByDocumentIdOrderByUploadedAtDesc(id).stream()
+                .map(DocumentFile::getStoredName)
+                .toList();
+
+        // A document can be referenced by both its own related-document links and links
+        // owned by other documents. Remove both directions, plus version snapshots and files,
+        // before deleting the parent. This avoids Hibernate flushing a managed child which
+        // still points at the DocumentRecord being removed.
+        links.deleteAllByDocumentId(id);
+        links.deleteAllByRelatedDocumentId(id);
+        versions.deleteAllByDocumentId(id);
+        files.deleteAllByDocumentId(id);
+
+        // Flush child deletions before marking the parent for deletion so there are no
+        // persistent DocumentLink/DocumentVersion/DocumentFile instances referencing it.
+        links.flush();
+        versions.flush();
+        files.flush();
+
         documents.delete(d);
+        documents.flush();
+
+        if (!storedNames.isEmpty() && TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    for (String storedName : storedNames) {
+                        try {
+                            storage.delete(storedName);
+                        } catch (RuntimeException ex) {
+                            // The database row is already deleted. Log storage cleanup failures
+                            // for later maintenance rather than returning a misleading failed delete.
+                            log.error("Document deleted but attachment file cleanup failed: {}", storedName, ex);
+                        }
+                    }
+                }
+            });
+        }
     }
 
     @Transactional(readOnly = true)
