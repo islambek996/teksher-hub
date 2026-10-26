@@ -554,14 +554,33 @@ public class AiAssistantService {
     }
 
     static List<String> searchTerms(String question) {
-        LinkedHashSet<String> terms = new LinkedHashSet<>();
+        LinkedHashSet<String> candidates = new LinkedHashSet<>();
         for (String word : WORD_SEPARATOR.split(question.toLowerCase(Locale.ROOT).replace('ё', 'е'))) {
             if ((word.length() < 3 && !SHORT_DOMAIN_TERMS.contains(word)) || STOP_WORDS.contains(word)) continue;
-            String stem = stem(word);
-            if ((stem.length() >= 3 || SHORT_DOMAIN_TERMS.contains(stem)) && !STOP_WORDS.contains(stem)) terms.add(stem);
-            if (terms.size() >= 12) break;
+            String stemmed = stem(word);
+            if ((stemmed.length() >= 3 || SHORT_DOMAIN_TERMS.contains(stemmed))
+                    && !STOP_WORDS.contains(stemmed)) {
+                candidates.add(stemmed);
+            }
         }
-        return List.copyOf(terms);
+
+        // Keep marking systems and jurisdiction markers even when users write long questions.
+        // Previously the first 12 words could crowd out a decisive term near the end of the query.
+        LinkedHashSet<String> terms = new LinkedHashSet<>();
+        for (String candidate : candidates) {
+            if (isPrioritySearchTerm(candidate)) terms.add(candidate);
+        }
+        for (String candidate : candidates) {
+            if (terms.size() >= 12) break;
+            terms.add(candidate);
+        }
+        return terms.stream().limit(12).toList();
+    }
+
+    private static boolean isPrioritySearchTerm(String term) {
+        return SHORT_DOMAIN_TERMS.contains(term)
+                || Set.of("мзкм", "текшер", "гаис", "еаэс", "маркировк", "датаматрикс",
+                "datamatrix", "gtin", "гтин", "тнвед", "тн", "групп").contains(term);
     }
 
     static int statusRankingBoost(DocumentRecord document, LocalDate today) {
