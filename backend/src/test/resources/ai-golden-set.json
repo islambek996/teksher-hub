@@ -87,7 +87,7 @@
     "requiredTerms": [
       "российск"
     ],
-    "primaryOfficialReference": "https://publication.pravo.gov.ru/document/0001202311270058?index=42",
+    "primaryOfficialReference": "https://publication.pravo.gov.ru/document/0001202311270058",
     "whenEvidenceMissing": "В доступных материалах это не подтверждено",
     "reviewCriterion": "Указать конкретный акт и область его применения; не выдавать правила продажи за полный порядок маркировки товарной группы.",
     "expectedFacts": [
@@ -144,7 +144,7 @@
     "requiredTerms": [
       "мзкм"
     ],
-    "primaryOfficialReference": "https://cbd.minjust.gov.kg/7-21787/edition/1191840/ru",
+    "primaryOfficialReference": "",
     "whenEvidenceMissing": "В доступных материалах это не подтверждено",
     "reviewCriterion": "Не считать аббревиатуру МЗКМ сама по себе признаком российской юрисдикции; для интерфейсных ошибок нужен материал соответствующей системы.",
     "expectedFacts": [
@@ -165,7 +165,7 @@
     "requiredTerms": [
       "код"
     ],
-    "primaryOfficialReference": "https://cbd.minjust.gov.kg/7-21787/edition/1191840/ru",
+    "primaryOfficialReference": "",
     "whenEvidenceMissing": "В доступных материалах это не подтверждено",
     "reviewCriterion": "Это параметр конкретного сервиса, а не универсальная норма; если источник TEKSHER HUB не подтверждает лимит, не угадывать число.",
     "expectedFacts": [
@@ -188,7 +188,7 @@
       "мзкм",
       "текшер"
     ],
-    "primaryOfficialReference": "https://cbd.minjust.gov.kg/7-21787/edition/1191840/ru",
+    "primaryOfficialReference": "",
     "whenEvidenceMissing": "В доступных материалах это не подтверждено",
     "reviewCriterion": "Срок обработки внутри платформы подтверждать только актуальной инструкцией или регламентом оператора, не выводить из законодательства.",
     "expectedFacts": [
@@ -210,7 +210,7 @@
     "requiredTerms": [
       "текшер"
     ],
-    "primaryOfficialReference": "https://cbd.minjust.gov.kg/7-21787/edition/1192170/ru",
+    "primaryOfficialReference": "",
     "whenEvidenceMissing": "В доступных материалах это не подтверждено",
     "reviewCriterion": "Не выдумывать номер пункта и не приписывать закону внутренний SLA сервиса; должна быть ссылка на источник, действительно подтверждающий утверждение.",
     "expectedFacts": [
