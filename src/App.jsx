@@ -2235,6 +2235,10 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
   const [savingGuide, setSavingGuide] = useState(false)
   const [editorError, setEditorError] = useState('')
   const [deletingGuideId, setDeletingGuideId] = useState('')
+  const [versionHistory, setVersionHistory] = useState([])
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false)
+  const [versionHistoryLoading, setVersionHistoryLoading] = useState(false)
+  const [restoringVersion, setRestoringVersion] = useState(0)
 
   useEffect(() => {
     if (!API_ENABLED) {
@@ -2417,6 +2421,49 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
     }
   }
 
+  const openVersionHistory = async item => {
+    if (!API_ENABLED || String(item.id).startsWith('local-')) {
+      setGuideMessage('История версий доступна для процессов, сохранённых на сервере.')
+      return
+    }
+    setVersionHistoryOpen(true)
+    setVersionHistoryLoading(true)
+    setVersionHistory([])
+    setGuideMessage('')
+    try {
+      const rows = await apiRequest('/api/business-processes/' + encodeURIComponent(item.id) + '/versions')
+      setVersionHistory(Array.isArray(rows) ? rows : [])
+    } catch (error) {
+      setVersionHistoryOpen(false)
+      setGuideMessage(error.message || 'Не удалось загрузить историю версий.')
+    } finally {
+      setVersionHistoryLoading(false)
+    }
+  }
+
+  const restoreGuideVersion = async version => {
+    if (!canManageGuides || !guide?.id || !version?.versionNumber || restoringVersion) return
+    const confirmed = window.confirm('Восстановить версию ' + version.versionNumber + ' инструкции «' + guide.title + '»? Текущая редакция сохранится в истории.')
+    if (!confirmed) return
+    setRestoringVersion(version.versionNumber)
+    setGuideMessage('')
+    try {
+      const saved = await apiRequest('/api/business-processes/' + encodeURIComponent(guide.id)
+        + '/versions/' + version.versionNumber + '/restore', { method: 'POST' })
+      setGuides(current => current.map(item => item.id === saved.id ? saved : item))
+      setProgress(current => ({ ...current, [saved.id]: [] }))
+      await apiRequest('/api/business-process-progress/' + encodeURIComponent(saved.id), { method: 'DELETE' }).catch(() => {})
+      const rows = await apiRequest('/api/business-processes/' + encodeURIComponent(saved.id) + '/versions')
+      setVersionHistory(Array.isArray(rows) ? rows : [])
+      setGuideMessage('Восстановлена версия ' + version.versionNumber + '. Предыдущая редакция сохранена в истории.')
+      setVersionHistoryOpen(false)
+    } catch (error) {
+      setGuideMessage(error.message || 'Не удалось восстановить версию инструкции.')
+    } finally {
+      setRestoringVersion(0)
+    }
+  }
+
   const deleteGuide = async item => {
     if (!canDelete) return
     const confirmed = window.confirm('Удалить бизнес-процесс «' + item.title + '»? Это действие нельзя отменить.')
@@ -2496,6 +2543,7 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
               </div>
               <div className="process-guide-detail-actions">
                 <span className="process-guide-progress-pill">{guideDone}/{guide.steps.length}</span>
+                {API_ENABLED && !String(guide.id).startsWith('local-') && <button type="button" className="secondary-button process-history-button" onClick={() => openVersionHistory(guide)}><History size={14}/> История</button>}
                 {canManageGuides && <button type="button" className="secondary-button process-edit-guide-button" onClick={() => openGuideEditor(guide)}><Pencil size={14}/> Редактировать</button>}
                 {canDelete && <button type="button" className="danger-button process-delete-guide-button" onClick={() => deleteGuide(guide)} disabled={deletingGuideId === guide.id}>{deletingGuideId === guide.id ? <RefreshCw size={14} className="spin"/> : <Trash2 size={14}/>} Удалить</button>}
               </div>
@@ -2526,11 +2574,28 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
               </div>
               <button type="button" className="primary-button process-materials-button" onClick={() => onSearchMaterials(guide.searchTerm || guide.title)}><Search size={15}/> Найти материалы в базе</button>
             </div>
-            <p className="process-local-note">Отметки выполненных шагов хранятся локально в текущем браузере и не синхронизируются между пользователями.</p>
+            <p className="process-local-note">{API_ENABLED ? 'Прогресс сохраняется на сервере в вашей учётной записи и доступен при следующем входе. У каждого участника свой прогресс.' : 'Отметки выполненных шагов хранятся локально в текущем браузере и не синхронизируются между пользователями.'}</p>
           </article>
         </div>
     }
 
+    {versionHistoryOpen && <div className="modal-backdrop process-guide-editor-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !restoringVersion) setVersionHistoryOpen(false) }}>
+      <section className="create-modal process-guide-editor-modal process-version-history-modal" role="dialog" aria-modal="true" aria-labelledby="process-version-history-title">
+        <div className="modal-header">
+          <div><div className="section-kicker">ИСТОРИЯ ИЗМЕНЕНИЙ</div><h2 id="process-version-history-title">{guide.title}</h2><p>Каждая сохранённая редакция остаётся доступной для восстановления.</p></div>
+          <button type="button" className="icon-button" onClick={() => setVersionHistoryOpen(false)} aria-label="Закрыть историю"><X size={18}/></button>
+        </div>
+        {versionHistoryLoading
+          ? <div className="empty-state"><RefreshCw size={20} className="spin"/><span>Загружаем историю…</span></div>
+          : versionHistory.length
+            ? <div className="process-version-list">{versionHistory.map(version => <article className="process-version-row" key={version.versionNumber}>
+                <div className="process-version-number"><History size={15}/><b>v{version.versionNumber}</b></div>
+                <div className="process-version-copy"><strong>{version.title}</strong><span>{({ CREATE: 'Создание', UPDATE: 'Изменение', RESTORE: 'Восстановление' }[version.action] || version.action)} · {version.changedBy}</span><small>{version.changedAt ? new Date(version.changedAt).toLocaleString('ru-RU') : 'Дата не указана'}</small></div>
+                {canManageGuides && <button type="button" className="secondary-button" disabled={restoringVersion !== 0} onClick={() => restoreGuideVersion(version)}>{restoringVersion === version.versionNumber ? <RefreshCw size={13} className="spin"/> : <History size={13}/>} Восстановить</button>}
+              </article>)}</div>
+            : <div className="empty-state"><History size={22}/><b>История пока пуста</b><span>Новая версия появится после сохранения инструкции.</span></div>}
+      </section>
+    </div>}
     {editorOpen && <ProcessGuideEditorModal
       key={editingGuide?.id || 'new-business-process'}
       guide={editingGuide}
