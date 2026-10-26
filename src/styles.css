@@ -1732,3 +1732,13 @@ html[data-theme="dark"] .assistant-feedback-categories> b,html[data-theme="dark"
 html[data-theme="dark"] .assistant-feedback-category>div{color:#9cafc4}
 html[data-theme="dark"] .assistant-feedback-category i{background:#283a4e}
 @media(max-width:760px){.assistant-feedback-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+/* Compact collapsible quality-control toggle */
+.assistant-feedback-toggle{display:inline-flex;align-items:center;justify-content:center;gap:5px;flex-shrink:0;border:1px solid #dce5ef;border-radius:7px;background:#f8fafd;color:#4d6784;padding:6px 9px;font:inherit;font-size:9px;font-weight:700;white-space:nowrap;cursor:pointer}
+.assistant-feedback-toggle:hover{background:#edf4fc;border-color:#bdd0e5;color:#2e5b8c}
+.assistant-feedback-toggle-icon{transition:transform .15s ease}
+.assistant-feedback-toggle-icon.is-open{transform:rotate(180deg)}
+html[data-theme="dark"] .assistant-feedback-toggle{background:#1b3048;border-color:#39516b;color:#c5d7eb}
+html[data-theme="dark"] .assistant-feedback-toggle:hover{background:#203b58;border-color:#5379a0;color:#e2efff}
+@media(max-width:760px){.assistant-feedback-toggle{padding:6px 7px;font-size:9px}.assistant-chat-heading{gap:8px}}
