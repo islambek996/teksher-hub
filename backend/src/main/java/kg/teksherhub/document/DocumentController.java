@@ -79,7 +79,7 @@ public class DocumentController {
                 results.add(new ImportRowResult(rowNumber, title, false, null, null,
                         message == null || message.isBlank() ? "Некорректные данные строки" : message));
             } catch (Exception ex) {
-                log.error("Unexpected error importing document CSV row {}", rowNumber, ex);
+                log.error("Unexpected error importing document batch row {}", rowNumber, ex);
                 results.add(new ImportRowResult(rowNumber, title, false, null, null,
                         "Внутренняя ошибка при импорте строки. Повторите попытку позже."));
             }
