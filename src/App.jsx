@@ -1969,7 +1969,7 @@ const PROCESS_GUIDES = [
     summary: 'Подготовить регистрацию, проверить реквизиты и безопасно получить доступ к рабочему контуру.',
     scope: 'МЗКМ / Текшер',
     time: '10–20 мин на проверку',
-    searchTerm: 'регистрация участника МЗКМ',
+    searchTerm: 'регистрация',
     sources: [
       { label: 'Официальная страница регистрации', url: 'https://main.teksher.kg/register-mzkm.html' },
       { label: 'Портал «Текшер»', url: 'https://main.teksher.kg/' },
@@ -1989,7 +1989,7 @@ const PROCESS_GUIDES = [
     summary: 'До заказа кодов убедиться, что выбран правильный товар, идентификатор и набор атрибутов.',
     scope: 'Карточка товара',
     time: '5 контрольных шагов',
-    searchTerm: 'карточка товара ТН ВЭД GTIN',
+    searchTerm: 'карточка товара',
     sources: [
       { label: 'Портал «Текшер»', url: 'https://main.teksher.kg/' },
       { label: 'Новости оператора и разъяснения', url: 'https://main.teksher.kg/news.html' },
@@ -2009,7 +2009,7 @@ const PROCESS_GUIDES = [
     summary: 'Проверить готовность карточки, объём заказа, баланс и результат обработки заказа.',
     scope: 'Заказ КМ',
     time: '5 контрольных шагов',
-    searchTerm: 'заказ кодов маркировки баланс МЗКМ',
+    searchTerm: 'заказ',
     sources: [
       { label: 'Портал «Текшер»', url: 'https://main.teksher.kg/' },
       { label: 'Новости оператора', url: 'https://main.teksher.kg/news.html' },
@@ -2029,7 +2029,7 @@ const PROCESS_GUIDES = [
     summary: 'Проверить читаемость маркировки, соответствие упаковке и количество кодов до завершения партии.',
     scope: 'Печать и нанесение',
     time: '5 контрольных шагов',
-    searchTerm: 'печать нанесение DataMatrix',
+    searchTerm: 'DataMatrix',
     sources: [
       { label: 'Портал «Текшер»', url: 'https://main.teksher.kg/' },
       { label: 'Новости оператора', url: 'https://main.teksher.kg/news.html' },
@@ -2049,7 +2049,7 @@ const PROCESS_GUIDES = [
     summary: 'Перед подтверждением операции убедиться, что товар, коды и документы согласованы.',
     scope: 'Ввод в оборот',
     time: '5 контрольных шагов',
-    searchTerm: 'ввод в оборот статус кода маркировки',
+    searchTerm: 'оборот',
     sources: [
       { label: 'Портал «Текшер»', url: 'https://main.teksher.kg/' },
       { label: 'Новости оператора', url: 'https://main.teksher.kg/news.html' },
@@ -2069,7 +2069,7 @@ const PROCESS_GUIDES = [
     summary: 'Проверить состав отгрузки, корректность кодов и подтверждение со стороны системы/получателя.',
     scope: 'Отгрузка / перемещение',
     time: '5 контрольных шагов',
-    searchTerm: 'отгрузка перемещение кодов маркировки',
+    searchTerm: 'отгрузка',
     sources: [
       { label: 'Портал «Текшер»', url: 'https://main.teksher.kg/' },
       { label: 'Новости оператора', url: 'https://main.teksher.kg/news.html' },
@@ -2087,7 +2087,8 @@ const PROCESS_GUIDES = [
 function loadProcessGuideProgress() {
   try {
     const raw = window.localStorage.getItem(PROCESS_PROGRESS_KEY)
-    return raw ? JSON.parse(raw) : {}
+    const parsed = raw ? JSON.parse(raw) : {}
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
   } catch {
     return {}
   }
