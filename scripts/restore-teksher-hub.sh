@@ -20,7 +20,7 @@ DB_USERNAME="${DB_USERNAME:-}"
 [[ -s "$UPLOADS_BACKUP" ]] || { echo "Ошибка: архив вложений не найден или пуст: $UPLOADS_BACKUP" >&2; exit 1; }
 command -v docker >/dev/null 2>&1 || { echo "Ошибка: Docker не найден." >&2; exit 1; }
 docker compose version >/dev/null 2>&1 || { echo "Ошибка: Docker Compose недоступен." >&2; exit 1; }
-docker compose ps --status running --services | grep -Fxq "$DB_SERVICE" || {
+docker compose ps --status running --services | grep -Fx "$DB_SERVICE" >/dev/null || {
   echo "Ошибка: сервис базы данных '$DB_SERVICE' не запущен." >&2
   exit 1
 }
@@ -34,7 +34,7 @@ fi
 
 echo "Проверяю структуру резервных копий..."
 docker compose exec -T "$DB_SERVICE" pg_restore --list < "$DB_BACKUP" >/dev/null
-tar -tzf "$UPLOADS_BACKUP" | grep -Eq '^uploads/?$' || {
+tar -tzf "$UPLOADS_BACKUP" | awk '$0 == "uploads/" || $0 == "uploads" { found = 1 } END { exit !found }' || {
   echo "Ошибка: архив не содержит ожидаемый каталог uploads/." >&2
   exit 1
 }
