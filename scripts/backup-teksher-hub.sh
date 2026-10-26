@@ -15,7 +15,7 @@ docker compose version >/dev/null 2>&1 || { echo "Ошибка: Docker Compose �
 mkdir -p "$BACKUP_DIR"
 
 is_running() {
-  docker compose ps --status running --services | grep -Fxq "$1"
+  docker compose ps --status running --services | grep -Fx "$1" >/dev/null
 }
 is_running "$DB_SERVICE" || { echo "Ошибка: сервис '$DB_SERVICE' не запущен." >&2; exit 1; }
 is_running "$API_SERVICE" || { echo "Ошибка: сервис '$API_SERVICE' не запущен; архив вложений создать нельзя." >&2; exit 1; }
