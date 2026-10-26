@@ -1221,6 +1221,7 @@ function App() {
               </div>
             </section>
 
+            {API_ENABLED && <MyTasksPanel currentUser={currentUser} canAssign={['ADMIN','EDITOR'].includes(currentUser?.role)} />}
             <section className="home-workbench">
               <div className="workbench-heading">
                 <div><div className="section-kicker">РАБОЧАЯ ПАНЕЛЬ</div><h2>Материалы и контроль</h2><p>Быстрый переход к документам и проверке актуальности.</p></div>
@@ -3503,6 +3504,123 @@ function UsersSection({ users, onAdd, onToggle, onReset }) {
     <div className="notice"><ShieldCheck size={17} /><div><b>Принцип минимальных прав</b><span>ADMIN управляет пользователями и всеми карточками. EDITOR работает с документами и источниками. READER имеет доступ только на чтение.</span></div></div>
     {!users.length ? <div className="empty-state management-empty"><UsersRound size={28} /><b>Нет пользователей</b><span>Пользователи появятся после добавления учётных записей.</span></div> :
       <div className="user-table-wrap"><table className="user-table"><thead><tr><th>Пользователь</th><th>Логин</th><th>Роль</th><th>Статус</th><th>Действия</th></tr></thead><tbody>{users.map(user => <tr key={user.id}><td>{user.displayName}</td><td>{user.username}</td><td><span className="role-pill">{({ADMIN:'Администратор',EDITOR:'Редактор',READER:'Чтение'})[user.role] || user.role}</span></td><td><span className={`status-pill ${user.enabled ? 'source-status' : 'draft-status'}`}>{user.enabled ? 'Активен' : 'Отключён'}</span></td><td><div className="user-actions"><button className="secondary-button" onClick={() => onReset(user)}>Сменить пароль</button><button className="secondary-button" onClick={() => onToggle(user)}>{user.enabled ? 'Отключить' : 'Включить'}</button></div></td></tr>)}</tbody></table></div>}
+  </section>
+}
+
+function MyTasksPanel({ currentUser, canAssign }) {
+  const [tasks, setTasks] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [dueDate, setDueDate] = useState('')
+  const [priority, setPriority] = useState('NORMAL')
+  const [assignedTo, setAssignedTo] = useState('')
+
+  const loadTasks = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const rows = await apiRequest('/api/tasks')
+      setTasks(Array.isArray(rows) ? rows : [])
+    } catch (exception) {
+      setError(exception.message || 'Не удалось загрузить задачи.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { loadTasks() }, [])
+
+  const createTask = async event => {
+    event.preventDefault()
+    if (!title.trim() || saving) return
+    setSaving(true)
+    setError('')
+    setNotice('')
+    try {
+      const created = await apiRequest('/api/tasks', {
+        method: 'POST',
+        body: {
+          title: title.trim(),
+          description: description.trim(),
+          dueDate: dueDate || null,
+          priority,
+          assignedTo: canAssign ? (assignedTo.trim() || currentUser?.username) : currentUser?.username,
+        },
+      })
+      setTasks(rows => [created, ...rows.filter(row => row.id !== created.id)])
+      setTitle('')
+      setDescription('')
+      setDueDate('')
+      setPriority('NORMAL')
+      setAssignedTo('')
+      setNotice('Задача создана.')
+    } catch (exception) {
+      setError(exception.message || 'Не удалось создать задачу.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const changeStatus = async (task, status) => {
+    setError('')
+    setNotice('')
+    try {
+      const updated = await apiRequest('/api/tasks/' + task.id, { method: 'PATCH', body: { status } })
+      setTasks(rows => rows.map(row => row.id === updated.id ? updated : row))
+    } catch (exception) {
+      setError(exception.message || 'Не удалось изменить статус задачи.')
+    }
+  }
+
+  const deleteTask = async task => {
+    if (!window.confirm('Удалить задачу «' + task.title + '»?')) return
+    setError('')
+    try {
+      await apiRequest('/api/tasks/' + task.id, { method: 'DELETE' })
+      setTasks(rows => rows.filter(row => row.id !== task.id))
+      setNotice('Задача удалена.')
+    } catch (exception) {
+      setError(exception.message || 'Не удалось удалить задачу.')
+    }
+  }
+
+  const statusLabels = { TODO: 'К выполнению', IN_PROGRESS: 'В работе', DONE: 'Выполнено' }
+  const priorityLabels = { LOW: 'Низкий', NORMAL: 'Обычный', HIGH: 'Высокий' }
+  const openCount = tasks.filter(task => task.status !== 'DONE').length
+
+  return <section className="home-tasks-panel" aria-label="Рабочие задачи">
+    <div className="home-tasks-heading"><div><div className="section-kicker">КОМАНДНАЯ РАБОТА</div><h2>Задачи</h2><p>Личные задачи и поручения команды, сохраняемые на сервере.</p></div>
+      <div className="home-task-count"><strong>{openCount}</strong><span>активных</span><button type="button" className="icon-button" onClick={loadTasks} aria-label="Обновить задачи" disabled={loading}><RefreshCw size={15} className={loading ? 'spin' : ''}/></button></div>
+    </div>
+    <form className="home-task-form" onSubmit={createTask}>
+      <div className="home-task-form-main">
+        <label className="form-field"><span>Название задачи *</span><input value={title} onChange={event => setTitle(event.target.value)} maxLength={240} required placeholder="Например, проверить новую редакцию инструкции"/></label>
+        <label className="form-field"><span>Описание</span><input value={description} onChange={event => setDescription(event.target.value)} maxLength={1500} placeholder="Что нужно сделать"/></label>
+      </div>
+      <div className="home-task-form-options">
+        <label className="form-field"><span>Срок</span><input type="date" value={dueDate} onChange={event => setDueDate(event.target.value)}/></label>
+        <label className="form-field"><span>Приоритет</span><select value={priority} onChange={event => setPriority(event.target.value)}><option value="LOW">Низкий</option><option value="NORMAL">Обычный</option><option value="HIGH">Высокий</option></select></label>
+        {canAssign && <label className="form-field"><span>Исполнитель (логин)</span><input value={assignedTo} onChange={event => setAssignedTo(event.target.value)} maxLength={120} placeholder={currentUser?.username || 'Логин коллеги'}/></label>}
+        <button className="primary-button home-task-create" type="submit" disabled={saving || !title.trim()}>{saving ? <RefreshCw size={14} className="spin"/> : <FilePlus2 size={14}/>} Добавить</button>
+      </div>
+    </form>
+    {error && <div className="feedback feedback-error" role="alert"><CircleHelp size={14}/><span>{error}</span></div>}
+    {notice && <div className="feedback feedback-success" role="status"><CheckCircle2 size={14}/><span>{notice}</span></div>}
+    {loading ? <div className="home-tasks-empty"><RefreshCw size={18} className="spin"/> Загружаем задачи…</div>
+      : tasks.length ? <div className="home-task-list">{tasks.map(task => <article className={'home-task-card task-status-' + task.status.toLowerCase()} key={task.id}>
+        <div className="home-task-card-main"><div className="home-task-title-row"><strong>{task.title}</strong>{task.priority === 'HIGH' && <span className="task-priority-high">Высокий приоритет</span>}</div>
+          {task.description && <p>{task.description}</p>}
+          <div className="home-task-meta"><span><UsersRound size={12}/> {task.assignedTo === currentUser?.username ? 'Вы исполнитель' : task.assignedTo}</span><span><CalendarDays size={12}/> {task.dueDate ? new Date(task.dueDate + 'T00:00:00').toLocaleDateString('ru-RU') : 'Без срока'}</span><span>Автор: {task.createdBy}</span></div>
+        </div>
+        <div className="home-task-actions"><label className="sr-only" htmlFor={'task-status-' + task.id}>Статус задачи</label><select id={'task-status-' + task.id} value={task.status} onChange={event => changeStatus(task, event.target.value)} aria-label={'Статус задачи ' + task.title}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+          {(currentUser?.role === 'ADMIN' || task.createdBy?.toLowerCase() === currentUser?.username?.toLowerCase()) && <button type="button" className="icon-button" onClick={() => deleteTask(task)} aria-label={'Удалить задачу ' + task.title}><Trash2 size={14}/></button>}
+        </div>
+      </article>)}</div>
+      : <div className="home-tasks-empty"><ListTree size={20}/><span>Задач пока нет. Создай первую задачу в форме выше.</span></div>}
   </section>
 }
 
