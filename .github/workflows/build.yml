@@ -82,7 +82,7 @@ jobs:
           AI_GREETING=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/ai/ask -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"question":"привет"}')
           echo "$AI_GREETING" | jq -e '.answer | contains("TEKSHER AI")'
           AI_IDENTITY=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/ai/ask -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"question":"кто тебя создал"}')
-          echo "$AI_IDENTITY" | jq -e '.answer | contains("TEKSHER HUB") and contains("Groq API") and (contains("Жакыпбеков") | not)'
+          echo "$AI_IDENTITY" | jq -e '.answer | contains("самый красивый сотрудник оператора маркировки") and contains("развивает TEKSHER HUB")'
 
           FEEDBACK=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/ai/feedback -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"rating":"negative","category":"incorrect","question":"CI feedback question","answer":"CI feedback answer","sourceTitles":["CI source"]}')
           echo "$FEEDBACK" | jq -e '.received == true and .id != null'
