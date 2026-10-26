@@ -1682,12 +1682,22 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
         row.n, row.g, normalizeTnvedGroup(row.g), row.c, row.p, row.gc, row.gn
       ].filter(Boolean).join(' '))
       const directMatch = haystack.includes(query)
+      const rowScopeMatches = item => !item.scope || (item.scope === 'INTERNAL' ? row.t === 'INTERNAL' : row.t === 'MZKM')
       const synonymGroupMatch = synonymMatches.some(item =>
         item.matchGroup !== false
         && normalizeTnvedGroup(row.g) === item.group
-        && (!item.scope || (item.scope === 'INTERNAL' ? row.t === 'INTERNAL' : row.t === 'MZKM'))
+        && rowScopeMatches(item)
       )
-      return directMatch || synonymGroupMatch
+      const synonymSpecificRowMatch = synonymMatches.some(item =>
+        item.matchGroup === false
+        && item.terms.some(term => {
+          const normalizedTerm = normalizeTnvedSearchText(term)
+          const normalizedRawGroup = normalizeTnvedSearchText(row.g)
+          return (normalizedRawGroup === normalizedTerm || normalizedRawGroup.includes(normalizedTerm))
+            && rowScopeMatches(item)
+        })
+      )
+      return directMatch || synonymGroupMatch || synonymSpecificRowMatch
     }).sort((a, b) => String(a.c).localeCompare(String(b.c)) || String(a.g).localeCompare(String(b.g), 'ru'))
   }, [tnvedCatalog, tnvedSubmitted, tnvedMode, tnvedScope, tnvedGroupFilter])
 
