@@ -538,6 +538,18 @@ function App() {
     setActionError(''); setSuccessMessage('')
   }
 
+  const searchProductGroupMaterials = (groupName) => {
+    syncRoute('documents')
+    setActive('documents')
+    setSelectedDoc(null)
+    setQuery(groupName)
+    setFilter('Все типы')
+    setStatusFilter('Все статусы')
+    setSortBy('updated')
+    setActionError('')
+    setSuccessMessage('')
+  }
+
   const openDocument = (doc) => {
     syncRoute(active, doc.id)
     setSelectedDoc(doc)
@@ -1121,7 +1133,7 @@ function App() {
               files={API_ENABLED ? apiFiles : localAttachmentFiles} versions={documentVersions} documents={documents} onOpenRelated={docId => { const related = documents.find(item => item.id === docId); if (related) openDocument(related) }} onDownload={handleDownloadFile} onUploadFile={handleUploadAttachment} uploadingFile={isUploadingAttachment} canUploadFiles={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} onReview={handleReviewDocument} canReindex={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)} onReindexFile={handleReindexFile} reindexingFileId={reindexingFileId} />
             : active === 'assistant' ? <AiAssistantSection apiEnabled={API_ENABLED} onOpenDocument={docId => { const target = documents.find(item => String(item.id) === String(docId)); if (target) { setActive('documents'); setSelectedDoc(target); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы'); syncRoute('documents', target.id) } }} />
             : active === 'knowledge' ? <KnowledgeCenterSection documents={documents} onSelectKind={(kind) => { setActive('documents'); setSelectedDoc(null); setQuery(''); setFilter(kind); setStatusFilter('Все статусы'); syncRoute('documents') }} onOpenAll={() => openSection('documents')} onAdd={openNewDocumentModal} canAdd={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} />
-            : active === 'groups' ? <ProductGroupsSection onOpen={openSection} />
+            : active === 'groups' ? <ProductGroupsSection onOpen={openSection} onSearchGroup={searchProductGroupMaterials} />
             : active === 'monitoring' ? <MonitorSection monitors={monitors} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
                 onAdd={() => { setActionError(''); setMonitorModalOpen(true) }} onCheck={handleCheckMonitor} onDelete={handleDeleteMonitor} />
             : active === 'users' ? <UsersSection users={users} onAdd={() => { setActionError(''); setUserModalOpen(true) }} onToggle={handleToggleUser} onReset={user => { setActionError(''); setPasswordResetTarget(user) }} />
@@ -1366,7 +1378,7 @@ function KnowledgeCenterSection({ documents, onSelectKind, onOpenAll, onAdd, can
   </section>
 }
 
-function ProductGroupsSection({ onOpen }) {
+function ProductGroupsSection({ onOpen, onSearchGroup }) {
   const mzkmGroups = [
     'Обувные товары',
     'Белье постельное, столовое, туалетное и кухонное',
@@ -1413,13 +1425,14 @@ function ProductGroupsSection({ onOpen }) {
         <span className="record-count">10 групп</span>
       </div>
       <section className="mzkm-groups-grid" aria-label="Единый список товарных групп МЗКМ v2.1">
-        {mzkmGroups.map((name, index) => <article className="mzkm-group-card" key={name}>
+        {mzkmGroups.map((name, index) => <button type="button" className="mzkm-group-card mzkm-group-card-button" key={name} onClick={() => onSearchGroup(name)} aria-label={'Найти материалы по группе: ' + name}>
           <div className="mzkm-group-number">{String(index + 1).padStart(2, '0')}</div>
           <div className="mzkm-group-copy">
             <h3>{name}</h3>
-            <p>Указана в перечне товарных групп руководства МЗКМ v2.1.</p>
+            <p>В перечне МЗКМ v2.1 · нажмите, чтобы найти связанные инструкции и документы</p>
           </div>
-        </article>)}
+          <Search className="mzkm-group-search-icon" size={16} aria-hidden="true"/>
+        </button>)}
       </section>
       <div className="notice mzkm-groups-version-note">
         <CircleHelp size={17}/>
@@ -1446,7 +1459,10 @@ function ProductGroupsSection({ onOpen }) {
           <div className="internal-group-copy">
             <h3>{group.name}</h3>
             <p>{group.description}</p>
-            <a href={group.source} target="_blank" rel="noreferrer"><ExternalLink size={13}/> Официальная страница оператора</a>
+            <div className="internal-group-actions">
+              <button type="button" className="internal-group-find" onClick={() => onSearchGroup(group.name)}><Search size={13}/> Найти материалы</button>
+              <a href={group.source} target="_blank" rel="noreferrer"><ExternalLink size={13}/> Официальная страница</a>
+            </div>
           </div>
         </article>)}
       </section>
@@ -1455,7 +1471,10 @@ function ProductGroupsSection({ onOpen }) {
         <div>
           <b>Отдельный национальный режим: упакованная вода и УКМ</b>
           <span>Кабинет Министров КР отдельно установил режим учетно-контрольных марок для упакованной воды (ТН ВЭД 2201). Это отдельный режим учёта/контроля, поэтому он указан здесь в примечании и не смешивается с десятью товарными группами МЗКМ или с внутренним списком «Алкоголь / Табак».</span>
-          <a href="https://www.gov.kg/ru/npa/s/4687" target="_blank" rel="noreferrer">Постановление КМ КР № 385 от 01.07.2025 <ExternalLink size={13}/></a>
+          <div className="internal-ukm-actions">
+            <a href="https://www.gov.kg/ru/npa/s/4687" target="_blank" rel="noreferrer">Постановление КМ КР № 385 от 01.07.2025 <ExternalLink size={13}/></a>
+            <button type="button" className="internal-group-find" onClick={() => onSearchGroup('упакованная вода УКМ') }><Search size={13}/> Найти материалы по воде и УКМ</button>
+          </div>
         </div>
       </div>
     </section>
