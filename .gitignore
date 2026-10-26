@@ -9,4 +9,5 @@ dist/
 backend/target/
 backend/uploads/
 uploads/
+backups/
 *.log
