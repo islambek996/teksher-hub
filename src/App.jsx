@@ -3114,6 +3114,7 @@ function AiAssistantSection({ apiEnabled, isAdmin, onOpenDocument }) {
   const [error, setError] = useState('')
   const [feedbackSummary, setFeedbackSummary] = useState(null)
   const [feedbackSummaryLoading, setFeedbackSummaryLoading] = useState(false)
+  const [feedbackReasonTarget, setFeedbackReasonTarget] = useState(null)
   const inputRef = useRef(null)
   const messagesEndRef = useRef(null)
 
@@ -3142,7 +3143,7 @@ function AiAssistantSection({ apiEnabled, isAdmin, onOpenDocument }) {
     }
   }
 
-  const submitFeedback = async (messageIndex, rating) => {
+  const submitFeedback = async (messageIndex, rating, category = 'answer') => {
     const message = messages[messageIndex]
     if (!message || message.role !== 'assistant' || message.feedbackSent) return
     try {
@@ -3150,13 +3151,14 @@ function AiAssistantSection({ apiEnabled, isAdmin, onOpenDocument }) {
         method: 'POST',
         body: {
           rating,
-          category: 'answer',
+          category,
           question: message.question || '',
           answer: message.answer || '',
           sourceTitles: (message.sources || []).map(source => source.title).filter(Boolean).slice(0, 6)
         }
       })
-      setMessages(previous => previous.map((item, i) => i === messageIndex ? { ...item, feedbackSent: rating } : item))
+      setMessages(previous => previous.map((item, i) => i === messageIndex ? { ...item, feedbackSent: rating, feedbackCategory: category } : item))
+      setFeedbackReasonTarget(null)
       if (isAdmin) refreshFeedbackSummary()
     } catch (requestError) {
       setError(requestError.message || 'Не удалось отправить оценку')
@@ -3247,7 +3249,7 @@ function AiAssistantSection({ apiEnabled, isAdmin, onOpenDocument }) {
               {feedbackSummary.recentNegative?.length > 0 ? <div className="assistant-feedback-review-list">
                 <b>Последние отрицательные оценки</b>
                 {feedbackSummary.recentNegative.map(item => <article className="assistant-feedback-review-item" key={item.id}>
-                  <div className="assistant-feedback-review-meta"><span>{item.username || 'Пользователь'}</span><span>{item.createdAt ? new Date(item.createdAt).toLocaleString('ru-RU') : ''}</span></div>
+                  <div className="assistant-feedback-review-meta"><span>{item.username || 'Пользователь'} · {({ incorrect: 'Неточность', no_source: 'Нет источника', outdated: 'Устаревшие сведения', unclear: 'Непонятный ответ', other: 'Другое', answer: 'Ответ' })[item.category] || item.category || 'Причина не указана'}</span><span>{item.createdAt ? new Date(item.createdAt).toLocaleString('ru-RU') : ''}</span></div>
                   <div><strong>Вопрос:</strong> {item.question || 'Вопрос не сохранён'}</div>
                   <div><strong>Ответ:</strong> {item.answer || 'Ответ не сохранён'}</div>
                   {item.sourceTitles && <small><strong>Источники:</strong> {item.sourceTitles.split('\\n').filter(Boolean).join(' · ')}</small>}
@@ -3270,7 +3272,16 @@ function AiAssistantSection({ apiEnabled, isAdmin, onOpenDocument }) {
                 <div className="assistant-answer-text">{message.answer}</div>
                 {message.role === 'assistant' && message.insufficientEvidence && <div className="assistant-evidence-warning"><CircleHelp size={15}/> Ответ не удалось полностью подтвердить материалами базы.</div>}
               </div>
-              {message.role === 'assistant' && !message.feedbackSent && <div className="assistant-feedback-actions"><span>Полезен ли ответ?</span><button type="button" title="Полезный ответ" onClick={() => submitFeedback(index, 'positive')}><ThumbsUp size={14}/> Да</button><button type="button" title="Неполезный ответ" onClick={() => submitFeedback(index, 'negative')}><ThumbsDown size={14}/> Нет</button></div>}
+              {message.role === 'assistant' && !message.feedbackSent && <div className="assistant-feedback-actions"><span>Полезен ли ответ?</span><button type="button" title="Полезный ответ" onClick={() => submitFeedback(index, 'positive')}><ThumbsUp size={14}/> Да</button><button type="button" title="Неполезный ответ" onClick={() => setFeedbackReasonTarget(index)}><ThumbsDown size={14}/> Нет</button></div>}
+              {message.role === 'assistant' && !message.feedbackSent && feedbackReasonTarget === index && <div className="assistant-feedback-reasons">
+                <span>Что следует исправить?</span>
+                <button type="button" onClick={() => submitFeedback(index, 'negative', 'incorrect')}>Неточность</button>
+                <button type="button" onClick={() => submitFeedback(index, 'negative', 'no_source')}>Нет источника</button>
+                <button type="button" onClick={() => submitFeedback(index, 'negative', 'outdated')}>Устаревшие сведения</button>
+                <button type="button" onClick={() => submitFeedback(index, 'negative', 'unclear')}>Непонятный ответ</button>
+                <button type="button" onClick={() => submitFeedback(index, 'negative', 'other')}>Другое</button>
+                <button type="button" className="assistant-feedback-reason-cancel" onClick={() => setFeedbackReasonTarget(null)}>Отмена</button>
+              </div>}
               {message.role === 'assistant' && message.feedbackSent && <div className="assistant-feedback-actions">Спасибо за оценку!</div>}
               {message.role === 'assistant' && message.sources?.length > 0 && <div className="assistant-sources">
                 <div className="assistant-sources-heading"><BookOpen size={15}/> Использованные источники ({message.sources.length})</div>
