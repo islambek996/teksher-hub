@@ -23,6 +23,31 @@ class AiAssistantRetrievalTest {
     }
 
     @Test
+    void preservesSystemAndJurisdictionTermsInLongQuestions() {
+        List<String> terms = AiAssistantService.searchTerms(
+                "Назови точный пункт нормативного акта и официальный URL, который устанавливает срок публикации карточки товара в Текшер.");
+
+        assertTrue(terms.size() <= 12);
+        assertTrue(terms.contains("текшер"),
+                "A system name at the end of a long question must survive the query term limit");
+    }
+
+    @Test
+    void countryAbbreviationsAreMatchedAsWholeWords() {
+        DocumentRecord russian = document(DocumentStatus.ACTIVE);
+        russian.setJurisdiction("RU");
+        DocumentRecord kyrgyz = document(DocumentStatus.ACTIVE);
+        kyrgyz.setJurisdiction("KG");
+
+        assertEquals(0, AiAssistantService.jurisdictionRankingBoost(russian,
+                "Как проверить заказ кодов в интерфейсе?"));
+        assertTrue(AiAssistantService.jurisdictionRankingBoost(russian,
+                "Какие правила действуют в РФ?") > 0);
+        assertTrue(AiAssistantService.jurisdictionRankingBoost(kyrgyz,
+                "Какие правила действуют в КР?") > 0);
+    }
+
+    @Test
     void ranksActiveDocumentsAboveDraftAndArchivedDocuments() {
         LocalDate today = LocalDate.of(2026, 10, 26);
         DocumentRecord active = document(DocumentStatus.ACTIVE);
