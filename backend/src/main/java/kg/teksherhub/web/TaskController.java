@@ -56,12 +56,13 @@ public class TaskController {
                 && !assignedTo.equalsIgnoreCase(user.getUsername())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Назначать задачи другим пользователям могут только редакторы и администраторы.");
         }
-        Integer assigneeExists = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM users WHERE LOWER(username) = LOWER(?) AND enabled = TRUE",
-                Integer.class, assignedTo);
-        if (assigneeExists == null || assigneeExists == 0) {
+        List<String> matchingAssignees = jdbc.query(
+                "SELECT username FROM users WHERE LOWER(username) = LOWER(?) AND enabled = TRUE",
+                (rs, rowNum) -> rs.getString("username"), assignedTo);
+        if (matchingAssignees.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Назначенный пользователь не найден или отключён.");
         }
+        assignedTo = matchingAssignees.get(0);
 
         Long id = jdbc.queryForObject("""
                 INSERT INTO hub_tasks(title, description, status, priority, due_date, created_by, assigned_to, created_at, updated_at)
