@@ -71,10 +71,13 @@ public class DocumentController {
                 DocumentResponse imported = importer.importOne(item, user.getUsername(), rowNumber);
                 results.add(new ImportRowResult(rowNumber, title, true, imported.id(),
                         imported.statusLabel(), "Добавлено в общую базу"));
-            } catch (Exception ex) {
+            } catch (IllegalArgumentException ex) {
                 String message = ex.getMessage();
                 results.add(new ImportRowResult(rowNumber, title, false, null, null,
-                        message == null || message.isBlank() ? "Не удалось импортировать строку" : message));
+                        message == null || message.isBlank() ? "Некорректные данные строки" : message));
+            } catch (Exception ex) {
+                results.add(new ImportRowResult(rowNumber, title, false, null, null,
+                        "Внутренняя ошибка при импорте строки. Повторите попытку позже."));
             }
         }
         int imported = (int) results.stream().filter(ImportRowResult::imported).count();
