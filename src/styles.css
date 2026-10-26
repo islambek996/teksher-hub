@@ -1683,7 +1683,7 @@ html[data-theme="dark"] .process-editor-empty-links{border-color:#3a526b;color:#
 .assistant-feedback-admin-heading b,.assistant-feedback-review-list> b{font-size:11px;color:#304a67}
 .assistant-feedback-admin-heading small{font-size:9px;color:#8190a2}
 .assistant-feedback-admin-heading .secondary-button{min-height:29px;padding:5px 9px;font-size:10px;flex-shrink:0}
-.assistant-feedback-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px}
+.assistant-feedback-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:10px}
 .assistant-feedback-stats>div{display:flex;flex-direction:column;gap:4px;padding:8px 10px;background:#fff;border:1px solid #e2eaf3;border-radius:8px;min-width:0}
 .assistant-feedback-stats span{font-size:9px;color:#78899e}
 .assistant-feedback-stats b{font-size:16px;color:#2e4b6c}
@@ -1716,3 +1716,18 @@ html[data-theme="dark"] .assistant-feedback-actions button:hover,html[data-theme
 html[data-theme="dark"] .assistant-feedback-reasons{background:#101f31;border-color:#2a4058}
 html[data-theme="dark"] .assistant-feedback-reasons>span{color:#cfdeef}
 html[data-theme="dark"] .assistant-feedback-reasons .assistant-feedback-reason-cancel{color:#9cafc4}
+
+
+/* Feedback reason analytics */
+.assistant-feedback-categories{display:flex;flex-direction:column;gap:8px;margin:0 0 12px;padding:10px 11px;background:#fff;border:1px solid #e2eaf3;border-radius:9px}
+.assistant-feedback-categories> b{font-size:10px;color:#304a67;margin-bottom:1px}
+.assistant-feedback-category{display:flex;flex-direction:column;gap:5px}
+.assistant-feedback-category>div{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:9px;color:#6b7e94}
+.assistant-feedback-category strong{font-size:10px;color:#344f6d}
+.assistant-feedback-category i{display:block;height:5px;overflow:hidden;background:#edf2f8;border-radius:10px}
+.assistant-feedback-category em{display:block;height:100%;background:#668ab5;border-radius:10px;min-width:2px}
+html[data-theme="dark"] .assistant-feedback-categories{background:#14263b;border-color:#2e435b}
+html[data-theme="dark"] .assistant-feedback-categories> b,html[data-theme="dark"] .assistant-feedback-category strong{color:#d9e5f3}
+html[data-theme="dark"] .assistant-feedback-category>div{color:#9cafc4}
+html[data-theme="dark"] .assistant-feedback-category i{background:#283a4e}
+@media(max-width:760px){.assistant-feedback-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
