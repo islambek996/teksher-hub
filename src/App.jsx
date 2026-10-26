@@ -1246,7 +1246,7 @@ function App() {
               canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'}
               canReview={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)}
               files={API_ENABLED ? apiFiles : localAttachmentFiles} versions={documentVersions} documents={documents} onOpenRelated={docId => { const related = documents.find(item => item.id === docId); if (related) openDocument(related) }} onDownload={handleDownloadFile} onUploadFile={handleUploadAttachment} uploadingFile={isUploadingAttachment} canUploadFiles={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} onReview={handleReviewDocument} canReindex={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)} onReindexFile={handleReindexFile} reindexingFileId={reindexingFileId} />
-            : active === 'assistant' ? <AiAssistantSection apiEnabled={API_ENABLED} onOpenDocument={docId => { const target = documents.find(item => String(item.id) === String(docId)); if (target) { setActive('documents'); setSelectedDoc(target); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы'); syncRoute('documents', target.id) } }} />
+            : active === 'assistant' ? <AiAssistantSection apiEnabled={API_ENABLED} isAdmin={currentUser?.role === 'ADMIN'} onOpenDocument={docId => { const target = documents.find(item => String(item.id) === String(docId)); if (target) { setActive('documents'); setSelectedDoc(target); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы'); syncRoute('documents', target.id) } }} />
             : active === 'knowledge' ? <KnowledgeCenterSection documents={documents} onSelectKind={(kind) => { setActive('documents'); setSelectedDoc(null); setQuery(''); setFilter(kind); setStatusFilter('Все статусы'); syncRoute('documents') }} onOpenAll={() => openSection('documents')} onAdd={openNewDocumentModal} canAdd={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} />
             : active === 'groups' ? <ProductGroupsSection onOpen={openSection} onSearchGroup={searchProductGroupMaterials} />
             : active === 'processes' ? <ProcessGuidesSection onSearchMaterials={searchProductGroupMaterials} canEdit={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'} />
@@ -3107,17 +3107,61 @@ function LoginScreen({ onSubmit, error, loading = false }) {
 }
 
 
-function AiAssistantSection({ apiEnabled, onOpenDocument }) {
+function AiAssistantSection({ apiEnabled, isAdmin, onOpenDocument }) {
   const [question, setQuestion] = useState('')
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [feedbackSummary, setFeedbackSummary] = useState(null)
+  const [feedbackSummaryLoading, setFeedbackSummaryLoading] = useState(false)
   const inputRef = useRef(null)
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [messages, loading])
+
+  useEffect(() => {
+    if (!apiEnabled || !isAdmin) return
+    let cancelled = false
+    apiRequest('/api/ai/feedback/summary')
+      .then(summary => { if (!cancelled) setFeedbackSummary(summary) })
+      .catch(() => { if (!cancelled) setFeedbackSummary(null) })
+    return () => { cancelled = true }
+  }, [apiEnabled, isAdmin])
+
+  const refreshFeedbackSummary = async () => {
+    if (!apiEnabled || !isAdmin) return
+    setFeedbackSummaryLoading(true)
+    try {
+      setFeedbackSummary(await apiRequest('/api/ai/feedback/summary'))
+    } catch {
+      setFeedbackSummary(null)
+    } finally {
+      setFeedbackSummaryLoading(false)
+    }
+  }
+
+  const submitFeedback = async (messageIndex, rating) => {
+    const message = messages[messageIndex]
+    if (!message || message.role !== 'assistant' || message.feedbackSent) return
+    try {
+      await apiRequest('/api/ai/feedback', {
+        method: 'POST',
+        body: {
+          rating,
+          category: 'answer',
+          question: message.question || '',
+          answer: message.answer || '',
+          sourceTitles: (message.sources || []).map(source => source.title).filter(Boolean).slice(0, 6)
+        }
+      })
+      setMessages(previous => previous.map((item, i) => i === messageIndex ? { ...item, feedbackSent: rating } : item))
+      if (isAdmin) refreshFeedbackSummary()
+    } catch (requestError) {
+      setError(requestError.message || 'Не удалось отправить оценку')
+    }
+  }
 
   const suggestions = [
     'Что делать, если не заказываются коды маркировки?',
@@ -3142,6 +3186,7 @@ function AiAssistantSection({ apiEnabled, onOpenDocument }) {
       setMessages(previous => [...previous, {
         role: 'assistant',
         answer: result.answer || 'Не удалось получить ответ.',
+        question: text,
         sources: Array.isArray(result.sources) ? result.sources : [],
         insufficientEvidence: Boolean(result.insufficientEvidence)
       }])
@@ -3188,6 +3233,28 @@ function AiAssistantSection({ apiEnabled, onOpenDocument }) {
             <div><b>TEKSHER AI</b><small>Помощник по базе знаний</small></div>
             <span className="assistant-online-dot">Поиск по источникам</span>
           </div>
+          {isAdmin && apiEnabled && <section className="assistant-feedback-admin">
+            <div className="assistant-feedback-admin-heading">
+              <div><b>Контроль качества ответов</b><small>Сохранённые оценки пользователей</small></div>
+              <button type="button" className="secondary-button" onClick={refreshFeedbackSummary} disabled={feedbackSummaryLoading}>{feedbackSummaryLoading ? 'Обновление…' : 'Обновить'}</button>
+            </div>
+            {feedbackSummary ? <>
+              <div className="assistant-feedback-stats">
+                <div><span>Всего оценок</span><b>{feedbackSummary.total}</b></div>
+                <div><span>Полезные</span><b>{feedbackSummary.positive}</b></div>
+                <div><span>Неполезные</span><b>{feedbackSummary.negative}</b></div>
+              </div>
+              {feedbackSummary.recentNegative?.length > 0 ? <div className="assistant-feedback-review-list">
+                <b>Последние отрицательные оценки</b>
+                {feedbackSummary.recentNegative.map(item => <article className="assistant-feedback-review-item" key={item.id}>
+                  <div className="assistant-feedback-review-meta"><span>{item.username || 'Пользователь'}</span><span>{item.createdAt ? new Date(item.createdAt).toLocaleString('ru-RU') : ''}</span></div>
+                  <div><strong>Вопрос:</strong> {item.question || 'Вопрос не сохранён'}</div>
+                  <div><strong>Ответ:</strong> {item.answer || 'Ответ не сохранён'}</div>
+                  {item.sourceTitles && <small><strong>Источники:</strong> {item.sourceTitles.split('\\n').filter(Boolean).join(' · ')}</small>}
+                </article>)}
+              </div> : <p className="assistant-feedback-empty">Отрицательных оценок пока нет.</p>}
+            </> : <p className="assistant-feedback-empty">Не удалось загрузить оценки. Нажмите «Обновить».</p>}
+          </section>}
           <div className="assistant-messages" aria-live="polite">
             {!messages.length && <div className="assistant-welcome">
               <div className="assistant-welcome-icon"><Sparkles size={23}/></div>
@@ -3203,7 +3270,7 @@ function AiAssistantSection({ apiEnabled, onOpenDocument }) {
                 <div className="assistant-answer-text">{message.answer}</div>
                 {message.role === 'assistant' && message.insufficientEvidence && <div className="assistant-evidence-warning"><CircleHelp size={15}/> Ответ не удалось полностью подтвердить материалами базы.</div>}
               </div>
-              {message.role === 'assistant' && !message.feedbackSent && <div className="assistant-feedback-actions"><span>Полезен ли ответ?</span><button type="button" title="Полезный ответ" onClick={async () => { try { await apiRequest('/api/ai/feedback', { method: 'POST', body: { rating: 'positive', category: 'answer' } }); setMessages(previous => previous.map((item, i) => i === index ? { ...item, feedbackSent: 'positive' } : item)) } catch (e) { setError(e.message || 'Не удалось отправить оценку') } }}><ThumbsUp size={14}/> Да</button><button type="button" title="Неполезный ответ" onClick={async () => { try { await apiRequest('/api/ai/feedback', { method: 'POST', body: { rating: 'negative', category: 'answer' } }); setMessages(previous => previous.map((item, i) => i === index ? { ...item, feedbackSent: 'negative' } : item)) } catch (e) { setError(e.message || 'Не удалось отправить оценку') } }}><ThumbsDown size={14}/> Нет</button></div>}
+              {message.role === 'assistant' && !message.feedbackSent && <div className="assistant-feedback-actions"><span>Полезен ли ответ?</span><button type="button" title="Полезный ответ" onClick={() => submitFeedback(index, 'positive')}><ThumbsUp size={14}/> Да</button><button type="button" title="Неполезный ответ" onClick={() => submitFeedback(index, 'negative')}><ThumbsDown size={14}/> Нет</button></div>}
               {message.role === 'assistant' && message.feedbackSent && <div className="assistant-feedback-actions">Спасибо за оценку!</div>}
               {message.role === 'assistant' && message.sources?.length > 0 && <div className="assistant-sources">
                 <div className="assistant-sources-heading"><BookOpen size={15}/> Использованные источники ({message.sources.length})</div>
