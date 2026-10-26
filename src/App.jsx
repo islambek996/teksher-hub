@@ -1672,22 +1672,19 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
           return normalized === query || (query.length >= 3 && (normalized.startsWith(query) || normalized.includes(query)))
         }))
       : []
-    return tnvedCatalog.filter(row => {
-      if (tnvedScope === 'MZKM' && row.t !== 'MZKM') return false
-      if (tnvedScope === 'INTERNAL' && row.t !== 'INTERNAL') return false
-      if (tnvedGroupFilter && normalizeTnvedGroup(row.g) !== tnvedGroupFilter) return false
-      if (tnvedSubmitted === '__GROUP__') return true
-      if (tnvedMode === 'code') return String(row.c || '').startsWith(query.replace(/\s/g, ''))
+    const matchRank = row => {
+      if (tnvedScope === 'MZKM' && row.t !== 'MZKM') return -1
+      if (tnvedScope === 'INTERNAL' && row.t !== 'INTERNAL') return -1
+      if (tnvedGroupFilter && normalizeTnvedGroup(row.g) !== tnvedGroupFilter) return -1
+      if (tnvedSubmitted === '__GROUP__') return 0
+      if (tnvedMode === 'code') return String(row.c || '').startsWith(query.replace(/\s/g, '')) ? 0 : -1
+
       const haystack = normalizeTnvedSearchText([
         row.n, row.g, normalizeTnvedGroup(row.g), row.c, row.p, row.gc, row.gn
       ].filter(Boolean).join(' '))
-      const directMatch = haystack.includes(query)
+      if (haystack.includes(query)) return 0
+
       const rowScopeMatches = item => !item.scope || (item.scope === 'INTERNAL' ? row.t === 'INTERNAL' : row.t === 'MZKM')
-      const synonymGroupMatch = synonymMatches.some(item =>
-        item.matchGroup !== false
-        && normalizeTnvedGroup(row.g) === item.group
-        && rowScopeMatches(item)
-      )
       const synonymSpecificRowMatch = synonymMatches.some(item =>
         item.matchGroup === false
         && item.terms.some(term => {
@@ -1697,8 +1694,23 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
             && rowScopeMatches(item)
         })
       )
-      return directMatch || synonymGroupMatch || synonymSpecificRowMatch
-    }).sort((a, b) => String(a.c).localeCompare(String(b.c)) || String(a.g).localeCompare(String(b.g), 'ru'))
+      if (synonymSpecificRowMatch) return 1
+
+      const synonymGroupMatch = synonymMatches.some(item =>
+        item.matchGroup !== false
+        && normalizeTnvedGroup(row.g) === item.group
+        && rowScopeMatches(item)
+      )
+      return synonymGroupMatch ? 2 : -1
+    }
+
+    return tnvedCatalog
+      .map(row => ({ row, rank: matchRank(row) }))
+      .filter(item => item.rank >= 0)
+      .sort((a, b) => a.rank - b.rank
+        || String(a.row.c).localeCompare(String(b.row.c))
+        || String(a.row.g).localeCompare(String(b.row.g), 'ru'))
+      .map(item => item.row)
   }, [tnvedCatalog, tnvedSubmitted, tnvedMode, tnvedScope, tnvedGroupFilter])
 
   const tnvedPageSize = 25
