@@ -33,8 +33,9 @@ public class AiAssistantController {
 
     @PostMapping("/ask")
     @PreAuthorize("hasAnyRole('ADMIN','EDITOR','READER')")
-    public AssistantResponse ask(@Valid @RequestBody AskRequest request) {
-        return service.ask(request.question(), request.history());
+    public AssistantResponse ask(@Valid @RequestBody AskRequest request,
+                                 @AuthenticationPrincipal UserAccount user) {
+        return service.ask(request.question(), request.history(), user.getRole());
     }
 
     @PostMapping("/feedback")

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import kg.teksherhub.document.DocumentFile;
 import kg.teksherhub.document.DocumentFileRepository;
 import kg.teksherhub.document.DocumentRecord;
+import kg.teksherhub.document.DocumentReadAccessPolicy;
 import kg.teksherhub.document.DocumentStatus;
 import kg.teksherhub.document.DocumentRepository;
 import kg.teksherhub.process.BusinessProcessGuide;
@@ -105,10 +106,14 @@ public class AiAssistantService {
     }
 
     public AssistantResponse ask(String rawQuestion) {
-        return ask(rawQuestion, List.of());
+        return ask(rawQuestion, List.of(), "READER");
     }
 
     public AssistantResponse ask(String rawQuestion, List<ChatTurn> rawHistory) {
+        return ask(rawQuestion, rawHistory, "READER");
+    }
+
+    public AssistantResponse ask(String rawQuestion, List<ChatTurn> rawHistory, String role) {
         String question = rawQuestion == null ? "" : rawQuestion.trim();
         if (question.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Напишите вопрос.");
@@ -139,7 +144,7 @@ public class AiAssistantService {
             return insufficient("Не удалось выделить поисковые слова из вопроса. Попробуйте сформулировать его конкретнее, указав систему, документ, товарную группу или текст ошибки.", List.of());
         }
 
-        List<RankedDocument> ranked = retrieve(question, terms);
+        List<RankedDocument> ranked = retrieve(question, terms, role);
         // Reserve room for business-process guides so procedural questions can use them too.
         List<Evidence> evidence = new ArrayList<>();
         if (!ranked.isEmpty()) {
@@ -298,7 +303,7 @@ public class AiAssistantService {
         return null;
     }
 
-    private List<RankedDocument> retrieve(String question, List<String> terms) {
+    private List<RankedDocument> retrieve(String question, List<String> terms, String role) {
         String normalizedQuestion = normalizeText(question);
         List<DocumentRecord> allDocuments = documents.findAllByOrderByUpdatedAtDesc();
         Map<UUID, Integer> attachmentHits = new LinkedHashMap<>();
@@ -314,6 +319,8 @@ public class AiAssistantService {
 
         List<RankedDocument> ranked = new ArrayList<>();
         for (DocumentRecord document : allDocuments) {
+            String status = document.getStatus() == null ? "UNKNOWN" : document.getStatus().name();
+            if (!DocumentReadAccessPolicy.canRead(role, status, document.getKind())) continue;
             String title = normalizeText(document.getTitle());
             String metadata = normalizeText(join(document.getDescription(), document.getKind(), document.getArea(),
                     document.getJurisdiction(), document.getProductGroup(), document.getKeywords(),
