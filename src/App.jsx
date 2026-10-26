@@ -34,6 +34,7 @@ const navGroups = [
     { id: 'home', label: 'Главная', icon: Home },
     { id: 'assistant', label: 'ИИ-помощник', icon: Bot },
     { id: 'documents', label: 'Все документы', icon: LibraryBig },
+    { id: 'tasks', label: 'Задачи команды', icon: ListTree },
   ]},
   { title: 'ЮРИСДИКЦИИ', items: [
     { id: 'RU', label: 'МЗКМ · РФ', icon: Landmark },
@@ -545,7 +546,7 @@ function App() {
   const pageTitle = active === 'home' ? 'База знаний оператора маркировки'
     : active === 'RU' ? 'МЗКМ · материалы для маркировки в РФ'
     : active === 'KG' ? 'ГАИС МТ · национальные материалы КР'
-    : jurisdictions[active]?.label || ({ assistant: 'ИИ-помощник', documents: 'Все документы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний', monitoring: 'Мониторинг официальных источников', users: 'Управление пользователями', audit: 'Журнал действий' }[active] || 'TEKSHER HUB')
+    : jurisdictions[active]?.label || ({ assistant: 'ИИ-помощник', documents: 'Все документы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний', monitoring: 'Мониторинг официальных источников', users: 'Управление пользователями', audit: 'Журнал действий', tasks: 'Задачи команды' }[active] || 'TEKSHER HUB')
 
   const syncRoute = (section, docId = null, replace = false) => {
     const route = { app: 'teksher-hub', section, docId }
@@ -594,7 +595,7 @@ function App() {
   useEffect(() => {
     const knownSections = new Set([
       'home', 'RU', 'KG', 'EAEU', 'assistant', 'documents', 'groups',
-      'processes', 'knowledge', 'monitoring', 'users', 'audit'
+      'processes', 'knowledge', 'monitoring', 'users', 'audit', 'tasks'
     ])
 
     const restoreRoute = () => {
@@ -1285,6 +1286,7 @@ function App() {
                 onAdd={() => { setActionError(''); setMonitorModalOpen(true) }} onCheck={handleCheckMonitor} onDelete={handleDeleteMonitor} />
             : active === 'users' ? <UsersSection users={users} onAdd={() => { setActionError(''); setUserModalOpen(true) }} onToggle={handleToggleUser} onReset={user => { setActionError(''); setPasswordResetTarget(user) }} />
             : active === 'audit' && currentUser?.role === 'ADMIN' ? <AuditLogSection />
+            : active === 'tasks' ? <MyTasksPanel currentUser={currentUser} canAssign={['ADMIN','EDITOR'].includes(currentUser?.role)} />
             : <>
             <div className="page-heading">
               <div><div className="section-kicker">БАЗА ЗНАНИЙ / {active === 'RU' ? 'МЗКМ' : active === 'KG' ? 'ГАИС МТ · КР' : (jurisdictions[active]?.short || 'TEKSHER HUB')}</div><h1>{pageTitle}</h1><p>{active === 'RU' ? 'Материалы МЗКМ, инструкции оператора и нормативные источники для маркировки товаров при обороте в РФ. Исходная юрисдикция каждого источника указана в карточке.' : active === 'KG' ? 'Национальные документы Кыргызской Республики и материалы ГАИС МТ. Карточки, классифицированные как МЗКМ, вынесены в отдельный каталог.' : jurisdictions[active] ? `Документы и материалы: ${jurisdictions[active].label}. ` : 'Поиск по нормативным актам и рабочим материалам платформы.'}{API_ENABLED ? ' Проверяйте реквизиты и статус каждого документа перед применением.' : ' Демонстрационные записи не являются официальной нормативной базой.'}</p></div>
