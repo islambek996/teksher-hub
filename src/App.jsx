@@ -2487,6 +2487,13 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
         const previous = guides.find(item => item.id === editingId)
         if (JSON.stringify(previous?.steps || []) !== JSON.stringify(saved.steps || [])) {
           setProgress(current => ({ ...current, [saved.id]: [] }))
+          if (API_ENABLED) {
+            try {
+              await apiRequest('/api/business-process-progress/' + encodeURIComponent(saved.id), { method: 'DELETE' })
+            } catch {
+              setGuideMessage('Инструкция сохранена, но прогресс шагов не удалось сбросить на сервере. Обнови страницу и проверь прогресс.')
+            }
+          }
         }
       }
       setSelectedGuideId(saved.id)
