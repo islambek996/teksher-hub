@@ -2319,14 +2319,12 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
   }
 
   const toggleStep = index => {
-    setProgress(current => {
-      const currentSteps = Array.isArray(current[guide.id]) ? current[guide.id] : []
-      const next = currentSteps.includes(index)
-        ? currentSteps.filter(step => step !== index)
-        : [...currentSteps.filter(step => Number.isInteger(step) && step >= 0 && step < guide.steps.length), index]
-      persistProgress(guide.id, next)
-      return { ...current, [guide.id]: next }
-    })
+    const currentSteps = Array.isArray(progress[guide.id]) ? progress[guide.id] : []
+    const next = currentSteps.includes(index)
+      ? currentSteps.filter(step => step !== index)
+      : [...currentSteps.filter(step => Number.isInteger(step) && step >= 0 && step < guide.steps.length), index]
+    setProgress(current => ({ ...current, [guide.id]: next }))
+    persistProgress(guide.id, next)
   }
 
   const resetGuide = () => {
