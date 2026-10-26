@@ -48,6 +48,7 @@ const navGroups = [
   { title: 'АДМИНИСТРИРОВАНИЕ', items: [
     { id: 'monitoring', label: 'Источники и проверки', icon: RefreshCw },
     { id: 'users', label: 'Пользователи', icon: UsersRound },
+    { id: 'audit', label: 'Журнал действий', icon: History },
   ]},
 ]
 
@@ -544,7 +545,7 @@ function App() {
   const pageTitle = active === 'home' ? 'База знаний оператора маркировки'
     : active === 'RU' ? 'МЗКМ · материалы для маркировки в РФ'
     : active === 'KG' ? 'ГАИС МТ · национальные материалы КР'
-    : jurisdictions[active]?.label || ({ assistant: 'ИИ-помощник', documents: 'Все документы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний', monitoring: 'Мониторинг официальных источников', users: 'Управление пользователями' }[active] || 'TEKSHER HUB')
+    : jurisdictions[active]?.label || ({ assistant: 'ИИ-помощник', documents: 'Все документы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний', monitoring: 'Мониторинг официальных источников', users: 'Управление пользователями', audit: 'Журнал действий' }[active] || 'TEKSHER HUB')
 
   const syncRoute = (section, docId = null, replace = false) => {
     const route = { app: 'teksher-hub', section, docId }
@@ -593,7 +594,7 @@ function App() {
   useEffect(() => {
     const knownSections = new Set([
       'home', 'RU', 'KG', 'EAEU', 'assistant', 'documents', 'groups',
-      'processes', 'knowledge', 'monitoring', 'users'
+      'processes', 'knowledge', 'monitoring', 'users', 'audit'
     ])
 
     const restoreRoute = () => {
@@ -1129,6 +1130,7 @@ function App() {
           const items = group.items.filter(item => {
             if (!API_ENABLED && ['monitoring', 'users'].includes(item.id)) return false
             if (item.id === 'users' && currentUser?.role !== 'ADMIN') return false
+            if (item.id === 'audit' && (!API_ENABLED || currentUser?.role !== 'ADMIN')) return false
             return true
           })
           if (!items.length) return null
@@ -1281,6 +1283,7 @@ function App() {
             : active === 'monitoring' ? <MonitorSection monitors={monitors} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
                 onAdd={() => { setActionError(''); setMonitorModalOpen(true) }} onCheck={handleCheckMonitor} onDelete={handleDeleteMonitor} />
             : active === 'users' ? <UsersSection users={users} onAdd={() => { setActionError(''); setUserModalOpen(true) }} onToggle={handleToggleUser} onReset={user => { setActionError(''); setPasswordResetTarget(user) }} />
+            : active === 'audit' && currentUser?.role === 'ADMIN' ? <AuditLogSection />
             : <>
             <div className="page-heading">
               <div><div className="section-kicker">БАЗА ЗНАНИЙ / {active === 'RU' ? 'МЗКМ' : active === 'KG' ? 'ГАИС МТ · КР' : (jurisdictions[active]?.short || 'TEKSHER HUB')}</div><h1>{pageTitle}</h1><p>{active === 'RU' ? 'Материалы МЗКМ, инструкции оператора и нормативные источники для маркировки товаров при обороте в РФ. Исходная юрисдикция каждого источника указана в карточке.' : active === 'KG' ? 'Национальные документы Кыргызской Республики и материалы ГАИС МТ. Карточки, классифицированные как МЗКМ, вынесены в отдельный каталог.' : jurisdictions[active] ? `Документы и материалы: ${jurisdictions[active].label}. ` : 'Поиск по нормативным актам и рабочим материалам платформы.'}{API_ENABLED ? ' Проверяйте реквизиты и статус каждого документа перед применением.' : ' Демонстрационные записи не являются официальной нормативной базой.'}</p></div>
@@ -3500,6 +3503,44 @@ function UsersSection({ users, onAdd, onToggle, onReset }) {
     <div className="notice"><ShieldCheck size={17} /><div><b>Принцип минимальных прав</b><span>ADMIN управляет пользователями и всеми карточками. EDITOR работает с документами и источниками. READER имеет доступ только на чтение.</span></div></div>
     {!users.length ? <div className="empty-state management-empty"><UsersRound size={28} /><b>Нет пользователей</b><span>Пользователи появятся после добавления учётных записей.</span></div> :
       <div className="user-table-wrap"><table className="user-table"><thead><tr><th>Пользователь</th><th>Логин</th><th>Роль</th><th>Статус</th><th>Действия</th></tr></thead><tbody>{users.map(user => <tr key={user.id}><td>{user.displayName}</td><td>{user.username}</td><td><span className="role-pill">{({ADMIN:'Администратор',EDITOR:'Редактор',READER:'Чтение'})[user.role] || user.role}</span></td><td><span className={`status-pill ${user.enabled ? 'source-status' : 'draft-status'}`}>{user.enabled ? 'Активен' : 'Отключён'}</span></td><td><div className="user-actions"><button className="secondary-button" onClick={() => onReset(user)}>Сменить пароль</button><button className="secondary-button" onClick={() => onToggle(user)}>{user.enabled ? 'Отключить' : 'Включить'}</button></div></td></tr>)}</tbody></table></div>}
+  </section>
+}
+
+function AuditLogSection() {
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [query, setQuery] = useState('')
+
+  const load = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const result = await apiRequest('/api/audit-log?limit=250')
+      setRows(Array.isArray(result) ? result : [])
+    } catch (exception) {
+      setError(exception.message || 'Не удалось загрузить журнал действий.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { load() }, [])
+  const filtered = rows.filter(row => [row.username, row.action, row.entityType, row.entityId, row.entityLabel, row.details].join(' ').toLocaleLowerCase('ru-RU').includes(query.trim().toLocaleLowerCase('ru-RU')))
+  const actionLabels = { CREATE: 'Создание', UPDATE: 'Изменение', DELETE: 'Удаление', RESTORE: 'Восстановление версии', UPDATE_PROGRESS: 'Сохранение прогресса', RESET_PROGRESS: 'Сброс прогресса' }
+
+  return <section className="management-page">
+    <div className="page-heading"><div><div className="section-kicker">АДМИНИСТРИРОВАНИЕ / ПРОЗРАЧНОСТЬ</div><h1>Журнал действий</h1><p>Последние действия пользователей в системе. Журнал доступен только администраторам.</p></div>
+      <button type="button" className="secondary-button" onClick={load} disabled={loading}><RefreshCw size={14} className={loading ? 'spin' : ''}/> Обновить</button>
+    </div>
+    <div className="search-panel audit-search-panel"><div className="search-input-wrap"><Search size={18}/><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Поиск по пользователю, действию или объекту…"/></div><span className="record-count">{filtered.length} записей</span></div>
+    {error && <div className="feedback feedback-error" role="alert"><CircleHelp size={15}/><span>{error}</span></div>}
+    {loading ? <div className="empty-state"><RefreshCw size={22} className="spin"/><b>Загружаем журнал…</b></div>
+      : filtered.length ? <div className="user-table-wrap audit-table-wrap"><table className="user-table audit-table">
+        <thead><tr><th>Дата и время</th><th>Пользователь</th><th>Действие</th><th>Объект</th><th>Подробности</th></tr></thead>
+        <tbody>{filtered.map(row => <tr key={row.id}><td>{formatDateTime(row.createdAt)}</td><td>{row.username}</td><td><span className="role-pill">{actionLabels[row.action] || row.action}</span></td><td><strong>{row.entityLabel || row.entityId || '–'}</strong><small className="audit-entity-type">{row.entityType}</small></td><td>{row.details || '–'}</td></tr>)}</tbody>
+      </table></div>
+      : <div className="empty-state"><History size={24}/><b>{query.trim() ? 'Совпадений нет' : 'Записей пока нет'}</b><span>{query.trim() ? 'Измени поисковый запрос.' : 'Действия будут появляться здесь по мере работы пользователей.'}</span></div>}
   </section>
 }
 
