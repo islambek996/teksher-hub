@@ -32,7 +32,7 @@ public class DataSourceConfiguration {
                 env.getProperty("SPRING_DATASOURCE_PASSWORD"),
                 env.getProperty("DATABASE_PASSWORD"),
                 env.getProperty("spring.datasource.password"),
-                "teksher-dev-password");
+                "");
 
         ParsedDatabaseUrl parsed = normalizeUrl(rawUrl, username, password);
         HikariConfig config = new HikariConfig();
