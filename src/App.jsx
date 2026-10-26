@@ -3645,7 +3645,12 @@ function AuditLogSection() {
 
   useEffect(() => { load() }, [])
   const filtered = rows.filter(row => [row.username, row.action, row.entityType, row.entityId, row.entityLabel, row.details].join(' ').toLocaleLowerCase('ru-RU').includes(query.trim().toLocaleLowerCase('ru-RU')))
-  const actionLabels = { CREATE: 'Создание', UPDATE: 'Изменение', DELETE: 'Удаление', RESTORE: 'Восстановление версии', UPDATE_PROGRESS: 'Сохранение прогресса', RESET_PROGRESS: 'Сброс прогресса' }
+  const actionLabels = {
+    CREATE: 'Создание', UPDATE: 'Изменение', DELETE: 'Удаление', RESTORE: 'Восстановление версии',
+    UPDATE_PROGRESS: 'Сохранение прогресса', RESET_PROGRESS: 'Сброс прогресса',
+    CREATE_USER: 'Создание пользователя', RESET_PASSWORD: 'Сброс пароля',
+    ENABLE_USER: 'Включение пользователя', DISABLE_USER: 'Отключение пользователя'
+  }
 
   return <section className="management-page">
     <div className="page-heading"><div><div className="section-kicker">АДМИНИСТРИРОВАНИЕ / ПРОЗРАЧНОСТЬ</div><h1>Журнал действий</h1><p>Последние действия пользователей в системе. Журнал доступен только администраторам.</p></div>
