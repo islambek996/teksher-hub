@@ -13,6 +13,8 @@ class DocumentReadAccessPolicyTest {
         assertFalse(DocumentReadAccessPolicy.canRead("READER", "ARCHIVED", "Инструкция"));
         assertFalse(DocumentReadAccessPolicy.canRead("READER", "ACTIVE", "Внутренний документ"));
         assertFalse(DocumentReadAccessPolicy.canRead("READER", "ACTIVE", "Внутренний регламент"));
+        assertFalse(DocumentReadAccessPolicy.canRead("READER", "ACTIVE", "Internal document"));
+        assertFalse(DocumentReadAccessPolicy.canRead("READER", "ACTIVE", "INTERNAL"));
     }
 
     @Test
