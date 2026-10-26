@@ -17,7 +17,10 @@
     "forbiddenClaims": [
       "Придуманный путь по меню, не подтверждённый руководством",
       "Неподтверждённые лимиты, тарифы или сроки"
-    ]
+    ],
+    "operationalReference": "https://main.teksher.kg/files/rukovodstva-polzovatelyz-mzkm-v0.8.pdf",
+    "operationalReferenceStatus": "UNDER_REVIEW",
+    "operationalReferenceNote": "Руководство оператора, редакция v0.8; использовать как вспомогательный источник, пока специалист не подтвердит его актуальность для текущего интерфейса."
   },
   {
     "id": "KG_COSMETICS",
@@ -130,7 +133,10 @@
     ],
     "forbiddenClaims": [
       "Автоматическое отождествление МЗКМ с российской юрисдикцией только из-за названия"
-    ]
+    ],
+    "operationalReference": "https://main.teksher.kg/files/rukovodstva-polzovatelyz-mzkm-v0.8.pdf",
+    "operationalReferenceStatus": "UNDER_REVIEW",
+    "operationalReferenceNote": "Руководство оператора, редакция v0.8; использовать как вспомогательный источник, пока специалист не подтвердит его актуальность для текущего интерфейса."
   },
   {
     "id": "LIMIT_MUST_NOT_BE_GUESSED",
@@ -149,7 +155,10 @@
     "forbiddenClaims": [
       "Представление лимита из непроверенной старой инструкции как гарантированного актуального значения",
       "Выдуманное число без источника"
-    ]
+    ],
+    "operationalReference": "https://main.teksher.kg/files/rukovodstva-polzovatelyz-mzkm-v0.8.pdf",
+    "operationalReferenceStatus": "UNDER_REVIEW",
+    "operationalReferenceNote": "Руководство оператора, редакция v0.8; использовать как вспомогательный источник, пока специалист не подтвердит его актуальность для текущего интерфейса."
   },
   {
     "id": "CARD_PUBLICATION_TIME",
@@ -169,7 +178,10 @@
     "forbiddenClaims": [
       "Придуманный срок в рабочих днях",
       "Подмена срока публикации сроком редактирования карточки"
-    ]
+    ],
+    "operationalReference": "https://main.teksher.kg/files/rukovodstva-polzovatelyz-mzkm-v0.8.pdf",
+    "operationalReferenceStatus": "UNDER_REVIEW",
+    "operationalReferenceNote": "Руководство оператора, редакция v0.8; использовать как вспомогательный источник, пока специалист не подтвердит его актуальность для текущего интерфейса."
   },
   {
     "id": "NO_INVENTED_CITATION",
@@ -188,6 +200,9 @@
     "forbiddenClaims": [
       "Выдуманный номер пункта нормативного акта",
       "Ссылка на документ, который не подтверждает заявленный срок"
-    ]
+    ],
+    "operationalReference": "https://main.teksher.kg/files/rukovodstva-polzovatelyz-mzkm-v0.8.pdf",
+    "operationalReferenceStatus": "UNDER_REVIEW",
+    "operationalReferenceNote": "Руководство оператора, редакция v0.8; использовать как вспомогательный источник, пока специалист не подтвердит его актуальность для текущего интерфейса."
   }
 ]
