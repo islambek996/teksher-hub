@@ -1653,9 +1653,36 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
  const [groupData, setGroupData] = useState(loadProductGroups)
  const [editingGroup, setEditingGroup] = useState(null)
  const [groupDraft, setGroupDraft] = useState({ name: '', description: '', source: '' })
+ const [catalogReady, setCatalogReady] = useState(!API_ENABLED)
+ const [catalogSaveState, setCatalogSaveState] = useState('')
  const mzkmGroups = groupData.mzkmGroups
  const internalGroups = groupData.internalGroups
- useEffect(() => { try { window.localStorage.setItem(PRODUCT_GROUPS_STORAGE_KEY, JSON.stringify(groupData)) } catch { /* storage unavailable */ } }, [groupData])
+ useEffect(() => {
+  if (!API_ENABLED) return
+  let cancelled = false
+  apiRequest('/api/product-groups').then(result => {
+   if (cancelled) return
+   if (result?.payload && Array.isArray(result.payload.mzkmGroups) && Array.isArray(result.payload.internalGroups)) {
+    setGroupData({ mzkmGroups: result.payload.mzkmGroups, internalGroups: result.payload.internalGroups, mzkmDetails: result.payload.mzkmDetails || {} })
+   }
+  }).catch(error => {
+   if (!cancelled) setCatalogSaveState('Не удалось загрузить общий каталог: ' + error.message)
+  }).finally(() => { if (!cancelled) setCatalogReady(true) })
+  return () => { cancelled = true }
+ }, [])
+ useEffect(() => {
+  if (!catalogReady) return
+  try { window.localStorage.setItem(PRODUCT_GROUPS_STORAGE_KEY, JSON.stringify(groupData)) } catch { /* storage unavailable */ }
+  if (!API_ENABLED || !canManage) return
+  let cancelled = false
+  setCatalogSaveState('Сохранение…')
+  apiRequest('/api/product-groups', { method: 'PUT', body: groupData }).then(() => {
+   if (!cancelled) setCatalogSaveState('Сохранено в общей базе')
+  }).catch(error => {
+   if (!cancelled) setCatalogSaveState('Ошибка сохранения: ' + error.message)
+  })
+  return () => { cancelled = true }
+ }, [groupData, catalogReady, canManage])
  const openGroupEditor = (scope, index = -1) => {
   const existing = scope === 'MZKM' ? mzkmGroups[index] : internalGroups[index]
   const detail = scope === 'MZKM' && existing ? (groupData.mzkmDetails?.[existing] || {}) : {}
@@ -1953,6 +1980,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
 
   return <div className="product-groups-page">
     {editingGroup && <div className="modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setEditingGroup(null) }}><section className="create-modal" role="dialog" aria-modal="true" aria-labelledby="product-group-editor-title"><div className="modal-header"><h2 id="product-group-editor-title">{editingGroup.index < 0 ? 'Добавить товарную группу' : 'Редактировать товарную группу'}</h2><button type="button" className="icon-button" onClick={() => setEditingGroup(null)} aria-label="Закрыть"><X size={18}/></button></div><form onSubmit={saveGroup}><label>Название группы<input required maxLength={240} value={groupDraft.name} onChange={event => setGroupDraft(draft => ({ ...draft, name: event.target.value }))}/></label><label>Описание<textarea rows={4} value={groupDraft.description} onChange={event => setGroupDraft(draft => ({ ...draft, description: event.target.value }))} placeholder="Добавьте описание товарной группы"/></label><label>Ссылка на источник<input type="url" value={groupDraft.source} onChange={event => setGroupDraft(draft => ({ ...draft, source: event.target.value }))} placeholder="https://..."/></label><div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setEditingGroup(null)}>Отмена</button><button type="submit" className="primary-button">Сохранить</button></div></form></section></div>}
+    {API_ENABLED && catalogSaveState && <div className="notice" role="status"><div>{catalogSaveState}</div></div>}
     <div className="page-heading">
       <div>
         <div className="section-kicker">СПРАВОЧНИК / МАРКИРОВКА ТОВАРОВ</div>
