@@ -20,7 +20,8 @@ public final class DocumentReadAccessPolicy {
         if (!"ACTIVE".equals(normalizedStatus)) return false;
 
         String normalizedKind = kind == null ? "" : kind.trim().toLowerCase(Locale.ROOT);
-        return !normalizedKind.contains("внутрен");
+        // Document kinds are user-entered labels, so protect common Russian and English variants.
+        return !normalizedKind.contains("внутрен") && !normalizedKind.contains("internal");
     }
 
     public static void requireReadable(String role, DocumentResponse document) {
