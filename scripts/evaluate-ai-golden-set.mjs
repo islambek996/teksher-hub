@@ -139,6 +139,10 @@ async function evaluateCase(item, index) {
     expectedFacts: item.expectedFacts,
     forbiddenClaims: item.forbiddenClaims,
     reviewCriterion: item.reviewCriterion,
+    primaryOfficialReference: item.primaryOfficialReference,
+    operationalReference: item.operationalReference || null,
+    operationalReferenceStatus: item.operationalReferenceStatus || null,
+    operationalReferenceNote: item.operationalReferenceNote || null,
     answer,
     insufficientEvidence: data.insufficientEvidence,
     sources: sources.map(source => ({
