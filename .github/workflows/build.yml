@@ -78,6 +78,16 @@ jobs:
           LOGIN=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/auth/login -H 'Content-Type: application/json' -d '{"username":"ci-admin","password":"ci-password-strong-enough-123"}')
           TOKEN=$(echo "$LOGIN" | jq -r '.token')
           test -n "$TOKEN" && test "$TOKEN" != "null"
+
+          PROCESS_GUIDES=$(curl --silent --show-error --fail "http://localhost:8080/api/business-processes" -H "Authorization: Bearer $TOKEN")
+          echo "$PROCESS_GUIDES" | jq -e 'length == 6 and any(.[]; .id == "registration" and (.steps | length) == 5)'
+          PROCESS_CREATED=$(curl --silent --show-error --fail -X POST "http://localhost:8080/api/business-processes" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"category":"CI","title":"CI business process guide","summary":"Temporary process for CRUD smoke test","scope":"CI","time":"1 step","searchTerm":"CI process","sources":[],"steps":[{"title":"Initial step","detail":"Initial detail"}]}')
+          PROCESS_ID=$(echo "$PROCESS_CREATED" | jq -r '.id')
+          test -n "$PROCESS_ID" && test "$PROCESS_ID" != "null"
+          PROCESS_UPDATE_BODY=$(echo "$PROCESS_CREATED" | jq -c '.summary = "Updated by CI" | {category,title,summary,scope,time,searchTerm,sources,steps,orderIndex}')
+          curl --silent --show-error --fail -X PUT "http://localhost:8080/api/business-processes/$PROCESS_ID" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d "$PROCESS_UPDATE_BODY" | jq -e '.summary == "Updated by CI"'
+          curl --silent --show-error --fail -X DELETE "http://localhost:8080/api/business-processes/$PROCESS_ID" -H "Authorization: Bearer $TOKEN"
+          curl --silent --show-error --fail "http://localhost:8080/api/business-processes" -H "Authorization: Bearer $TOKEN" | jq -e 'length == 6'
           CREATED=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/documents -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"title":"CI smoke test document","jurisdiction":"KG","kind":"Нормативный акт","area":"CI","documentNumber":"CI-001","documentDate":"2026-01-01","effectiveFrom":"2026-01-01","effectiveUntil":"2027-01-01","sourceUrl":"https://minjust.gov.kg/","description":"Temporary record to validate database migration and REST API","status":"","changeNote":"CI smoke test"}')
           DOC_ID=$(echo "$CREATED" | jq -r '.id')
           test -n "$DOC_ID" && test "$DOC_ID" != "null"
