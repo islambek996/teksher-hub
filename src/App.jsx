@@ -5,7 +5,7 @@ import {
   ArrowDownRight, ArrowUpRight, BookOpen, Boxes, CalendarDays, ChevronDown,
   CircleHelp, ExternalLink, FileCheck2, FilePlus2, FileText, Globe2, Home, Star,
   Landmark, Layers3, LibraryBig, Link2, Search, ShieldCheck, SlidersHorizontal,
-  Sparkles, Bot, Send, Workflow, X, Pencil, Trash2, RefreshCw, UsersRound, LogOut, Paperclip, Download, History, CheckCircle2, UserPlus, Moon, Sun, Copy, ListTree, Clock3, Printer, ThumbsUp, ThumbsDown
+  Sparkles, Bot, Send, Workflow, X, Pencil, Trash2, RefreshCw, UsersRound, LogOut, Paperclip, Download, History, CheckCircle2, UserPlus, Moon, Sun, Copy, ListTree, Clock3, Printer, ThumbsUp, ThumbsDown, Bell, MessageCircle
 } from 'lucide-react'
 
 const demoDocuments = [
@@ -36,6 +36,7 @@ const navGroups = [
     { id: 'documents', label: 'Все документы', icon: LibraryBig },
     { id: 'favorites', label: 'Избранное', icon: Star },
     { id: 'tasks', label: 'Задачи команды', icon: ListTree },
+    { id: 'notifications', label: 'Уведомления', icon: Bell },
   ]},
   { title: 'ЮРИСДИКЦИИ', items: [
     { id: 'RU', label: 'МЗКМ · РФ', icon: Landmark },
@@ -576,7 +577,7 @@ function App() {
   const pageTitle = active === 'home' ? 'База знаний оператора маркировки'
     : active === 'RU' ? 'МЗКМ · материалы для маркировки в РФ'
     : active === 'KG' ? 'ГАИС МТ · национальные материалы КР'
-    : jurisdictions[active]?.label || ({ assistant: 'ИИ-помощник', documents: 'Все документы', favorites: 'Избранные материалы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний', monitoring: 'Мониторинг официальных источников', users: 'Управление пользователями', audit: 'Журнал действий', tasks: 'Задачи команды' }[active] || 'TEKSHER HUB')
+    : jurisdictions[active]?.label || ({ assistant: 'ИИ-помощник', documents: 'Все документы', favorites: 'Избранные материалы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний', monitoring: 'Мониторинг официальных источников', users: 'Управление пользователями', audit: 'Журнал действий', tasks: 'Задачи команды', notifications: 'Уведомления' }[active] || 'TEKSHER HUB')
 
   const syncRoute = (section, docId = null, replace = false) => {
     const route = { app: 'teksher-hub', section, docId }
@@ -625,7 +626,7 @@ function App() {
   useEffect(() => {
     const knownSections = new Set([
       'home', 'RU', 'KG', 'EAEU', 'assistant', 'documents', 'favorites', 'groups',
-      'processes', 'knowledge', 'monitoring', 'users', 'audit', 'tasks'
+      'processes', 'knowledge', 'monitoring', 'users', 'audit', 'tasks', 'notifications'
     ])
 
     const restoreRoute = () => {
@@ -1362,6 +1363,7 @@ function App() {
             : active === 'users' ? <UsersSection users={users} onAdd={() => { setActionError(''); setUserModalOpen(true) }} onToggle={handleToggleUser} onReset={user => { setActionError(''); setPasswordResetTarget(user) }} />
             : active === 'audit' && currentUser?.role === 'ADMIN' ? <AuditLogSection />
             : active === 'tasks' ? <MyTasksPanel currentUser={currentUser} canAssign={['ADMIN','EDITOR'].includes(currentUser?.role)} />
+            : active === 'notifications' ? <NotificationsSection onOpenTasks={() => openSection('tasks')} />
             : <>
             <div className="page-heading">
               <div><div className="section-kicker">{active === 'favorites' ? 'ЛИЧНАЯ ПОДБОРКА' : 'БАЗА ЗНАНИЙ / ' + (active === 'RU' ? 'МЗКМ' : active === 'KG' ? 'ГАИС МТ · КР' : (jurisdictions[active]?.short || 'TEKSHER HUB'))}</div><h1>{pageTitle}</h1><p>{active === 'RU' ? 'Материалы МЗКМ, инструкции оператора и нормативные источники для маркировки товаров при обороте в РФ. Исходная юрисдикция каждого источника указана в карточке.' : active === 'KG' ? 'Национальные документы Кыргызской Республики и материалы ГАИС МТ. Карточки, классифицированные как МЗКМ, вынесены в отдельный каталог.' : active === 'favorites' ? 'Сохранённые вами нормативные акты, инструкции и рабочие материалы. Нажмите звезду в карточке документа, чтобы добавить его в эту подборку.' : jurisdictions[active] ? `Документы и материалы: ${jurisdictions[active].label}. ` : 'Поиск по нормативным актам и рабочим материалам платформы.'}{API_ENABLED ? ' Проверяйте реквизиты и статус каждого документа перед применением.' : ' Демонстрационные записи не являются официальной нормативной базой.'}</p></div>
@@ -3583,6 +3585,82 @@ function UsersSection({ users, onAdd, onToggle, onReset }) {
   </section>
 }
 
+function NotificationsSection({ onOpenTasks }) {
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [savingId, setSavingId] = useState(null)
+  const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
+
+  const load = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const result = await apiRequest('/api/notifications')
+      setRows(Array.isArray(result) ? result : [])
+    } catch (exception) {
+      setError(exception.message || 'Не удалось загрузить уведомления.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { load() }, [])
+  const unreadCount = rows.filter(row => !row.readAt).length
+
+  const markRead = async row => {
+    if (row.readAt || savingId) return
+    setSavingId(row.id)
+    setError('')
+    try {
+      await apiRequest('/api/notifications/' + row.id + '/read', { method: 'PATCH' })
+      setRows(current => current.map(item => item.id === row.id ? { ...item, readAt: new Date().toISOString() } : item))
+    } catch (exception) {
+      setError(exception.message || 'Не удалось отметить уведомление прочитанным.')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  const markAllRead = async () => {
+    setSavingId('all')
+    setError('')
+    setMessage('')
+    try {
+      await apiRequest('/api/notifications/read-all', { method: 'POST' })
+      const now = new Date().toISOString()
+      setRows(current => current.map(item => item.readAt ? item : { ...item, readAt: now }))
+      setMessage('Все уведомления отмечены прочитанными.')
+    } catch (exception) {
+      setError(exception.message || 'Не удалось обновить уведомления.')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  return <section className="management-page notifications-page">
+    <div className="page-heading">
+      <div><div className="section-kicker">ЛИЧНЫЙ ЦЕНТР / СОБЫТИЯ</div><h1>Уведомления</h1><p>Новые поручения, комментарии и изменения статусов задач, назначенные вам.</p></div>
+      <div className="heading-actions">
+        <span className="record-count">{unreadCount} непрочитано</span>
+        <button type="button" className="secondary-button" onClick={load} disabled={loading}><RefreshCw size={14} className={loading ? 'spin' : ''}/> Обновить</button>
+        <button type="button" className="primary-button" onClick={markAllRead} disabled={!unreadCount || Boolean(savingId)}>{savingId === 'all' ? <RefreshCw size={14} className="spin"/> : <CheckCircle2 size={14}/>} Прочитать все</button>
+      </div>
+    </div>
+    {error && <div className="feedback feedback-error" role="alert"><CircleHelp size={15}/><span>{error}</span></div>}
+    {message && <div className="feedback feedback-success" role="status"><CheckCircle2 size={15}/><span>{message}</span></div>}
+    {loading ? <div className="empty-state"><RefreshCw size={22} className="spin"/><b>Загружаем уведомления…</b></div>
+      : rows.length ? <div className="notification-list">{rows.map(row => <article className={'notification-card' + (row.readAt ? ' is-read' : ' is-unread')} key={row.id}>
+        <span className="notification-icon"><Bell size={17}/></span>
+        <div className="notification-copy"><div className="notification-title-row"><b>{row.title}</b><time>{formatDateTime(row.createdAt)}</time></div><p>{row.message}</p>
+          {row.taskId && <button type="button" className="text-button" onClick={onOpenTasks}>Открыть задачи <ArrowUpRight size={14}/></button>}
+        </div>
+        {!row.readAt && <button type="button" className="secondary-button notification-read-button" onClick={() => markRead(row)} disabled={Boolean(savingId)}>{savingId === row.id ? 'Сохраняем…' : 'Прочитано'}</button>}
+      </article>)}</div>
+      : <div className="empty-state"><Bell size={24}/><b>Уведомлений пока нет</b><span>Когда вам назначат задачу или коллега ответит в обсуждении, событие появится здесь.</span></div>}
+  </section>
+}
+
 function MyTasksPanel({ currentUser, canAssign }) {
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
@@ -3594,6 +3672,11 @@ function MyTasksPanel({ currentUser, canAssign }) {
   const [dueDate, setDueDate] = useState('')
   const [priority, setPriority] = useState('NORMAL')
   const [assignedTo, setAssignedTo] = useState('')
+  const [commentsOpenFor, setCommentsOpenFor] = useState(null)
+  const [commentsByTask, setCommentsByTask] = useState({})
+  const [commentDrafts, setCommentDrafts] = useState({})
+  const [commentsLoadingFor, setCommentsLoadingFor] = useState(null)
+  const [commentSavingFor, setCommentSavingFor] = useState(null)
 
   const loadTasks = async () => {
     setLoading(true)
@@ -3652,6 +3735,44 @@ function MyTasksPanel({ currentUser, canAssign }) {
     }
   }
 
+  const toggleTaskComments = async task => {
+    if (commentsOpenFor === task.id) {
+      setCommentsOpenFor(null)
+      return
+    }
+    setCommentsOpenFor(task.id)
+    if (Array.isArray(commentsByTask[task.id])) return
+    setCommentsLoadingFor(task.id)
+    setError('')
+    try {
+      const rows = await apiRequest('/api/tasks/' + task.id + '/comments')
+      setCommentsByTask(current => ({ ...current, [task.id]: Array.isArray(rows) ? rows : [] }))
+    } catch (exception) {
+      setError(exception.message || 'Не удалось загрузить комментарии к задаче.')
+    } finally {
+      setCommentsLoadingFor(null)
+    }
+  }
+
+  const addTaskComment = async (event, task) => {
+    event.preventDefault()
+    const body = String(commentDrafts[task.id] || '').trim()
+    if (!body || commentSavingFor) return
+    setCommentSavingFor(task.id)
+    setError('')
+    setNotice('')
+    try {
+      const created = await apiRequest('/api/tasks/' + task.id + '/comments', { method: 'POST', body: { body } })
+      setCommentsByTask(current => ({ ...current, [task.id]: [...(current[task.id] || []), created] }))
+      setCommentDrafts(current => ({ ...current, [task.id]: '' }))
+      setNotice('Комментарий добавлен.')
+    } catch (exception) {
+      setError(exception.message || 'Не удалось добавить комментарий.')
+    } finally {
+      setCommentSavingFor(null)
+    }
+  }
+
   const deleteTask = async task => {
     if (!window.confirm('Удалить задачу «' + task.title + '»?')) return
     setError('')
@@ -3693,8 +3814,16 @@ function MyTasksPanel({ currentUser, canAssign }) {
           <div className="home-task-meta"><span><UsersRound size={12}/> {task.assignedTo === currentUser?.username ? 'Вы исполнитель' : task.assignedTo}</span><span><CalendarDays size={12}/> {task.dueDate ? new Date(task.dueDate + 'T00:00:00').toLocaleDateString('ru-RU') : 'Без срока'}</span><span>Автор: {task.createdBy}</span></div>
         </div>
         <div className="home-task-actions"><label className="sr-only" htmlFor={'task-status-' + task.id}>Статус задачи</label><select id={'task-status-' + task.id} value={task.status} onChange={event => changeStatus(task, event.target.value)} aria-label={'Статус задачи ' + task.title}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+          <button type="button" className="secondary-button home-task-comments-trigger" onClick={() => toggleTaskComments(task)}><MessageCircle size={14}/> Комментарии</button>
           {(currentUser?.role === 'ADMIN' || task.createdBy?.toLowerCase() === currentUser?.username?.toLowerCase()) && <button type="button" className="icon-button" onClick={() => deleteTask(task)} aria-label={'Удалить задачу ' + task.title}><Trash2 size={14}/></button>}
         </div>
+        {commentsOpenFor === task.id && <div className="home-task-comments">
+          <div className="home-task-comments-heading"><b>Обсуждение</b><span>{(commentsByTask[task.id] || []).length} комментариев</span></div>
+          {commentsLoadingFor === task.id ? <div className="home-tasks-empty"><RefreshCw size={15} className="spin"/> Загружаем комментарии…</div>
+            : (commentsByTask[task.id] || []).length ? <div className="home-task-comment-list">{commentsByTask[task.id].map(comment => <article className="home-task-comment" key={comment.id}><div><b>{comment.username}</b><time>{formatDateTime(comment.createdAt)}</time></div><p>{comment.body}</p></article>)}</div>
+            : <p className="home-task-comments-empty">Комментариев пока нет. Добавьте контекст или результат проверки.</p>}
+          <form className="home-task-comment-form" onSubmit={event => addTaskComment(event, task)}><label className="sr-only" htmlFor={'task-comment-' + task.id}>Комментарий к задаче</label><textarea id={'task-comment-' + task.id} value={commentDrafts[task.id] || ''} onChange={event => setCommentDrafts(current => ({ ...current, [task.id]: event.target.value }))} maxLength={1500} rows={2} placeholder="Напишите комментарий…" required/><button type="submit" className="primary-button" disabled={commentSavingFor === task.id || !(commentDrafts[task.id] || '').trim()}>{commentSavingFor === task.id ? 'Отправка…' : 'Отправить'}</button></form>
+        </div>}
       </article>)}</div>
       : <div className="home-tasks-empty"><ListTree size={20}/><span>Задач пока нет. Создай первую задачу в форме выше.</span></div>}
   </section>
