@@ -40,3 +40,4 @@ app:
   ai:
     groq-api-key: ${GROQ_API_KEY:}
     groq-model: ${GROQ_MODEL:openai/gpt-oss-20b}
+    web-search-enabled: ${AI_WEB_SEARCH_ENABLED:true}
