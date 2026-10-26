@@ -72,7 +72,7 @@ public class AiAssistantController {
 
     private static String safe(String value, int maxLength) {
         if (value == null || value.isBlank()) return "";
-        String cleaned = value.replace("\\u0000", "").trim();
+        String cleaned = value.replace(String.valueOf((char) 0), "").trim();
         return cleaned.length() <= maxLength ? cleaned : cleaned.substring(0, maxLength);
     }
 
