@@ -55,6 +55,7 @@ The initial admin is created only if `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_A
 - Requests use Groq's Responses API at `https://api.groq.com/openai/v1/responses`. The key remains on the backend and must never be put in frontend variables or committed to Git.
 - Extracted document text is sent to Groq for summarization. Do not submit tax secrets, personal or other restricted data without organizational approval.
 - Free-tier availability is subject to Groq's published model limits and may be throttled. Check current quotas in Groq Console. If no key is configured, the endpoint returns a configuration error.
+- On HTTP 429, the assistant and summary generator report the limit type when Groq provides it, request/token remaining counters, and the retry delay from `Retry-After` or the relevant `x-ratelimit-reset-*` header. If Groq provides no recovery time, the UI is told that no timing was supplied rather than showing a guessed wait.
 - The endpoint does not verify laws or official sources. A generated description is a draft and must be checked by an employee.
 
 ## Roles
