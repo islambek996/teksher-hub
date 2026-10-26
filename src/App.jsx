@@ -1578,6 +1578,8 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
     setTnvedValidation('')
     setTnvedPage(0)
     setShowInternalGskp('')
+    setTnvedSuggestionsOpen(false)
+    setTnvedSuggestionIndex(-1)
   }
 
   const tnvedResults = useMemo(() => {
