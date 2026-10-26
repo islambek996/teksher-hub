@@ -21,6 +21,13 @@ const jurisdictions = {
   EAEU: { label: 'Евразийский экономический союз', short: 'ЕАЭС', className: 'eaeu', flag: '🌐' },
 }
 
+function isMzkmCatalogDocument(doc) {
+  const area = String(doc?.area || '').trim().toLocaleLowerCase('ru-RU')
+  const productGroup = String(doc?.productGroup || '').trim().toLocaleLowerCase('ru-RU')
+  return area.startsWith('мзкм /')
+    || /внешн(?:яя|ие|юю)\s+(?:маркировка|товарные группы).*мзкм/.test(productGroup)
+}
+
 const navGroups = [
   { title: 'ПЛАТФОРМА', items: [
     { id: 'home', label: 'Главная', icon: Home },
@@ -432,7 +439,14 @@ function App() {
       ? (apiSearchTerm === query.trim() ? apiSearchResults : [])
       : documents
     const filtered = searchSource.filter((doc) => {
-      const matchesJurisdiction = ['RU', 'KG', 'EAEU'].includes(active) ? doc.jurisdiction === active : true
+      const isMzkm = isMzkmCatalogDocument(doc)
+      const matchesJurisdiction = active === 'RU'
+        ? doc.jurisdiction === 'RU' || isMzkm
+        : active === 'KG'
+          ? doc.jurisdiction === 'KG' && !isMzkm
+          : active === 'EAEU'
+            ? doc.jurisdiction === 'EAEU'
+            : true
       const matchesQuery = API_ENABLED || [doc.title, doc.description, doc.content || '', doc.area, doc.kind, doc.productGroup || '', doc.keywords || '', doc.documentNumber || ''].join(' ').toLowerCase().includes(query.toLowerCase())
       const matchesFilter = filter === 'Все типы' || doc.kind === filter
       const displayStatus = doc.statusLabel || doc.status
@@ -1099,7 +1113,7 @@ function App() {
                   <div className="workbench-panel-title"><span className="workbench-panel-icon"><LibraryBig size={17}/></span><div><b>Недавно добавленные</b><small>{documents.length ? 'Последние материалы в базе' : 'Пока нет материалов'}</small></div></div>
                   {documents.length ? [...documents].sort((a,b) => new Date(b.updatedAt || b.createdAt || b.documentDate || 0) - new Date(a.updatedAt || a.createdAt || a.documentDate || 0)).slice(0,4).map(doc => (
                     <button className="recent-document" key={doc.id} onClick={() => { setActive('documents'); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы'); syncRoute('documents', doc.id); setSelectedDoc(doc) }}>
-                      <span className={'recent-jurisdiction ' + (jurisdictions[doc.jurisdiction]?.className || '')}>{jurisdictions[doc.jurisdiction]?.short || 'НПА'}</span>
+                      <span className={'recent-jurisdiction ' + (isMzkmCatalogDocument(doc) ? 'ru' : (jurisdictions[doc.jurisdiction]?.className || ''))}>{isMzkmCatalogDocument(doc) ? 'МЗКМ' : (jurisdictions[doc.jurisdiction]?.short || 'НПА')}</span>
                       <span className="recent-copy"><b>{doc.title}</b><small>{doc.documentNumber ? '№ ' + doc.documentNumber + ' · ' : ''}{doc.kind || 'Материал'} · {doc.statusLabel || doc.status || 'Без статуса'}</small></span>
                       <ArrowUpRight size={15}/>
                     </button>
@@ -1168,8 +1182,8 @@ function App() {
             {globalSearchError && <div className="global-search-message error"><CircleHelp size={16}/>{globalSearchError}</div>}
             {!globalSearchLoading && !globalSearchError && globalSearchQuery.trim().length >= 2 && globalSearchResults.length === 0 && <div className="global-search-message">Ничего не найдено. Попробуйте другое название или ключевое слово.</div>}
             {globalSearchResults.map((doc, index) => <button className={'global-search-result ' + (globalSearchActiveIndex === index ? 'active' : '')} type="button" role="option" aria-selected={globalSearchActiveIndex === index} key={doc.id} onMouseEnter={() => setGlobalSearchActiveIndex(index)} onClick={() => openGlobalSearchResult(doc)}>
-              <span className={'global-search-result-icon ' + (jurisdictions[doc.jurisdiction]?.className || '')}><FileText size={17}/></span>
-              <span className="global-search-result-copy"><b>{doc.title}</b><small>{jurisdictions[doc.jurisdiction]?.short || 'Материал'} · {doc.kind || 'Документ'}{doc.documentNumber ? ' · № ' + doc.documentNumber : ''}</small><span>{doc.description || 'Без краткого описания'}</span></span>
+              <span className={'global-search-result-icon ' + (isMzkmCatalogDocument(doc) ? 'ru' : (jurisdictions[doc.jurisdiction]?.className || ''))}><FileText size={17}/></span>
+              <span className="global-search-result-copy"><b>{doc.title}</b><small>{isMzkmCatalogDocument(doc) ? 'МЗКМ' : (jurisdictions[doc.jurisdiction]?.short || 'Материал')} · {doc.kind || 'Документ'}{doc.documentNumber ? ' · № ' + doc.documentNumber : ''}</small><span>{doc.description || 'Без краткого описания'}</span></span>
               <ArrowUpRight size={16} className="global-search-result-arrow"/>
             </button>)}
           </div>
@@ -1504,10 +1518,13 @@ function JurisdictionCard({ code, title, subtitle, description, count, onClick }
 }
 
 function DocumentRow({ doc, onClick }) {
-  const jurisdiction = jurisdictions[doc.jurisdiction]
+  const jurisdiction = jurisdictions[doc.jurisdiction] || jurisdictions.EAEU
+  const isMzkm = isMzkmCatalogDocument(doc)
+  const catalogLabel = isMzkm ? 'МЗКМ' : jurisdiction.short
+  const catalogClass = isMzkm ? 'ru' : jurisdiction.className
   return <button className="document-row" onClick={onClick}>
-    <span className={`doc-icon ${jurisdiction.className}`}><FileText size={20} /></span>
-    <span className="doc-main"><b>{doc.title}</b><span>{doc.description}</span>{doc.matchedInAttachment && <span className="search-match-origin"><Paperclip size={12}/>Найдено в приложенном файле</span>}<small><span className={`tag ${jurisdiction.className}`}>{jurisdiction.short}</span>{doc.documentNumber && <span>№ {doc.documentNumber}</span>}<span>{doc.kind}</span><span>·</span><span>{doc.area}</span></small></span>
+    <span className={`doc-icon ${catalogClass}`}><FileText size={20} /></span>
+    <span className="doc-main"><b>{doc.title}</b><span>{doc.description}</span>{doc.matchedInAttachment && <span className="search-match-origin"><Paperclip size={12}/>Найдено в приложенном файле</span>}<small><span className={`tag ${catalogClass}`}>{catalogLabel}</span>{doc.documentNumber && <span>№ {doc.documentNumber}</span>}<span>{doc.kind}</span><span>·</span><span>{doc.area}</span></small></span>
     <span className={`doc-status ${statusClass(doc)}`}>{doc.statusLabel || doc.status}</span><ArrowDownRight size={17} className="doc-arrow" />
   </button>
 }
@@ -1584,6 +1601,10 @@ function buildWikiBlocks(content) {
 
 function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, canReview, canReindex, canUploadFiles, files = [], versions = [], documents = [], onOpenRelated, onDownload, onUploadFile, uploadingFile, onReview, onReindexFile, reindexingFileId }) {
   const jurisdiction = jurisdictions[doc.jurisdiction] || { label: doc.jurisdiction || 'Не указана', short: doc.jurisdiction || '—', flag: '🌐', className: 'eaeu' }
+  const isMzkm = isMzkmCatalogDocument(doc)
+  const catalogClass = isMzkm ? 'ru' : jurisdiction.className
+  const catalogLabel = isMzkm ? 'МЗКМ · материалы оператора КР' : jurisdiction.label
+  const catalogShort = isMzkm ? 'МЗКМ' : jurisdiction.short
   const statusLabel = doc.statusLabel || doc.status || 'Черновик'
   const attachmentInputRef = useRef(null)
   const [copyMessage, setCopyMessage] = useState('')
@@ -1635,7 +1656,7 @@ function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, can
     <article className="detail-card wiki-article">
       <header className="wiki-article-header">
         <div className="wiki-article-labels">
-          <span className={'tag ' + jurisdiction.className}>{jurisdiction.flag} {jurisdiction.label}</span>
+          <span className={'tag ' + catalogClass}>{isMzkm ? <Boxes size={13} /> : jurisdiction.flag} {catalogLabel}</span>
           <span className={'status-pill ' + statusClass(doc)}>{statusLabel}</span>
           {doc.isDemo && <span className="wiki-demo-label">Демонстрационная запись</span>}
         </div>
@@ -1643,7 +1664,7 @@ function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, can
           <div className="wiki-article-title-copy">
             <div className="section-kicker">TEKSHER HUB / ВНУТРЕННЯЯ ЭНЦИКЛОПЕДИЯ</div>
             <h1>{doc.title}</h1>
-            <p className="wiki-article-subtitle">{jurisdiction.short} · {doc.kind || 'Материал'}{doc.documentNumber ? ' · № ' + doc.documentNumber : ''}{doc.area ? ' · ' + doc.area : ''}{doc.content ? ' · около ' + readingMinutes + ' мин чтения' : ''}</p>
+            <p className="wiki-article-subtitle">{catalogShort} · {doc.kind || 'Материал'}{doc.documentNumber ? ' · № ' + doc.documentNumber : ''}{doc.area ? ' · ' + doc.area : ''}{doc.content ? ' · около ' + readingMinutes + ' мин чтения' : ''}</p>
           </div>
           <div className="wiki-article-mark"><BookOpen size={29}/></div>
         </div>
