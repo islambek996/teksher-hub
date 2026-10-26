@@ -1428,6 +1428,9 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
   const [tnvedScope, setTnvedScope] = useState('ALL')
   const [tnvedInput, setTnvedInput] = useState('')
   const [tnvedSubmitted, setTnvedSubmitted] = useState(null)
+  const [tnvedSuggestionsOpen, setTnvedSuggestionsOpen] = useState(false)
+  const [tnvedSuggestionIndex, setTnvedSuggestionIndex] = useState(-1)
+  const tnvedAutocompleteRef = useRef(null)
   const [tnvedGroupFilter, setTnvedGroupFilter] = useState('')
   const [tnvedValidation, setTnvedValidation] = useState('')
   const [tnvedPage, setTnvedPage] = useState(0)
@@ -1452,6 +1455,17 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
     return () => { cancelled = true }
   }, [])
 
+  useEffect(() => {
+    const handleOutsideClick = event => {
+      if (!tnvedAutocompleteRef.current?.contains(event.target)) {
+        setTnvedSuggestionsOpen(false)
+        setTnvedSuggestionIndex(-1)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [])
+
   const tnvedGroupCounts = useMemo(() => {
     const counts = new Map()
     tnvedCatalog.forEach(row => {
@@ -1460,6 +1474,62 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
     })
     return counts
   }, [tnvedCatalog])
+
+  const tnvedCodePrefix = tnvedInput.replace(/[.\s-]/g, '')
+  const tnvedSuggestionMatches = useMemo(() => {
+    if (tnvedMode !== 'code' || !/^\d+$/.test(tnvedCodePrefix) || !tnvedCodePrefix || tnvedLoading || tnvedLoadError) return []
+    const matches = tnvedCatalog.filter(row => {
+      if (tnvedScope === 'MZKM' && row.t !== 'MZKM') return false
+      if (tnvedScope === 'INTERNAL' && row.t !== 'INTERNAL') return false
+      return String(row.c || '').startsWith(tnvedCodePrefix)
+    })
+    const unique = new Map()
+    matches.forEach(row => {
+      const key = [row.t, row.c, row.n, row.g].join('|')
+      if (!unique.has(key)) unique.set(key, row)
+    })
+    return Array.from(unique.values()).sort((a, b) =>
+      String(a.c).localeCompare(String(b.c)) ||
+      String(a.n).localeCompare(String(b.n), 'ru') ||
+      String(a.g).localeCompare(String(b.g), 'ru')
+    )
+  }, [tnvedCatalog, tnvedCodePrefix, tnvedMode, tnvedScope, tnvedLoading, tnvedLoadError])
+  const tnvedSuggestions = tnvedSuggestionMatches.slice(0, 8)
+
+  const chooseTnvedSuggestion = row => {
+    const code = String(row?.c || '')
+    if (!code) return
+    setTnvedMode('code')
+    setTnvedInput(code)
+    setTnvedSubmitted(code)
+    setTnvedGroupFilter('')
+    setTnvedValidation('')
+    setTnvedPage(0)
+    setShowInternalGskp('')
+    setTnvedSuggestionsOpen(false)
+    setTnvedSuggestionIndex(-1)
+  }
+
+  const handleTnvedInputKeyDown = event => {
+    if (tnvedMode !== 'code' || !tnvedSuggestionsOpen) {
+      if (event.key === 'Escape') setTnvedSuggestionsOpen(false)
+      return
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      setTnvedSuggestionsOpen(false)
+      setTnvedSuggestionIndex(-1)
+    } else if (event.key === 'ArrowDown' && tnvedSuggestions.length) {
+      event.preventDefault()
+      setTnvedSuggestionIndex(index => Math.min(tnvedSuggestions.length - 1, index + 1))
+    } else if (event.key === 'ArrowUp' && tnvedSuggestions.length) {
+      event.preventDefault()
+      setTnvedSuggestionIndex(index => Math.max(-1, index - 1))
+    } else if (event.key === 'Enter' && tnvedSuggestionIndex >= 0 && tnvedSuggestions[tnvedSuggestionIndex]) {
+      event.preventDefault()
+      chooseTnvedSuggestion(tnvedSuggestions[tnvedSuggestionIndex])
+    }
+  }
 
   const selectTnvedGroup = (groupName, scope = 'MZKM') => {
     setTnvedGroupFilter(groupName)
@@ -1573,15 +1643,72 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
       <form className="tnved-search-form" onSubmit={handleTnvedSubmit}>
         <label htmlFor="tnved-search-input">{tnvedMode === 'code' ? 'Введите код ТН ВЭД или его первые цифры' : 'Введите название товара или часть наименования'}</label>
         <div className="tnved-search-control">
-          <input
-            id="tnved-search-input"
-            value={tnvedInput}
-            onChange={event => { setTnvedInput(event.target.value); setTnvedValidation('') }}
-            placeholder={tnvedMode === 'code' ? 'Например, 950300 или 9503005500' : 'Например, шампунь, обувь, детская игрушка'}
-            inputMode={tnvedMode === 'code' ? 'numeric' : 'search'}
-            maxLength={tnvedMode === 'code' ? 15 : 160}
-            aria-invalid={Boolean(tnvedValidation)}
-          />
+          <div className="tnved-input-autocomplete" ref={tnvedAutocompleteRef}>
+            <input
+              id="tnved-search-input"
+              value={tnvedInput}
+              onChange={event => {
+                const nextValue = event.target.value
+                setTnvedInput(nextValue)
+                setTnvedSubmitted(null)
+                setTnvedGroupFilter('')
+                setTnvedValidation('')
+                setTnvedSuggestionIndex(-1)
+                setTnvedSuggestionsOpen(tnvedMode === 'code')
+              }}
+              onFocus={() => {
+                if (tnvedMode === 'code' && /^\d+$/.test(tnvedCodePrefix) && tnvedCodePrefix) {
+                  setTnvedSuggestionsOpen(true)
+                }
+              }}
+              onKeyDown={handleTnvedInputKeyDown}
+              placeholder={tnvedMode === 'code' ? 'Например, 950300 или 9503005500' : 'Например, шампунь, обувь, детская игрушка'}
+              inputMode={tnvedMode === 'code' ? 'numeric' : 'search'}
+              maxLength={tnvedMode === 'code' ? 15 : 160}
+              aria-invalid={Boolean(tnvedValidation)}
+              autoComplete="off"
+              role={tnvedMode === 'code' ? 'combobox' : undefined}
+              aria-autocomplete={tnvedMode === 'code' ? 'list' : undefined}
+              aria-expanded={tnvedMode === 'code' && tnvedSuggestionsOpen && Boolean(tnvedCodePrefix)}
+              aria-controls={tnvedMode === 'code' ? 'tnved-suggestions-list' : undefined}
+              aria-activedescendant={tnvedSuggestionIndex >= 0 ? 'tnved-suggestion-' + tnvedSuggestionIndex : undefined}
+            />
+            {tnvedMode === 'code' && tnvedSuggestionsOpen && tnvedCodePrefix && /^\d+$/.test(tnvedCodePrefix) && !tnvedLoading && !tnvedLoadError && (
+              <div className="tnved-suggestions" id="tnved-suggestions-list" role="listbox" aria-label="Подсказки кодов ТН ВЭД">
+                <div className="tnved-suggestions-summary">
+                  {tnvedSuggestionMatches.length
+                    ? (tnvedSuggestionMatches.length > 8
+                      ? 'Найдено вариантов: ' + tnvedSuggestionMatches.length.toLocaleString('ru-RU') + ' · показаны первые 8'
+                      : 'Подходящие коды: ' + tnvedSuggestionMatches.length)
+                    : 'Совпадений по этому началу кода нет'}
+                </div>
+                {tnvedSuggestions.length
+                  ? tnvedSuggestions.map((row, index) => (
+                    <button
+                      key={[row.t, row.c, row.n, row.g].join('|')}
+                      type="button"
+                      id={'tnved-suggestion-' + index}
+                      role="option"
+                      aria-selected={tnvedSuggestionIndex === index}
+                      className={'tnved-suggestion' + (tnvedSuggestionIndex === index ? ' active' : '')}
+                      onMouseEnter={() => setTnvedSuggestionIndex(index)}
+                      onMouseDown={event => event.preventDefault()}
+                      onClick={() => chooseTnvedSuggestion(row)}
+                    >
+                      <span className="tnved-suggestion-main">
+                        <strong>{row.c}</strong>
+                        <span>{row.n}</span>
+                      </span>
+                      <span className="tnved-suggestion-meta">
+                        <span>{row.g}</span>
+                        <small>{row.t === 'INTERNAL' ? 'Внутренняя КР' : 'МЗКМ'}</small>
+                      </span>
+                    </button>
+                  ))
+                  : <div className="tnved-suggestions-empty">В справочнике нет кодов с таким началом. Попробуйте изменить цифры или выбрать «Все списки».</div>}
+              </div>
+            )}
+          </div>
           <button type="submit" className="primary-button" disabled={tnvedLoading}><Search size={16}/> Проверить</button>
         </div>
         {tnvedValidation && <div className="tnved-validation" role="alert">{tnvedValidation}</div>}
