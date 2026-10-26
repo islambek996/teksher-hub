@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import kg.teksherhub.document.DocumentFile;
 import kg.teksherhub.document.DocumentFileRepository;
 import kg.teksherhub.document.DocumentRecord;
+import kg.teksherhub.document.DocumentStatus;
 import kg.teksherhub.document.DocumentRepository;
 import kg.teksherhub.process.BusinessProcessGuide;
 import kg.teksherhub.process.BusinessProcessGuideRepository;
@@ -24,6 +25,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -46,6 +48,7 @@ public class AiAssistantService {
     private static final int MAX_DOCUMENT_BODY_CHARACTERS = 4_000;
     private static final int MAX_ATTACHMENT_CHARACTERS = 2_500;
     private static final Pattern WORD_SEPARATOR = Pattern.compile("[^\\p{L}\\p{N}]+");
+    private static final Set<String> SHORT_DOMAIN_TERMS = Set.of("км", "рф", "кр", "ип");
     private static final Set<String> STOP_WORDS = Set.of(
             "это", "как", "что", "где", "когда", "почему", "зачем", "какой", "какая", "какие", "какое",
             "можно", "нужно", "надо", "есть", "для", "или", "при", "про", "под", "над", "без", "через",
@@ -185,8 +188,21 @@ public class AiAssistantService {
         }
         boolean insufficient = looksInsufficient(answer) || citationCheck.invalidFound()
                 || (!evidence.isEmpty() && evidence.stream().noneMatch(item ->
-                "WEB".equals(item.sourceType()) || ("DOCUMENT".equals(item.sourceType()) && "ACTIVE".equals(item.status()))));
+                "WEB".equals(item.sourceType()) || isCurrentActiveDocument(item, LocalDate.now())));
         return new AssistantResponse(answer, evidence.stream().map(Evidence::reference).toList(), insufficient);
+    }
+
+    private static boolean isCurrentActiveDocument(Evidence evidence, LocalDate today) {
+        if (evidence == null || !"DOCUMENT".equals(evidence.sourceType()) || !"ACTIVE".equals(evidence.status())) return false;
+        try {
+            LocalDate from = evidence.effectiveFrom() == null || evidence.effectiveFrom().isBlank()
+                    ? null : LocalDate.parse(evidence.effectiveFrom());
+            LocalDate until = evidence.effectiveUntil() == null || evidence.effectiveUntil().isBlank()
+                    ? null : LocalDate.parse(evidence.effectiveUntil());
+            return (from == null || !from.isAfter(today)) && (until == null || !until.isBefore(today));
+        } catch (java.time.format.DateTimeParseException ex) {
+            return false;
+        }
     }
 
     private static CitationCheck validateCitations(String answer, List<Evidence> evidence) {
@@ -257,7 +273,11 @@ public class AiAssistantService {
             if (!normalizedQuestion.isBlank() && (title.contains(normalizedQuestion) || metadata.contains(normalizedQuestion) || body.contains(normalizedQuestion))) {
                 score += 8;
             }
-            if (score > 0) ranked.add(new RankedDocument(document, score));
+            if (score > 0) {
+                score += statusRankingBoost(document, LocalDate.now());
+                score += jurisdictionRankingBoost(document, question);
+                if (score > 0) ranked.add(new RankedDocument(document, score));
+            }
         }
         ranked.sort(Comparator.comparingInt(RankedDocument::score).reversed()
                 .thenComparing(r -> safeInstant(r.document().getUpdatedAt()), Comparator.reverseOrder()));
@@ -494,15 +514,43 @@ public class AiAssistantService {
                 + ": " + turn.content()).collect(Collectors.joining("\n"));
     }
 
-    private static List<String> searchTerms(String question) {
+    static List<String> searchTerms(String question) {
         LinkedHashSet<String> terms = new LinkedHashSet<>();
         for (String word : WORD_SEPARATOR.split(question.toLowerCase(Locale.ROOT).replace('ё', 'е'))) {
-            if (word.length() < 3 || STOP_WORDS.contains(word)) continue;
+            if ((word.length() < 3 && !SHORT_DOMAIN_TERMS.contains(word)) || STOP_WORDS.contains(word)) continue;
             String stem = stem(word);
-            if (stem.length() >= 3 && !STOP_WORDS.contains(stem)) terms.add(stem);
+            if ((stem.length() >= 3 || SHORT_DOMAIN_TERMS.contains(stem)) && !STOP_WORDS.contains(stem)) terms.add(stem);
             if (terms.size() >= 12) break;
         }
         return List.copyOf(terms);
+    }
+
+    static int statusRankingBoost(DocumentRecord document, LocalDate today) {
+        if (document == null) return 0;
+        int score = switch (document.getStatus() == null ? DocumentStatus.DRAFT : document.getStatus()) {
+            case ACTIVE -> 5;
+            case UNDER_REVIEW -> -1;
+            case DRAFT -> -2;
+            case EXPIRED, ARCHIVED -> -5;
+        };
+        LocalDate from = document.getEffectiveFrom();
+        LocalDate until = document.getEffectiveUntil();
+        if (from != null && from.isAfter(today)) score -= 2;
+        if (until != null && until.isBefore(today)) score -= 4;
+        return score;
+    }
+
+    private static int jurisdictionRankingBoost(DocumentRecord document, String question) {
+        if (document == null || question == null || question.isBlank()) return 0;
+        String q = question.toLowerCase(Locale.ROOT).replace('ё', 'е');
+        String requested = null;
+        if (q.contains("кыргыз") || q.contains("гаис мт") || q.contains(" гаис")) requested = "KG";
+        else if (q.contains("росси") || q.contains("мзкм") || q.contains("честный знак")
+                || q.contains("рф") || q.contains("россия")) requested = "RU";
+        else if (q.contains("еаэс") || q.contains("евразий")) requested = "EAEU";
+        if (requested == null) return 0;
+        String actual = safe(document.getJurisdiction()).toUpperCase(Locale.ROOT);
+        return requested.equals(actual) ? 6 : -3;
     }
 
     private static String normalizeText(String text) {
