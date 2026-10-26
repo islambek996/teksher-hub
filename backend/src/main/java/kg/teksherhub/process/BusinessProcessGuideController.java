@@ -38,8 +38,8 @@ public class BusinessProcessGuideController {
         return service.update(id, request, user.getUsername());
     }
 
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/{id}/versions")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR','READER')")
     public List<BusinessProcessGuideService.GuideVersion> versions(@PathVariable String id) {
         return service.versions(id);
     }
