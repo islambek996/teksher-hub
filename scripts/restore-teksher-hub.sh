@@ -25,10 +25,10 @@ docker compose ps --status running --services | grep -Fxq "$DB_SERVICE" || {
   exit 1
 }
 if [[ -z "$DB_USERNAME" ]]; then
-  DB_USERNAME="$(docker compose exec -T "$DB_SERVICE" sh -c 'printf "%s" "${POSTGRES_USER:-teksher}"' | tr -d '\\r')"
+  DB_USERNAME="$(docker compose exec -T "$DB_SERVICE" sh -c 'printf "%s" "${POSTGRES_USER:-teksher}"' | tr -d '\r')"
 fi
 if [[ -z "$DB_NAME" ]]; then
-  DB_NAME="$(docker compose exec -T "$DB_SERVICE" sh -c 'printf "%s" "${POSTGRES_DB:-teksher_hub}"' | tr -d '\\r')"
+  DB_NAME="$(docker compose exec -T "$DB_SERVICE" sh -c 'printf "%s" "${POSTGRES_DB:-teksher_hub}"' | tr -d '\r')"
 fi
 
 cat <<'WARNING'
