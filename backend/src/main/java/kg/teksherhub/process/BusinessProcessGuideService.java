@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -65,17 +66,24 @@ public class BusinessProcessGuideService {
         if (request.steps().size() > 30) {
             throw new IllegalArgumentException("В одной инструкции может быть не более 30 шагов.");
         }
+        if (request.steps().stream().anyMatch(Objects::isNull)) {
+            throw new IllegalArgumentException("Каждый шаг должен содержать название и описание.");
+        }
+        if (request.sources() != null && request.sources().stream().anyMatch(Objects::isNull)) {
+            throw new IllegalArgumentException("Некорректная ссылка в инструкции.");
+        }
         List<BusinessProcessSource> sources = request.sources() == null
                 ? List.of()
                 : request.sources().stream()
-                    .filter(source -> source != null)
                     .map(source -> new BusinessProcessSource(
                             source.label().trim(), source.url().trim()))
                     .toList();
         List<BusinessProcessStep> steps = request.steps().stream()
-                .filter(step -> step != null)
                 .map(step -> new BusinessProcessStep(step.title().trim(), step.detail().trim()))
                 .toList();
+        if (steps.isEmpty()) {
+            throw new IllegalArgumentException("Добавьте хотя бы один шаг.");
+        }
 
         guide.setCategory(request.category().trim());
         guide.setTitle(request.title().trim());
