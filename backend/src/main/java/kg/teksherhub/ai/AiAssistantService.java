@@ -584,7 +584,7 @@ public class AiAssistantService {
         String q = question.toLowerCase(Locale.ROOT).replace('ё', 'е');
         String requested = null;
         if (q.contains("кыргыз") || q.contains("гаис") || q.contains("текшер")
-                || Pattern.compile("(?iu)(^|[^\\\\p{L}\\\\p{N}])кр($|[^\\\\p{L}\\\\p{N}])").matcher(q).find()) requested = "KG";
+                || Pattern.compile("(?iu)(^|[^\\p{L}\\p{N}])кр($|[^\\p{L}\\p{N}])").matcher(q).find()) requested = "KG";
         else if (q.contains("росси") || q.contains("честный знак") || q.contains("рф")) requested = "RU";
         else if (q.contains("еаэс") || q.contains("евразий")) requested = "EAEU";
         if (requested == null) return 0;
