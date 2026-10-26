@@ -6,18 +6,17 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 
 import java.nio.charset.StandardCharsets;
-
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -36,8 +35,11 @@ public class DocumentController {
     public List<DocumentResponse> list(@RequestParam(required = false) String q,
                                        @RequestParam(required = false) String jurisdiction,
                                        @RequestParam(required = false) String kind,
-                                       @RequestParam(required = false) String status) {
-        return service.list(q, jurisdiction, kind, status);
+                                       @RequestParam(required = false) String status,
+                                       @AuthenticationPrincipal UserAccount user) {
+        return service.list(q, jurisdiction, kind, status).stream()
+                .filter(document -> DocumentReadAccessPolicy.canRead(user.getRole(), document.status(), document.kind()))
+                .toList();
     }
 
     @GetMapping(value = "/export.csv", produces = "text/csv")
@@ -52,7 +54,11 @@ public class DocumentController {
     }
 
     @GetMapping("/{id}")
-    public DocumentResponse get(@PathVariable UUID id) { return service.get(id); }
+    public DocumentResponse get(@PathVariable UUID id, @AuthenticationPrincipal UserAccount user) {
+        DocumentResponse document = service.get(id);
+        DocumentReadAccessPolicy.requireReadable(user.getRole(), document);
+        return document;
+    }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
@@ -103,7 +109,10 @@ public class DocumentController {
     }
 
     @GetMapping("/{id}/versions")
-    public List<VersionResponse> versions(@PathVariable UUID id) { return service.history(id); }
+    public List<VersionResponse> versions(@PathVariable UUID id, @AuthenticationPrincipal UserAccount user) {
+        DocumentReadAccessPolicy.requireReadable(user.getRole(), service.get(id));
+        return service.history(id);
+    }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
