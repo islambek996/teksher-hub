@@ -2486,7 +2486,27 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
       if (editingId) {
         const previous = guides.find(item => item.id === editingId)
         if (JSON.stringify(previous?.steps || []) !== JSON.stringify(saved.steps || [])) {
-          setProgress(current => ({ ...current, [saved.id]: [] }))
+          // Keep completed checklist items attached to their step titles when steps are reordered.
+          // Removed or renamed steps naturally lose their completion mark.
+          setProgress(current => {
+            const oldSteps = previous?.steps || []
+            const completedIndexes = Array.isArray(current[saved.id]) ? current[saved.id] : []
+            const completedTitles = completedIndexes
+              .filter(index => Number.isInteger(index) && index >= 0 && index < oldSteps.length)
+              .map(index => String(oldSteps[index]?.title || '').trim())
+            const used = new Set()
+            const nextCompleted = []
+            completedTitles.forEach(title => {
+              const nextIndex = (saved.steps || []).findIndex((step, index) =>
+                !used.has(index) && String(step?.title || '').trim() === title
+              )
+              if (title && nextIndex >= 0) {
+                used.add(nextIndex)
+                nextCompleted.push(nextIndex)
+              }
+            })
+            return { ...current, [saved.id]: nextCompleted }
+          })
         }
       }
       setSelectedGuideId(saved.id)
@@ -2712,6 +2732,13 @@ function ProcessGuideEditorModal({ guide, saving, error, onClose, onSave }) {
     steps: current.steps.map((step, i) => i === index ? { ...step, [field]: value } : step),
   }))
   const removeStep = index => setForm(current => ({ ...current, steps: current.steps.filter((_, i) => i !== index) }))
+  const moveStep = (index, direction) => setForm(current => {
+    const target = index + direction
+    if (target < 0 || target >= current.steps.length) return current
+    const steps = [...current.steps]
+    ;[steps[index], steps[target]] = [steps[target], steps[index]]
+    return { ...current, steps }
+  })
   const addStep = () => setForm(current => current.steps.length >= 30
     ? current
     : ({ ...current, steps: [...current.steps, { title: '', detail: '' }] }))
@@ -2762,7 +2789,7 @@ function ProcessGuideEditorModal({ guide, saving, error, onClose, onSave }) {
           <div className="process-editor-section-heading"><div><b>Шаги инструкции</b><span>Название и подробное описание для каждого действия</span></div><button type="button" className="secondary-button" onClick={addStep} disabled={form.steps.length >= 30}><FilePlus2 size={14}/> Добавить шаг</button></div>
           <div className="process-editor-repeat-list">
             {form.steps.map((step, index) => <article className="process-editor-repeat-card" key={index}>
-              <div className="process-editor-repeat-heading"><strong>Шаг {index + 1}</strong><button type="button" className="process-editor-remove" onClick={() => removeStep(index)} disabled={form.steps.length <= 1} title="Удалить шаг"><Trash2 size={14}/><span>Удалить</span></button></div>
+              <div className="process-editor-repeat-heading"><strong>Шаг {index + 1}</strong><div className="process-editor-step-actions"><button type="button" className="process-editor-remove" onClick={() => moveStep(index, -1)} disabled={index === 0} title="Переместить шаг выше" aria-label={`Переместить шаг ${index + 1} выше`}>↑ Выше</button><button type="button" className="process-editor-remove" onClick={() => moveStep(index, 1)} disabled={index === form.steps.length - 1} title="Переместить шаг ниже" aria-label={`Переместить шаг ${index + 1} ниже`}>↓ Ниже</button><button type="button" className="process-editor-remove" onClick={() => removeStep(index)} disabled={form.steps.length <= 1} title="Удалить шаг"><Trash2 size={14}/><span>Удалить</span></button></div></div>
               <label className="form-field"><span>Название шага *</span><input required maxLength={200} value={step.title} onChange={event => updateStep(index, 'title', event.target.value)} placeholder="Например, Проверь код ТН ВЭД"/></label>
               <label className="form-field"><span>Описание *</span><textarea required maxLength={4000} rows={3} value={step.detail} onChange={event => updateStep(index, 'detail', event.target.value)} placeholder="Что именно нужно проверить или выполнить"/></label>
             </article>)}
