@@ -2,6 +2,13 @@ package kg.teksherhub.document;
 
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.junit.jupiter.api.io.TempDir;
 
 import javax.imageio.ImageIO;
@@ -11,6 +18,7 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -34,6 +42,58 @@ class DocumentTextExtractionServiceTest {
         assertEquals("INDEXED", result.status());
         assertTrue(result.text().contains("Заказать код маркировки"));
         assertTrue(result.text().contains("Проверить карточку товара"));
+    }
+
+    @Test
+    void extractsSearchableTextFromWordDocument() throws Exception {
+        Path file = tempDir.resolve("instruction.docx");
+        try (XWPFDocument document = new XWPFDocument();
+             OutputStream output = Files.newOutputStream(file)) {
+            document.createParagraph().createRun().setText("DOCX-MARKER-4821");
+            document.write(output);
+        }
+
+        var result = service.extract(file, "instruction.docx");
+
+        assertEquals("INDEXED", result.status(), result.note());
+        assertTrue(result.text().contains("DOCX-MARKER-4821"), result.text());
+    }
+
+    @Test
+    void extractsSearchableTextFromExcelWorkbook() throws Exception {
+        Path file = tempDir.resolve("catalog.xlsx");
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             OutputStream output = Files.newOutputStream(file)) {
+            workbook.createSheet("Instructions").createRow(0).createCell(0).setCellValue("XLSX-MARKER-5739");
+            workbook.write(output);
+        }
+
+        var result = service.extract(file, "catalog.xlsx");
+
+        assertEquals("INDEXED", result.status(), result.note());
+        assertTrue(result.text().contains("XLSX-MARKER-5739"), result.text());
+    }
+
+    @Test
+    void extractsSearchableTextFromPdfDocument() throws Exception {
+        Path file = tempDir.resolve("regulation.pdf");
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+            try (PDPageContentStream stream = new PDPageContentStream(document, page)) {
+                stream.beginText();
+                stream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+                stream.newLineAtOffset(50, 700);
+                stream.showText("PDF-MARKER-2468");
+                stream.endText();
+            }
+            document.save(file.toFile());
+        }
+
+        var result = service.extract(file, "regulation.pdf");
+
+        assertEquals("INDEXED", result.status(), result.note());
+        assertTrue(result.text().contains("PDF-MARKER-2468"), result.text());
     }
 
     @Test
