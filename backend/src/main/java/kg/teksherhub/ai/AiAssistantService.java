@@ -191,7 +191,7 @@ public class AiAssistantService {
 
     private static CitationCheck validateCitations(String answer, List<Evidence> evidence) {
         Set<Integer> availableNumbers = evidence.stream().map(Evidence::number).collect(Collectors.toSet());
-        java.util.regex.Matcher matcher = Pattern.compile("\\\\[(\\\\d{1,2})\\\\]").matcher(answer);
+        java.util.regex.Matcher matcher = Pattern.compile("\\[(\\d{1,2})\\]").matcher(answer);
         StringBuffer cleaned = new StringBuffer();
         boolean invalidFound = false;
         while (matcher.find()) {
