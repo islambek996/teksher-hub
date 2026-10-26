@@ -186,10 +186,33 @@ public class AiAssistantService {
                     + String.join(", ", reviewStatuses)
                     + ". Их сведения нельзя считать подтверждёнными действующими требованиями без дополнительной проверки.";
         }
+        List<String> dateConflicts = evidence.stream()
+                .filter(item -> "DOCUMENT".equals(item.sourceType()) && "ACTIVE".equals(item.status()))
+                .filter(item -> isOutsideEffectivePeriod(item, LocalDate.now()))
+                .map(Evidence::title)
+                .distinct()
+                .toList();
+        if (!dateConflicts.isEmpty()) {
+            answer = answer.stripTrailing() + "\n\nВажно: для материалов со статусом «Действует» указанный период дат не покрывает текущую дату: "
+                    + String.join("; ", dateConflicts)
+                    + ". Их статус и срок действия необходимо проверить в первоисточнике.";
+        }
         boolean insufficient = looksInsufficient(answer) || citationCheck.invalidFound()
                 || (!evidence.isEmpty() && evidence.stream().noneMatch(item ->
                 "WEB".equals(item.sourceType()) || isCurrentActiveDocument(item, LocalDate.now())));
         return new AssistantResponse(answer, evidence.stream().map(Evidence::reference).toList(), insufficient);
+    }
+
+    private static boolean isOutsideEffectivePeriod(Evidence evidence, LocalDate today) {
+        try {
+            LocalDate from = evidence.effectiveFrom() == null || evidence.effectiveFrom().isBlank()
+                    ? null : LocalDate.parse(evidence.effectiveFrom());
+            LocalDate until = evidence.effectiveUntil() == null || evidence.effectiveUntil().isBlank()
+                    ? null : LocalDate.parse(evidence.effectiveUntil());
+            return (from != null && from.isAfter(today)) || (until != null && until.isBefore(today));
+        } catch (java.time.format.DateTimeParseException ex) {
+            return true;
+        }
     }
 
     private static boolean isCurrentActiveDocument(Evidence evidence, LocalDate today) {
@@ -536,7 +559,7 @@ public class AiAssistantService {
         LocalDate from = document.getEffectiveFrom();
         LocalDate until = document.getEffectiveUntil();
         if (from != null && from.isAfter(today)) score -= 2;
-        if (until != null && until.isBefore(today)) score -= 4;
+        if (until != null && until.isBefore(today)) score -= 8;
         return score;
     }
 
