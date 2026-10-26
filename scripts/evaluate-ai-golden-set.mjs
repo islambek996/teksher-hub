@@ -156,8 +156,19 @@ async function evaluateCase(item, index) {
       !(data.insufficientEvidence && hasInsufficientEvidenceLanguage(answer));
   }
 
+  const normalizedAnswer = answer.toLowerCase().replaceAll("ё", "е").replace(/[\\s\\u00a0]/g, "");
+  const claimsUnverifiedHighLimit = item.id === "LIMIT_MUST_NOT_BE_GUESSED" &&
+    /(?:5000|5тысяч|пятьтысяч)/i.test(normalizedAnswer);
+  const claimsUnverifiedHighLimitWithoutCurrentEvidence = claimsUnverifiedHighLimit &&
+    !sources.some(source =>
+      source.sourceType === "DOCUMENT" &&
+      String(source.status || "").toUpperCase() === "ACTIVE" &&
+      /(?:лимит|заказ|код маркировки)/i.test(String(source.title || "") + " " + String(source.excerpt || ""))
+    );
+
   const checks = {
     validResponseSchema: Boolean(answer) && Array.isArray(data.sources) && typeof data.insufficientEvidence === "boolean",
+    doesNotAssertUnverifiedFiveThousandCodeLimit: !claimsUnverifiedHighLimitWithoutCurrentEvidence,
     citationNumbersMapToReturnedSources: invalidCitations.length === 0 && !citationGuardWarning,
     noConfidentAnswerWithoutCitation: !noCitationButConfident,
     statusWarningWhenUsingUnreviewedOrArchivedDocuments: !requiresStatusWarning || statusWarningPresent,
@@ -199,7 +210,9 @@ async function evaluateCase(item, index) {
       invalidCitations,
       flaggedDocumentSources: flaggedDocumentSources.map(source => source.title),
       activeDateConflicts: activeDateConflicts.map(source => source.title),
-      matchingJurisdictionSources: matchedJurisdictionSources.map(source => source.title)
+      matchingJurisdictionSources: matchedJurisdictionSources.map(source => source.title),
+      claimsUnverifiedHighLimit,
+      claimsUnverifiedHighLimitWithoutCurrentEvidence
     }
   };
 }
