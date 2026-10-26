@@ -7,6 +7,8 @@ import kg.teksherhub.document.DocumentFile;
 import kg.teksherhub.document.DocumentFileRepository;
 import kg.teksherhub.document.DocumentRecord;
 import kg.teksherhub.document.DocumentRepository;
+import kg.teksherhub.process.BusinessProcessGuide;
+import kg.teksherhub.process.BusinessProcessGuideRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -62,18 +64,21 @@ public class AiAssistantService {
     private final ObjectMapper objectMapper;
     private final DocumentRepository documents;
     private final DocumentFileRepository files;
+    private final BusinessProcessGuideRepository businessProcesses;
 
     public AiAssistantService(
             @Value("${app.ai.groq-api-key:}") String apiKey,
             @Value("${app.ai.groq-model:openai/gpt-oss-20b}") String model,
             ObjectMapper objectMapper,
             DocumentRepository documents,
-            DocumentFileRepository files) {
+            DocumentFileRepository files,
+            BusinessProcessGuideRepository businessProcesses) {
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.model = model == null || model.isBlank() ? "openai/gpt-oss-20b" : model.trim();
         this.objectMapper = objectMapper;
         this.documents = documents;
         this.files = files;
+        this.businessProcesses = businessProcesses;
         this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     }
 
@@ -96,11 +101,15 @@ public class AiAssistantService {
         }
 
         List<RankedDocument> ranked = retrieve(question, terms);
-        if (ranked.isEmpty()) {
-            return insufficient("В базе знаний не нашлось материалов, которые подтверждают ответ на этот вопрос. Попробуйте другие ключевые слова или обратитесь к ответственному специалисту.", List.of());
+        // Reserve room for business-process guides so procedural questions can use them too.
+        List<Evidence> evidence = new ArrayList<>();
+        if (!ranked.isEmpty()) {
+            evidence.addAll(buildEvidence(ranked.subList(0, Math.min(4, ranked.size())), terms));
         }
-
-        List<Evidence> evidence = buildEvidence(ranked.subList(0, Math.min(MAX_SOURCES, ranked.size())), terms);
+        if (evidence.size() < MAX_SOURCES) {
+            evidence.addAll(buildBusinessProcessEvidence(question, terms, evidence.size() + 1,
+                    MAX_SOURCES - evidence.size()));
+        }
         if (evidence.isEmpty()) {
             return insufficient("В базе знаний не нашлось материалов, которые подтверждают ответ на этот вопрос. Попробуйте другие ключевые слова или обратитесь к ответственному специалисту.", List.of());
         }
@@ -190,11 +199,78 @@ public class AiAssistantService {
             remaining -= contextText.length();
             String excerpt = bestExcerpt(join(safe(d.getContent()), attachmentContext.toString(), safe(d.getDescription())), terms);
             if (excerpt.isBlank()) excerpt = truncate(safe(d.getDescription()), 360);
-            result.add(new Evidence(number, d.getId(), safe(d.getTitle()), safe(d.getJurisdiction()), safe(d.getKind()),
+            result.add(new Evidence(number, d.getId().toString(), "DOCUMENT", safe(d.getTitle()), safe(d.getJurisdiction()), safe(d.getKind()),
                     d.getStatus() == null ? "UNKNOWN" : d.getStatus().name(),
                     d.getStatus() == null ? "Статус не указан" : d.getStatus().label(), safe(d.getSourceUrl()),
                     string(d.getEffectiveFrom()), string(d.getEffectiveUntil()), string(d.getOfficialSourceCheckedAt()),
                     excerpt, contextText, row.score()));
+            number++;
+        }
+        return result;
+    }
+
+    private List<Evidence> buildBusinessProcessEvidence(String question, List<String> terms, int firstNumber, int limit) {
+        List<RankedProcess> ranked = new ArrayList<>();
+        String normalizedQuestion = normalizeText(question);
+        for (BusinessProcessGuide guide : businessProcesses.findAllByOrderByOrderIndexAscTitleAsc()) {
+            String title = normalizeText(guide.getTitle());
+            String metadata = normalizeText(join(guide.getCategory(), guide.getSummary(), guide.getScope(),
+                    guide.getTime(), guide.getSearchTerm()));
+            String body = normalizeText(join(guide.getStepsJson(), guide.getSourcesJson()));
+            int score = 0;
+            for (String term : terms) {
+                if (title.contains(term)) score += 6;
+                else if (metadata.contains(term)) score += 3;
+                else if (body.contains(term)) score += 2;
+            }
+            if (!normalizedQuestion.isBlank() && (title.contains(normalizedQuestion)
+                    || metadata.contains(normalizedQuestion) || body.contains(normalizedQuestion))) score += 8;
+            if (score > 0) ranked.add(new RankedProcess(guide, score));
+        }
+        ranked.sort(Comparator.comparingInt(RankedProcess::score).reversed()
+                .thenComparing(row -> safeInstant(row.guide().getUpdatedAt()), Comparator.reverseOrder()));
+
+        List<Evidence> result = new ArrayList<>();
+        int number = firstNumber;
+        for (RankedProcess row : ranked.stream().limit(limit).toList()) {
+            BusinessProcessGuide guide = row.guide();
+            StringBuilder context = new StringBuilder();
+            append(context, "ID источника", Integer.toString(number));
+            append(context, "Тип материала", "Бизнес-процесс / внутренняя инструкция");
+            append(context, "Название", guide.getTitle());
+            append(context, "Категория", guide.getCategory());
+            append(context, "Область применения", guide.getScope());
+            append(context, "Продолжительность или срок", guide.getTime());
+            append(context, "Ключевые слова", guide.getSearchTerm());
+            append(context, "Описание", guide.getSummary());
+            String sourceUrl = "";
+            try {
+                JsonNode sources = objectMapper.readTree(safe(guide.getSourcesJson()).isBlank() ? "[]" : guide.getSourcesJson());
+                if (sources.isArray()) {
+                    for (JsonNode source : sources) {
+                        String label = source.path("label").asText("");
+                        String url = source.path("url").asText("");
+                        if (sourceUrl.isBlank() && !url.isBlank()) sourceUrl = url;
+                        append(context, "Ссылка", join(label, url));
+                    }
+                }
+                JsonNode steps = objectMapper.readTree(safe(guide.getStepsJson()).isBlank() ? "[]" : guide.getStepsJson());
+                if (steps.isArray()) {
+                    int stepNumber = 1;
+                    for (JsonNode step : steps) {
+                        context.append("Шаг ").append(stepNumber++).append(": ")
+                                .append(step.path("title").asText("")).append("\n")
+                                .append(step.path("detail").asText("")).append("\n");
+                    }
+                }
+            } catch (IOException ex) {
+                log.warn("AI assistant could not parse business process guide {}", guide.getId());
+            }
+            String excerpt = safe(guide.getSummary());
+            if (excerpt.isBlank()) excerpt = truncate(context.toString(), 360);
+            result.add(new Evidence(number, guide.getId(), "BUSINESS_PROCESS", safe(guide.getTitle()),
+                    "KR/EAEU", "Бизнес-процесс", "INTERNAL", "Внутренняя инструкция",
+                    sourceUrl, "", "", "", excerpt, truncate(context.toString(), 4_500), row.score()));
             number++;
         }
         return result;
@@ -367,16 +443,17 @@ public class AiAssistantService {
     }
 
     private record RankedDocument(DocumentRecord document, int score) {}
-    private record Evidence(int number, UUID id, String title, String jurisdiction, String kind, String status,
+    private record RankedProcess(BusinessProcessGuide guide, int score) {}
+    private record Evidence(int number, String id, String sourceType, String title, String jurisdiction, String kind, String status,
                             String statusLabel, String sourceUrl, String effectiveFrom, String effectiveUntil,
                             String checkedAt, String excerpt, String context, int score) {
         SourceReference reference() {
-            return new SourceReference(id, number, title, jurisdiction, kind, status, statusLabel, sourceUrl,
+            return new SourceReference(id, number, sourceType, title, jurisdiction, kind, status, statusLabel, sourceUrl,
                     effectiveFrom, effectiveUntil, checkedAt, excerpt);
         }
     }
 
-    public record SourceReference(UUID id, int number, String title, String jurisdiction, String kind, String status,
+    public record SourceReference(String id, int number, String sourceType, String title, String jurisdiction, String kind, String status,
                                   String statusLabel, String sourceUrl, String effectiveFrom, String effectiveUntil,
                                   String checkedAt, String excerpt) {}
     public record AssistantResponse(String answer, List<SourceReference> sources, boolean insufficientEvidence) {}
