@@ -39,5 +39,6 @@ app:
     initial-delay-ms: ${MONITOR_INITIAL_DELAY_MS:60000}
   ai:
     groq-api-key: ${GROQ_API_KEY:}
+    groq-api-keys: ${GROQ_API_KEYS:}
     groq-model: ${GROQ_MODEL:openai/gpt-oss-20b}
     web-search-enabled: ${AI_WEB_SEARCH_ENABLED:true}
