@@ -3,6 +3,7 @@ package kg.teksherhub.document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,14 +23,16 @@ public class DocumentService {
     private final DocumentFileRepository files;
     private final FileStorageService storage;
     private final DocumentLinkRepository links;
+    private final JdbcTemplate jdbc;
 
     public DocumentService(DocumentRepository documents, DocumentVersionRepository versions, DocumentFileRepository files,
-                           FileStorageService storage, DocumentLinkRepository links) {
+                           FileStorageService storage, DocumentLinkRepository links, JdbcTemplate jdbc) {
         this.documents = documents;
         this.versions = versions;
         this.files = files;
         this.storage = storage;
         this.links = links;
+        this.jdbc = jdbc;
     }
 
     @Transactional(readOnly = true)
@@ -100,6 +103,7 @@ public class DocumentService {
         d = documents.save(d);
         saveLinks(d, request.relatedDocumentIds());
         recordVersion(d, username, text(request.changeNote(), "Создание карточки"));
+        recordAudit(username, "CREATE", d, text(request.changeNote(), "Создание карточки"));
         return toResponse(d);
     }
 
@@ -114,6 +118,7 @@ public class DocumentService {
         d = documents.save(d);
         saveLinks(d, request.relatedDocumentIds());
         recordVersion(d, username, text(request.changeNote(), "Обновление карточки"));
+        recordAudit(username, "UPDATE", d, text(request.changeNote(), "Обновление карточки"));
         return toResponse(d);
     }
 
@@ -140,12 +145,15 @@ public class DocumentService {
         d.setVersionNumber(d.getVersionNumber() + 1);
         d = documents.save(d);
         recordVersion(d, username, "Проверка актуальности: " + d.getStatus().label());
+        recordAudit(username, "REVIEW", d, "Статус проверки: " + d.getStatus().label()
+                + ". " + text(request.note(), "Проверено вручную"));
         return toResponse(d);
     }
 
     @Transactional
-    public void delete(UUID id) {
+    public void delete(UUID id, String username) {
         DocumentRecord d = findEntity(id);
+        recordAudit(username, "DELETE", d, "Карточка документа удалена");
 
         // Keep the physical files until the database transaction commits. Otherwise a failed
         // database delete could leave the document row in place while its attachments are gone.
@@ -222,6 +230,13 @@ public class DocumentService {
                 links.findRelatedIdsByDocumentId(d.getId()), matchedInAttachment);
     }
 
+
+    private void recordAudit(String username, String action, DocumentRecord document, String details) {
+        jdbc.update("""
+                INSERT INTO audit_log(username, action, entity_type, entity_id, entity_label, details, created_at)
+                VALUES (?, ?, 'DOCUMENT', ?, ?, ?, NOW())
+                """, username, action, document.getId().toString(), document.getTitle(), details);
+    }
 
     private void recordVersion(DocumentRecord document, String username, String note) {
         DocumentVersion version = DocumentVersion.snapshot(document, username, note);
