@@ -5,9 +5,8 @@ import { gunzipSync } from 'node:zlib'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const partsDirectory = path.join(root, 'src', 'data', 'tnved-parts')
-const expectedPartCount = 9
-const parts = Array.from({ length: expectedPartCount }, (_, index) => {
-  const name = String(index + 1).padStart(2, '0') + '.txt'
+const partNames = ['01a.txt', '01b.txt', ...Array.from({ length: 8 }, (_, index) => String(index + 2).padStart(2, '0') + '.txt')]
+const parts = partNames.map(name => {
   const file = path.join(partsDirectory, name)
   if (!fs.existsSync(file)) throw new Error(`Missing TN VED data part: ${name}`)
   return fs.readFileSync(file, 'utf8').trim()
