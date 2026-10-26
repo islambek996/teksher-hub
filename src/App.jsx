@@ -3189,8 +3189,10 @@ function AiAssistantSection({ apiEnabled, onOpenDocument }) {
                 <div className="assistant-sources-heading"><BookOpen size={15}/> Источники в базе ({message.sources.length})</div>
                 {message.sources.map(source => <article className="assistant-source-card" key={source.id}>
                   <div className="assistant-source-top"><span className="assistant-source-number">[{source.number}]</span><span className={'assistant-source-status assistant-status-' + String(source.status || '').toLowerCase()}>{source.statusLabel || 'Статус не указан'}</span></div>
-                  <button type="button" className="assistant-source-title" onClick={() => onOpenDocument(source.id)}>{source.title}<ArrowUpRight size={14}/></button>
-                  <div className="assistant-source-meta">{source.jurisdiction || 'Юрисдикция не указана'}{source.kind ? ' · ' + source.kind : ''}{source.effectiveFrom ? ' · с ' + source.effectiveFrom : ''}{source.effectiveUntil ? ' · по ' + source.effectiveUntil : ''}</div>
+                  {source.sourceType === 'BUSINESS_PROCESS'
+                    ? <div className="assistant-source-title">{source.title}</div>
+                    : <button type="button" className="assistant-source-title" onClick={() => onOpenDocument(source.id)}>{source.title}<ArrowUpRight size={14}/></button>}
+                  <div className="assistant-source-meta">{source.sourceType === 'BUSINESS_PROCESS' ? 'Бизнес-процесс' : (source.jurisdiction || 'Юрисдикция не указана')}{source.kind ? ' · ' + source.kind : ''}{source.effectiveFrom ? ' · с ' + source.effectiveFrom : ''}{source.effectiveUntil ? ' · по ' + source.effectiveUntil : ''}</div>
                   {source.excerpt && <p className="assistant-source-excerpt">{source.excerpt}</p>}
                   {source.sourceUrl && <a className="assistant-source-link" href={source.sourceUrl} target="_blank" rel="noreferrer"><ExternalLink size={13}/> Официальный источник</a>}
                   {source.checkedAt && <small className="assistant-source-checked">Последняя отметка проверки: {new Date(source.checkedAt).toLocaleDateString('ru-RU')}</small>}
