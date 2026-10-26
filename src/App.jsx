@@ -1654,6 +1654,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
  const [editingGroup, setEditingGroup] = useState(null)
  const [groupDraft, setGroupDraft] = useState({ name: '', description: '', source: '' })
  const [catalogReady, setCatalogReady] = useState(!API_ENABLED)
+ const [catalogLoadOk, setCatalogLoadOk] = useState(!API_ENABLED)
  const [catalogSaveState, setCatalogSaveState] = useState('')
  const mzkmGroups = groupData.mzkmGroups
  const internalGroups = groupData.internalGroups
@@ -1665,6 +1666,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
    if (result?.payload && Array.isArray(result.payload.mzkmGroups) && Array.isArray(result.payload.internalGroups)) {
     setGroupData({ mzkmGroups: result.payload.mzkmGroups, internalGroups: result.payload.internalGroups, mzkmDetails: result.payload.mzkmDetails || {} })
    }
+   setCatalogLoadOk(true)
   }).catch(error => {
    if (!cancelled) setCatalogSaveState('Не удалось загрузить общий каталог: ' + error.message)
   }).finally(() => { if (!cancelled) setCatalogReady(true) })
@@ -1673,7 +1675,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
  useEffect(() => {
   if (!catalogReady) return
   try { window.localStorage.setItem(PRODUCT_GROUPS_STORAGE_KEY, JSON.stringify(groupData)) } catch { /* storage unavailable */ }
-  if (!API_ENABLED || !canManage) return
+  if (!API_ENABLED || !canManage || !catalogLoadOk) return
   let cancelled = false
   setCatalogSaveState('Сохранение…')
   apiRequest('/api/product-groups', { method: 'PUT', body: groupData }).then(() => {
@@ -1682,7 +1684,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
    if (!cancelled) setCatalogSaveState('Ошибка сохранения: ' + error.message)
   })
   return () => { cancelled = true }
- }, [groupData, catalogReady, canManage])
+ }, [groupData, catalogReady, catalogLoadOk, canManage])
  const openGroupEditor = (scope, index = -1) => {
   const existing = scope === 'MZKM' ? mzkmGroups[index] : internalGroups[index]
   const detail = scope === 'MZKM' && existing ? (groupData.mzkmDetails?.[existing] || {}) : {}
