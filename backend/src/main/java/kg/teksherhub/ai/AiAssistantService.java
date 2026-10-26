@@ -122,13 +122,13 @@ public class AiAssistantService {
                 for (OfficialWebSearchService.WebSource web : webSources) {
                     if (evidence.size() >= MAX_SOURCES) break;
                     int number = evidence.size() + 1;
-                    String context = "ID источника: " + number + "\\n"
-                            + "Тип материала: Официальный интернет-источник\\n"
-                            + "Название: " + web.title() + "\\n"
-                            + "URL: " + web.url() + "\\n"
-                            + "Фрагмент поисковой выдачи: " + web.snippet() + "\\n"
+                    String context = "ID источника: " + number + "\n"
+                            + "Тип материала: Официальный интернет-источник\n"
+                            + "Название: " + web.title() + "\n"
+                            + "URL: " + web.url() + "\n"
+                            + "Фрагмент поисковой выдачи: " + web.snippet() + "\n"
                             + (web.content().isBlank() ? "" : "Извлечённый текст страницы (может быть сокращён): "
-                            + truncate(web.content(), 4_000) + "\\n");
+                            + truncate(web.content(), 4_000) + "\n");
                     String excerpt = !web.snippet().isBlank() ? web.snippet() : truncate(web.content(), 360);
                     evidence.add(new Evidence(number, web.url(), "WEB", web.title(), "Официальный интернет-источник",
                             "Внешний источник", "EXTERNAL", "Внешний источник – требует проверки актуальности",
