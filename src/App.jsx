@@ -3186,15 +3186,15 @@ function AiAssistantSection({ apiEnabled, onOpenDocument }) {
                 {message.role === 'assistant' && message.insufficientEvidence && <div className="assistant-evidence-warning"><CircleHelp size={15}/> Ответ не удалось полностью подтвердить материалами базы.</div>}
               </div>
               {message.role === 'assistant' && message.sources?.length > 0 && <div className="assistant-sources">
-                <div className="assistant-sources-heading"><BookOpen size={15}/> Источники в базе ({message.sources.length})</div>
+                <div className="assistant-sources-heading"><BookOpen size={15}/> Использованные источники ({message.sources.length})</div>
                 {message.sources.map(source => <article className="assistant-source-card" key={source.id}>
                   <div className="assistant-source-top"><span className="assistant-source-number">[{source.number}]</span><span className={'assistant-source-status assistant-status-' + String(source.status || '').toLowerCase()}>{source.statusLabel || 'Статус не указан'}</span></div>
-                  {source.sourceType === 'BUSINESS_PROCESS'
+                  {source.sourceType === 'BUSINESS_PROCESS' || source.sourceType === 'WEB'
                     ? <div className="assistant-source-title">{source.title}</div>
                     : <button type="button" className="assistant-source-title" onClick={() => onOpenDocument(source.id)}>{source.title}<ArrowUpRight size={14}/></button>}
-                  <div className="assistant-source-meta">{source.sourceType === 'BUSINESS_PROCESS' ? 'Бизнес-процесс' : (source.jurisdiction || 'Юрисдикция не указана')}{source.kind ? ' · ' + source.kind : ''}{source.effectiveFrom ? ' · с ' + source.effectiveFrom : ''}{source.effectiveUntil ? ' · по ' + source.effectiveUntil : ''}</div>
+                  <div className="assistant-source-meta">{source.sourceType === 'BUSINESS_PROCESS' ? 'Бизнес-процесс · внутренняя база' : source.sourceType === 'WEB' ? 'Интернет · официальный сайт' : (source.jurisdiction || 'Юрисдикция не указана')}{source.kind ? ' · ' + source.kind : ''}{source.effectiveFrom ? ' · с ' + source.effectiveFrom : ''}{source.effectiveUntil ? ' · по ' + source.effectiveUntil : ''}</div>
                   {source.excerpt && <p className="assistant-source-excerpt">{source.excerpt}</p>}
-                  {source.sourceUrl && <a className="assistant-source-link" href={source.sourceUrl} target="_blank" rel="noreferrer"><ExternalLink size={13}/> {source.sourceType === 'BUSINESS_PROCESS' ? 'Связанная ссылка' : 'Официальный источник'}</a>}
+                  {source.sourceUrl && <a className="assistant-source-link" href={source.sourceUrl} target="_blank" rel="noreferrer"><ExternalLink size={13}/> {source.sourceType === 'BUSINESS_PROCESS' ? 'Связанная ссылка' : source.sourceType === 'WEB' ? 'Открыть официальный источник' : 'Официальный источник'}</a>}
                   {source.checkedAt && <small className="assistant-source-checked">Последняя отметка проверки: {new Date(source.checkedAt).toLocaleDateString('ru-RU')}</small>}
                 </article>)}
               </div>}
