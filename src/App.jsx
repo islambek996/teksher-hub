@@ -650,46 +650,78 @@ function App() {
     setActive('home')
   }
 
-  const handleUploadAttachment = async (file) => {
-    if (!file || !selectedDoc || selectedDoc.isDemo) return
-    if (file.size > 30 * 1024 * 1024) {
-      setActionError('Размер файла превышает 30 МБ.')
-      return
-    }
+  const handleUploadAttachment = async (fileSelection) => {
+    const selectedFiles = Array.from(fileSelection || []).filter(file => file instanceof File && file.name && file.size > 0)
+    if (!selectedFiles.length || !selectedDoc || selectedDoc.isDemo) return
+
+    const allowedExtensions = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt', 'png', 'jpg', 'jpeg'])
+    const invalidFiles = []
+    const validFiles = []
+    selectedFiles.forEach(file => {
+      const extension = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : ''
+      if (file.size > 30 * 1024 * 1024) invalidFiles.push(file.name + ': размер превышает 30 МБ.')
+      else if (!allowedExtensions.has(extension)) invalidFiles.push(file.name + ': формат не поддерживается. Выберите PDF, Word, Excel, CSV, TXT, PNG или JPG.')
+      else validFiles.push(file)
+    })
+
     if (!API_ENABLED) {
       setIsUploadingAttachment(true)
       setActionError('')
       setSuccessMessage('')
+      const failed = [...invalidFiles]
+      let uploaded = 0
       try {
-        await saveLocalAttachment(selectedDoc.id, file)
+        for (const file of validFiles) {
+          try {
+            await saveLocalAttachment(selectedDoc.id, file)
+            uploaded++
+          } catch (error) {
+            failed.push(file.name + ': ' + (error.message || 'не удалось сохранить файл в браузере.'))
+          }
+        }
         setLocalAttachmentFiles(await loadLocalAttachments(selectedDoc.id))
-        setSuccessMessage('Файл прикреплён к карточке и сохранён в этом браузере. Для совместного доступа подключите общую базу.')
+        if (uploaded) setSuccessMessage('Прикреплено файлов: ' + uploaded + '. В демо-режиме они сохранены только в этом браузере.')
+        if (failed.length) setActionError('Не все файлы удалось прикрепить:\n' + failed.join('\n'))
+        if (!uploaded && !failed.length) setActionError('Выберите файлы для загрузки.')
       } catch (error) {
-        setActionError(error.message || 'Не удалось сохранить файл в браузере.')
+        setActionError(error.message || 'Не удалось обновить список вложений.')
       } finally {
         setIsUploadingAttachment(false)
       }
       return
     }
+
     if (!['ADMIN', 'EDITOR'].includes(currentUser?.role)) {
       setActionError('Для загрузки вложений нужна роль редактора или администратора.')
       return
     }
+
     setIsUploadingAttachment(true)
     setActionError('')
     setSuccessMessage('')
+    const failed = [...invalidFiles]
+    let uploaded = 0
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      await apiRequest('/api/documents/' + selectedDoc.id + '/files', { method: 'POST', body: formData })
+      for (const file of validFiles) {
+        try {
+          const formData = new FormData()
+          formData.append('file', file)
+          await apiRequest('/api/documents/' + selectedDoc.id + '/files', { method: 'POST', body: formData })
+          uploaded++
+        } catch (error) {
+          failed.push(file.name + ': ' + (error.message || 'не удалось загрузить файл.'))
+        }
+      }
       const [updatedFiles] = await Promise.all([
         apiRequest('/api/documents/' + selectedDoc.id + '/files'),
         refreshDocuments()
       ])
       setApiFiles(updatedFiles)
-      setSuccessMessage('Документ прикреплён. Текстовое содержимое будет доступно в поиске после обработки.')
+      if (uploaded) setSuccessMessage('Прикреплено файлов: ' + uploaded + '. Текст PDF, Word и Excel будет доступен в поиске после обработки.')
+      if (failed.length) setActionError('Не все файлы удалось прикрепить:\n' + failed.join('\n'))
+      if (!uploaded && !failed.length) setActionError('Выберите файлы для загрузки.')
     } catch (error) {
-      setActionError(error.message || 'Не удалось прикрепить документ.')
+      setActionError(error.message || 'Не удалось обновить список вложений.')
     } finally {
       setIsUploadingAttachment(false)
     }
@@ -728,9 +760,19 @@ function App() {
       status: String(data.get('status') || ''),
       changeNote: String(data.get('changeNote') || '').trim() || (editingDoc ? 'Редактирование карточки' : 'Создание карточки'),
     }
-    const upload = data.get('file')
-    if (upload instanceof File && upload.size > 30 * 1024 * 1024) {
-      setActionError('Размер файла превышает 30 МБ.')
+    const uploads = data.getAll('file').filter(file => file instanceof File && file.name && file.size > 0)
+    const allowedExtensions = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt', 'png', 'jpg', 'jpeg'])
+    const invalidUploads = uploads.filter(file => {
+      const extension = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : ''
+      return file.size > 30 * 1024 * 1024 || !allowedExtensions.has(extension)
+    })
+    if (invalidUploads.length) {
+      setActionError(invalidUploads.map(file => {
+        const extension = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : ''
+        return file.name + ': ' + (file.size > 30 * 1024 * 1024
+          ? 'размер превышает 30 МБ.'
+          : 'формат не поддерживается. Выберите PDF, Word, Excel, CSV, TXT, PNG или JPG.')
+      }).join('\n'))
       return
     }
     setIsSaving(true); setActionError(''); setSuccessMessage('')
@@ -740,13 +782,22 @@ function App() {
         doc = await apiRequest(editingDoc ? '/api/documents/' + editingDoc.id : '/api/documents', {
           method: editingDoc ? 'PUT' : 'POST', body: payload
         })
-        if (upload instanceof File && upload.size > 0) {
-          const formData = new FormData()
-          formData.append('file', upload)
-          await apiRequest('/api/documents/' + doc.id + '/files', { method: 'POST', body: formData })
+        const uploadFailures = []
+        let uploadedCount = 0
+        for (const upload of uploads) {
+          try {
+            const formData = new FormData()
+            formData.append('file', upload)
+            await apiRequest('/api/documents/' + doc.id + '/files', { method: 'POST', body: formData })
+            uploadedCount++
+          } catch (error) {
+            uploadFailures.push(upload.name + ': ' + (error.message || 'не удалось прикрепить файл.'))
+          }
         }
         await refreshDocuments()
-        setSuccessMessage(editingDoc ? 'Карточка и история редакций обновлены.' : 'Карточка добавлена в общую базу.')
+        setSuccessMessage((editingDoc ? 'Карточка и история редакций обновлены.' : 'Карточка добавлена в общую базу.')
+          + (uploads.length ? ' Прикреплено файлов: ' + uploadedCount + ' из ' + uploads.length + '.' : ''))
+        if (uploadFailures.length) setActionError('Карточка сохранена, но не все файлы удалось прикрепить:\n' + uploadFailures.join('\n'))
       } else {
         doc = {
           ...(editingDoc || {}),
@@ -760,8 +811,20 @@ function App() {
         const nextDocuments = editingDoc ? userDocuments.map(item => item.id === doc.id ? doc : item) : [doc, ...userDocuments]
         setUserDocuments(nextDocuments)
         try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDocuments)) } catch { /* storage quota may be reached */ }
-        if (upload instanceof File && upload.size > 0) await saveLocalAttachment(doc.id, upload)
-        setSuccessMessage('Карточка сохранена в текущем браузере.' + (upload instanceof File && upload.size > 0 ? ' Файл прикреплён к карточке.' : '') + ' Для общей базы подключите API.')
+        const uploadFailures = []
+        let uploadedCount = 0
+        for (const upload of uploads) {
+          try {
+            await saveLocalAttachment(doc.id, upload)
+            uploadedCount++
+          } catch (error) {
+            uploadFailures.push(upload.name + ': ' + (error.message || 'не удалось сохранить файл в браузере.'))
+          }
+        }
+        setSuccessMessage('Карточка сохранена в текущем браузере.'
+          + (uploads.length ? ' Прикреплено файлов: ' + uploadedCount + ' из ' + uploads.length + '.' : '')
+          + ' Для общей базы подключите API.')
+        if (uploadFailures.length) setActionError('Карточка сохранена, но не все файлы удалось прикрепить:\n' + uploadFailures.join('\n'))
       }
       setActive('documents')
       syncRoute('documents', doc.id)
@@ -2605,9 +2668,9 @@ function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, can
     }
   }
   const handleAttachmentChange = async event => {
-    const file = event.target.files?.[0]
+    const files = Array.from(event.target.files || [])
     event.target.value = ''
-    if (file && onUploadFile) await onUploadFile(file)
+    if (files.length && onUploadFile) await onUploadFile(files)
   }
 
   const scrollToArticleSection = (event, id) => {
@@ -2728,9 +2791,9 @@ function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, can
           {!doc.isDemo && <section className="detail-subsection wiki-files-section" id="wiki-files">
             <div className="wiki-section-heading"><div><Paperclip size={17}/><div><h2>Документы и вложения</h2><p>Оригиналы и дополнительные рабочие файлы</p></div></div><span className="wiki-section-count">{files.length}</span></div>
             {canUploadFiles && <div className="wiki-upload-panel">
-              <input ref={attachmentInputRef} className="wiki-hidden-file-input" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg" onChange={handleAttachmentChange} />
-              <div><b>Добавить оригинал или приложение</b><small>PDF, Word, Excel, CSV, TXT, PNG или JPG · до 30 МБ</small></div>
-              <button type="button" className="secondary-button" onClick={() => attachmentInputRef.current?.click()} disabled={uploadingFile}><Paperclip size={14}/>{uploadingFile ? 'Загрузка…' : 'Прикрепить файл'}</button>
+              <input ref={attachmentInputRef} className="wiki-hidden-file-input" type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg" onChange={handleAttachmentChange} />
+              <div><b>Добавить оригиналы или приложения</b><small>Можно выбрать несколько файлов за раз · PDF, Word, Excel, CSV, TXT, PNG или JPG · до 30 МБ на файл</small></div>
+              <button type="button" className="secondary-button" onClick={() => attachmentInputRef.current?.click()} disabled={uploadingFile}><Paperclip size={14}/>{uploadingFile ? 'Загрузка…' : 'Прикрепить файлы'}</button>
             </div>}
             {files.length ? <div className="attached-files">{files.map(file => <div className="attached-file" key={file.id}><span className="wiki-attached-file-icon"><FileText size={18}/></span><div className="attached-file-copy"><b>{file.originalName}</b><small>{formatBytes(file.sizeBytes)} · {file.uploadedBy || 'пользователь'} · {formatDate(file.uploadedAt)}</small><small className={'file-index-status file-index-' + (file.textExtractionStatus || 'NOT_INDEXED').toLowerCase()}>{fileIndexLabel(file)}</small>{file.textExtractionNote && <small className="file-index-note">{file.textExtractionNote}</small>}{canReindex && ['NOT_INDEXED', 'FAILED'].includes(file.textExtractionStatus || 'NOT_INDEXED') && <button type="button" className="secondary-button file-reindex-button" onClick={() => onReindexFile(file)} disabled={reindexingFileId === file.id}><RefreshCw size={13}/>{reindexingFileId === file.id ? 'Индексация…' : 'Индексировать файл'}</button>}</div><button type="button" className="icon-button" onClick={() => onDownload(file)} aria-label="Скачать файл"><Download size={16}/></button></div>)}</div>
               : <div className="wiki-empty-content compact"><Paperclip size={19}/><span>Вложения пока не добавлены.</span>{canUploadFiles && <small>Загрузите оригинал, чтобы он хранился рядом с карточкой.</small>}</div>}
@@ -2885,7 +2948,7 @@ function CreateDocumentModal({ initialDoc, documents = [], onClose, onSubmit, ap
           </div>
           <label className="form-field full-field"><span>Содержание / рабочая инструкция</span><textarea name="content" rows="8" maxLength="50000" defaultValue={initialDoc?.content || ''} placeholder="Добавьте текст инструкции, порядок действий, решение ошибки, выдержку или другие сведения для поиска..." /><small className="form-help">Текст будет доступен для поиска (до 50 000 символов). Текстовые PDF/Word/Excel/TXT/CSV индексируются автоматически; для сканов PDF и изображений используется OCR с пометкой результата.</small></label>
           {apiEnabled && <label className="form-field full-field"><span>Комментарий к редакции</span><input name="changeNote" maxLength="1000" placeholder="Например, обновлена дата вступления в силу" /></label>}
-          <label className="form-field full-field upload-field"><span>Прикрепить файл к карточке (необязательно, до 30 МБ)</span><span className="file-input-wrap"><Paperclip size={16} /><input name="file" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg" /></span><small className="form-help">{apiEnabled ? 'Файл сохранится в общей базе и будет доступен пользователям с правами.' : 'В демо-режиме файл сохранится в этом браузере через локальное хранилище. Для других сотрудников нужна общая база.'}</small></label>
+          <label className="form-field full-field upload-field"><span>Прикрепить файлы к карточке (необязательно, до 30 МБ каждый)</span><span className="file-input-wrap"><Paperclip size={16} /><input name="file" type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg" /></span><small className="form-help">{apiEnabled ? 'Выбранные файлы сохранятся в общей базе и будут доступны пользователям с правами.' : 'В демо-режиме файлы сохранятся в этом браузере через локальное хранилище. Для других сотрудников нужна общая база.'}</small></label>
         </div>
         {error && <div className="feedback feedback-error"><CircleHelp size={16} /><span>{error}</span></div>}
         <div className="form-note"><CircleHelp size={16} /><span>{apiEnabled ? 'Карточка сохраняется в общей базе. Файл хранится в серверном каталоге. Статус «Действует» означает, что сотрудник подтвердил источник, а не автоматическое юридическое заключение.' : 'Карточка пока сохраняется только в этом браузере. Для общей базы настройте VITE_API_URL и backend.'}</span></div>
