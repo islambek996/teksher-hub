@@ -100,13 +100,17 @@ final class GroqRateLimitDetails {
     }
 
     private static OptionalLong resetSeconds(HttpHeaders headers, String kind) {
-        String key = kind.contains("токен") || kind.contains("TPM") || kind.contains("TPD")
-                ? "x-ratelimit-reset-tokens" : "x-ratelimit-reset-requests";
-        OptionalLong selected = parseReset(header(headers, key));
-        if (selected.isPresent()) return selected;
+        boolean tokenLimit = kind.contains("токен") || kind.contains("(TPM)") || kind.contains("(TPD)");
+        boolean requestLimit = kind.contains("запрос") || kind.contains("(RPM)") || kind.contains("(RPD)");
+        if (tokenLimit) return parseReset(header(headers, "x-ratelimit-reset-tokens"));
+        if (requestLimit) return parseReset(header(headers, "x-ratelimit-reset-requests"));
+
+        // If Groq did not identify the exhausted quota, do not guess which reset timer applies.
         OptionalLong tokens = parseReset(header(headers, "x-ratelimit-reset-tokens"));
         OptionalLong requests = parseReset(header(headers, "x-ratelimit-reset-requests"));
-        if (tokens.isPresent() && requests.isPresent()) return OptionalLong.of(Math.min(tokens.getAsLong(), requests.getAsLong()));
+        if (tokens.isPresent() && requests.isPresent()) {
+            return tokens.getAsLong() == requests.getAsLong() ? tokens : OptionalLong.empty();
+        }
         return tokens.isPresent() ? tokens : requests;
     }
 
