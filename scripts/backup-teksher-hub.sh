@@ -52,7 +52,7 @@ docker compose exec -T "$DB_SERVICE" pg_dump -U "$DB_USERNAME" -d "$DB_NAME" -Fc
 test -s "$db_tmp" || { echo "Ошибка: дамп PostgreSQL пуст." >&2; exit 1; }
 
 echo "Создаю резервную копию файловых вложений..."
-docker compose exec -T "$API_SERVICE" tar -C /app -czf - uploads > "$uploads_tmp"
+docker compose run -T --rm --no-deps --entrypoint sh "$API_SERVICE" -c 'tar -C /app -czf - uploads' > "$uploads_tmp"
 test -s "$uploads_tmp" || { echo "Ошибка: архив вложений пуст." >&2; exit 1; }
 
 docker compose start "$API_SERVICE"
