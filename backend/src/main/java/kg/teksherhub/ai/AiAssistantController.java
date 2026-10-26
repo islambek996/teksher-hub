@@ -78,7 +78,7 @@ public class AiAssistantController {
 
     public record FeedbackRequest(
             @NotBlank @Pattern(regexp = "positive|negative") String rating,
-            @Size(max = 80) String category,
+            @Size(max = 80) @Pattern(regexp = "answer|incorrect|no_source|outdated|unclear|other") String category,
             @Size(max = 2_000) String question,
             @Size(max = 8_000) String answer,
             @Size(max = 6) List<@Size(max = 240) String> sourceTitles) {}
