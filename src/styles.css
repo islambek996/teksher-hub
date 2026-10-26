@@ -1700,3 +1700,19 @@ html[data-theme="dark"] .assistant-feedback-admin-heading small,html[data-theme=
 html[data-theme="dark"] .assistant-feedback-stats>div,html[data-theme="dark"] .assistant-feedback-review-item{background:#14263b;border-color:#2e435b;color:#c0cede}
 html[data-theme="dark"] .assistant-feedback-stats b,html[data-theme="dark"] .assistant-feedback-review-item strong{color:#e7eef7}
 @media(max-width:760px){.assistant-feedback-admin{padding:10px 12px;max-height:220px}.assistant-feedback-stats{gap:5px}.assistant-feedback-stats>div{padding:7px}.assistant-feedback-stats span{font-size:8px}.assistant-feedback-review-meta{flex-direction:column;gap:2px}}
+
+
+/* Actionable feedback for AI responses */
+.assistant-feedback-actions{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:1px;color:#8090a3;font-size:10px}
+.assistant-feedback-actions>span{margin-right:3px}
+.assistant-feedback-actions button,.assistant-feedback-reasons button{display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid #dce5ef;background:#fff;color:#45617f;border-radius:7px;padding:5px 9px;font-size:10px;line-height:1.35}
+.assistant-feedback-actions button:hover,.assistant-feedback-reasons button:hover{background:#f1f6fc;border-color:#b8cce3}
+.assistant-feedback-reasons{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:2px;padding:10px 11px;border:1px solid #e1e9f3;border-radius:9px;background:#f8fafd}
+.assistant-feedback-reasons>span{width:100%;font-size:10px;font-weight:700;color:#536d89;margin-bottom:2px}
+.assistant-feedback-reasons .assistant-feedback-reason-cancel{background:transparent;color:#8190a2}
+html[data-theme="dark"] .assistant-feedback-actions{color:#9cafc4}
+html[data-theme="dark"] .assistant-feedback-actions button,html[data-theme="dark"] .assistant-feedback-reasons button{background:#162b42;border-color:#344a63;color:#d2deec}
+html[data-theme="dark"] .assistant-feedback-actions button:hover,html[data-theme="dark"] .assistant-feedback-reasons button:hover{background:#213c59;border-color:#527499}
+html[data-theme="dark"] .assistant-feedback-reasons{background:#101f31;border-color:#2a4058}
+html[data-theme="dark"] .assistant-feedback-reasons>span{color:#cfdeef}
+html[data-theme="dark"] .assistant-feedback-reasons .assistant-feedback-reason-cancel{color:#9cafc4}
