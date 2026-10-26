@@ -81,6 +81,11 @@ public class DocumentService {
         for (int i = 0; i < values.length; i++) {
             if (i > 0) output.append(';');
             String value = values[i] == null ? "" : values[i].toString();
+            // CSV quoting alone does not prevent spreadsheet formula execution.
+            // Prefix potentially executable cell values with an apostrophe before quoting.
+            if (value.matches("(?s)^[\\\\s\\\\p{Cntrl}]*[=+@-].*")) {
+                value = "'" + value;
+            }
             output.append('"').append(value.replace("\"", "\"\"")).append('"');
         }
         output.append("\r\n");
