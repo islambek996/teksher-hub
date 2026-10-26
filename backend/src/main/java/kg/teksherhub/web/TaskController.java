@@ -18,6 +18,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/tasks")
@@ -71,6 +72,9 @@ public class TaskController {
                 """, Long.class, title, description, status, priority, request.dueDate(),
                 user.getUsername(), assignedTo);
         audit(user.getUsername(), "CREATE", id, title, "Создана задача; исполнитель: " + assignedTo);
+        if (!assignedTo.equalsIgnoreCase(user.getUsername())) {
+            notifyUser(assignedTo, id, "Новое поручение", user.getUsername() + " назначил вам задачу: «" + title + "»");
+        }
         return getOne(id);
     }
 
@@ -90,6 +94,14 @@ public class TaskController {
                 WHERE id = ?
                 """, title, description, status, priority, dueDate, id);
         audit(user.getUsername(), "UPDATE", id, title, "Обновлена задача");
+        if (!existing.status().equals(status)) {
+            String recipient = !existing.createdBy().equalsIgnoreCase(user.getUsername())
+                    ? existing.createdBy()
+                    : (!existing.assignedTo().equalsIgnoreCase(user.getUsername()) ? existing.assignedTo() : null);
+            if (recipient != null) {
+                notifyUser(recipient, id, "Изменён статус задачи", user.getUsername() + " изменил статус задачи «" + title + "» на " + statusLabel(status));
+            }
+        }
         return getOne(id);
     }
 
@@ -101,6 +113,53 @@ public class TaskController {
         }
         jdbc.update("DELETE FROM hub_tasks WHERE id = ?", id);
         audit(user.getUsername(), "DELETE", id, existing.title(), "Задача удалена");
+    }
+
+    @GetMapping("/{id}/comments")
+    public List<TaskComment> comments(@PathVariable long id, @AuthenticationPrincipal UserAccount user) {
+        TaskView task = getOne(id);
+        ensureCanEdit(task, user);
+        return jdbc.query("""
+                SELECT id, task_id, username, body, created_at
+                FROM hub_task_comments WHERE task_id = ? ORDER BY created_at ASC, id ASC
+                """, (rs, rowNum) -> new TaskComment(rs.getLong("id"), rs.getLong("task_id"),
+                rs.getString("username"), rs.getString("body"), rs.getTimestamp("created_at").toInstant()), id);
+    }
+
+    @PostMapping("/{id}/comments")
+    public TaskComment addComment(@PathVariable long id, @Valid @RequestBody TaskCommentRequest request,
+                                  @AuthenticationPrincipal UserAccount user) {
+        TaskView task = getOne(id);
+        ensureCanEdit(task, user);
+        String body = request.body().trim();
+        Long commentId = jdbc.queryForObject("""
+                INSERT INTO hub_task_comments(task_id, username, body, created_at)
+                VALUES (?, ?, ?, NOW()) RETURNING id
+                """, Long.class, id, user.getUsername(), body);
+        audit(user.getUsername(), "COMMENT", id, task.title(), "Добавлен комментарий к задаче");
+        Set<String> recipients = Set.of(task.createdBy(), task.assignedTo());
+        recipients.stream().filter(recipient -> !recipient.equalsIgnoreCase(user.getUsername())).distinct()
+                .forEach(recipient -> notifyUser(recipient, id, "Новый комментарий к задаче",
+                        user.getUsername() + " прокомментировал задачу «" + task.title() + "»"));
+        return jdbc.queryForObject("""
+                SELECT id, task_id, username, body, created_at FROM hub_task_comments WHERE id = ?
+                """, (rs, rowNum) -> new TaskComment(rs.getLong("id"), rs.getLong("task_id"),
+                rs.getString("username"), rs.getString("body"), rs.getTimestamp("created_at").toInstant()), commentId);
+    }
+
+    private void notifyUser(String username, Long taskId, String title, String message) {
+        jdbc.update("""
+                INSERT INTO hub_notifications(username, task_id, title, message, created_at)
+                VALUES (?, ?, ?, ?, NOW())
+                """, username, taskId, title, message);
+    }
+
+    private static String statusLabel(String status) {
+        return switch (status) {
+            case "IN_PROGRESS" -> "В работе";
+            case "DONE" -> "Выполнено";
+            default -> "К выполнению";
+        };
     }
 
     private TaskView getOne(long id) {
@@ -169,6 +228,10 @@ public class TaskController {
             @Pattern(regexp = "LOW|NORMAL|HIGH|low|normal|high") String priority,
             LocalDate dueDate
     ) {}
+
+    public record TaskCommentRequest(@NotBlank @Size(max = 1500) String body) {}
+
+    public record TaskComment(Long id, Long taskId, String username, String body, Instant createdAt) {}
 
     public record TaskView(
             Long id, String title, String description, String status, String priority,
