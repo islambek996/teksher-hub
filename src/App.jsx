@@ -1357,7 +1357,7 @@ function App() {
             : active === 'assistant' ? <AiAssistantSection apiEnabled={API_ENABLED} isAdmin={currentUser?.role === 'ADMIN'} onOpenDocument={docId => { const target = documents.find(item => String(item.id) === String(docId)); if (target) { setActive('documents'); setSelectedDoc(target); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы'); syncRoute('documents', target.id) } }} />
             : active === 'knowledge' ? <KnowledgeCenterSection documents={documents} onSelectKind={(kind) => { setActive('documents'); setSelectedDoc(null); setQuery(''); setFilter(kind); setStatusFilter('Все статусы'); syncRoute('documents') }} onOpenAll={() => openSection('documents')} onAdd={openNewDocumentModal} canAdd={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} />
             : active === 'groups' ? <ProductGroupsSection onOpen={openSection} onSearchGroup={searchProductGroupMaterials} />
-            : active === 'processes' ? <ProcessGuidesSection onSearchMaterials={searchProductGroupMaterials} canEdit={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'} />
+            : active === 'processes' ? <ProcessGuidesSection key={currentUser?.username || 'local'} progressStorageKey={API_ENABLED ? PROCESS_PROGRESS_KEY + ':' + (currentUser?.username || 'anonymous') : PROCESS_PROGRESS_KEY} onSearchMaterials={searchProductGroupMaterials} canEdit={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'} />
             : active === 'monitoring' ? <MonitorSection monitors={monitors} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
                 onAdd={() => { setActionError(''); setMonitorModalOpen(true) }} onCheck={handleCheckMonitor} onDelete={handleDeleteMonitor} />
             : active === 'users' ? <UsersSection users={users} onAdd={() => { setActionError(''); setUserModalOpen(true) }} onToggle={handleToggleUser} onReset={user => { setActionError(''); setPasswordResetTarget(user) }} />
@@ -2286,9 +2286,9 @@ const PROCESS_GUIDES = [
   },
 ]
 
-function loadProcessGuideProgress() {
+function loadProcessGuideProgress(storageKey = PROCESS_PROGRESS_KEY) {
   try {
-    const raw = window.localStorage.getItem(PROCESS_PROGRESS_KEY)
+    const raw = window.localStorage.getItem(storageKey)
     const parsed = raw ? JSON.parse(raw) : {}
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
   } catch {
@@ -2306,10 +2306,10 @@ function loadLocalProcessGuides() {
   }
 }
 
-function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = false }) {
+function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = false, progressStorageKey = PROCESS_PROGRESS_KEY }) {
   const [guides, setGuides] = useState(loadLocalProcessGuides)
   const [selectedGuideId, setSelectedGuideId] = useState(PROCESS_GUIDES[0].id)
-  const [progress, setProgress] = useState(loadProcessGuideProgress)
+  const [progress, setProgress] = useState(() => loadProcessGuideProgress(progressStorageKey))
   const [guidesLoading, setGuidesLoading] = useState(API_ENABLED)
   const [guideLoadError, setGuideLoadError] = useState('')
   const [guideMessage, setGuideMessage] = useState('')
@@ -2366,8 +2366,8 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
   const localOnly = !API_ENABLED
 
   useEffect(() => {
-    try { window.localStorage.setItem(PROCESS_PROGRESS_KEY, JSON.stringify(progress)) } catch { /* storage unavailable */ }
-  }, [progress])
+    try { window.localStorage.setItem(progressStorageKey, JSON.stringify(progress)) } catch { /* storage unavailable */ }
+  }, [progress, progressStorageKey])
 
   useEffect(() => {
     if (!API_ENABLED) return undefined
