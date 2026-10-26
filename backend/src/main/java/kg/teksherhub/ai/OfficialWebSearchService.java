@@ -45,7 +45,7 @@ public class OfficialWebSearchService {
         this.enabled = enabled;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(8))
-                .followRedirects(HttpClient.Redirect.NORMAL)
+                .followRedirects(HttpClient.Redirect.NEVER)
                 .build();
     }
 
@@ -87,7 +87,9 @@ public class OfficialWebSearchService {
                 if (!isOfficialUrl(url) || title.isBlank()) continue;
                 unique.putIfAbsent(url, new WebSource(title, url, snippet, ""));
             }
-            return unique.values().stream().limit(4).toList();
+            return unique.values().stream().limit(3)
+                    .map(source -> new WebSource(source.title(), source.url(), source.snippet(), fetchPageContent(source.url())))
+                    .toList();
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             return List.of();
@@ -98,6 +100,39 @@ public class OfficialWebSearchService {
             log.info("Official web search failed; continuing with TEKSHER HUB knowledge base");
             return List.of();
         }
+    }
+
+
+    private String fetchPageContent(String url) {
+        if (!isOfficialUrl(url)) return "";
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+                    .timeout(Duration.ofSeconds(8))
+                    .header("User-Agent", "Mozilla/5.0 (compatible; TEKSHER-HUB/1.0)")
+                    .header("Accept", "text/html,text/plain;q=0.9")
+                    .GET().build();
+            HttpResponse<String> response = httpClient.send(request,
+                    HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (response.statusCode() < 200 || response.statusCode() >= 300
+                    || !isOfficialUrl(response.uri().toString())) return "";
+            String contentType = response.headers().firstValue("Content-Type").orElse("").toLowerCase(Locale.ROOT);
+            if (!contentType.contains("html") && !contentType.contains("text/plain")) return "";
+            String html = response.body()
+                    .replaceAll("(?is)<script\\b[^>]*>.*?</script>", " ")
+                    .replaceAll("(?is)<style\\b[^>]*>.*?</style>", " ")
+                    .replaceAll("(?is)<noscript\\b[^>]*>.*?</noscript>", " ");
+            return truncateText(cleanHtml(html), 5_000);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            return "";
+        } catch (IOException | IllegalArgumentException ex) {
+            return "";
+        }
+    }
+
+    private static String truncateText(String text, int maxLength) {
+        if (text == null || text.length() <= maxLength) return text == null ? "" : text;
+        return text.substring(0, maxLength).stripTrailing() + "…";
     }
 
     private static String unwrapUrl(String value) {
