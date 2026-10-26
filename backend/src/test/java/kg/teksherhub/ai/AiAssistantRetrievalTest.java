@@ -64,14 +64,13 @@ class AiAssistantRetrievalTest {
     }
 
     @Test
-    void assistantDoesNotInventADeveloperBiography() {
+    void assistantReturnsPersonalizedCreatorReply() {
         String answer = AiAssistantService.assistantIdentityReply("кто тебя создал");
 
         assertTrue(answer != null);
-        assertTrue(answer.contains("TEKSHER HUB"));
-        assertTrue(answer.contains("Groq API"));
-        assertFalse(answer.contains("Жакыпбеков"));
-        assertFalse(answer.contains("самый красивый сотрудник"));
+        assertTrue(answer.contains("Жакыпбеков Исламбек Эрланович"));
+        assertTrue(answer.contains("самый красивый сотрудник оператора маркировки"));
+        assertTrue(answer.contains("развивает TEKSHER HUB"));
     }
 
     @Test
