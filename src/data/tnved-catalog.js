@@ -1,7 +1,8 @@
 // Generated from the user-provided "Список ТН ВЭД.xlsx".
 // The compressed payload is split into source text chunks to keep edits/reviews manageable.
 // Presence in this list is not a legal determination of mandatory marking.
-import part01 from './tnved-parts/01.txt?raw'
+import part01a from './tnved-parts/01a.txt?raw'
+import part01b from './tnved-parts/01b.txt?raw'
 import part02 from './tnved-parts/02.txt?raw'
 import part03 from './tnved-parts/03.txt?raw'
 import part04 from './tnved-parts/04.txt?raw'
@@ -12,7 +13,8 @@ import part08 from './tnved-parts/08.txt?raw'
 import part09 from './tnved-parts/09.txt?raw'
 
 export const TNVED_CATALOG_GZIP_BASE64 = [
-  part01,
+  part01a,
+  part01b,
   part02,
   part03,
   part04,
