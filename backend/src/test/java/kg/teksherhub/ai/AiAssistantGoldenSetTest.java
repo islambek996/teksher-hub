@@ -57,6 +57,17 @@ class AiAssistantGoldenSetTest {
                         "Reference must contain a host for " + id);
                 assertTrue(!item.path("reviewCriterion").asText("").isBlank(),
                         "Each case needs a reviewer criterion: " + id);
+                assertTrue(item.path("expectedFacts").isArray() && item.path("expectedFacts").size() > 0,
+                        "Each case needs verified facts for answer review: " + id);
+                assertTrue(item.path("forbiddenClaims").isArray() && item.path("forbiddenClaims").size() > 0,
+                        "Each case needs a hallucination/overgeneralization checklist: " + id);
+
+                String host = URI.create(reference).getHost().toLowerCase(Locale.ROOT);
+                Set<String> officialHosts = Set.of("cbd.minjust.gov.kg", "minjust.gov.kg", "gov.kg",
+                        "publication.pravo.gov.ru", "eec.eaeunion.org", "docs.eaeunion.org");
+                assertTrue(officialHosts.stream().anyMatch(allowed ->
+                                host.equals(allowed) || host.endsWith("." + allowed)),
+                        "Golden reference must use a recognised official domain, not a third-party summary: " + id);
 
                 List<String> terms = AiAssistantService.searchTerms(question);
                 for (JsonNode requiredTerm : item.path("requiredTerms")) {
