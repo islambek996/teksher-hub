@@ -40,8 +40,21 @@ public class BusinessProcessGuideController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
-        service.delete(id);
+    public List<BusinessProcessGuideService.GuideVersion> versions(@PathVariable String id) {
+        return service.versions(id);
+    }
+
+    @PostMapping("/{id}/versions/{versionNumber}/restore")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    public BusinessProcessGuideResponse restore(@PathVariable String id, @PathVariable int versionNumber,
+                                                @AuthenticationPrincipal UserAccount user) {
+        return service.restore(id, versionNumber, user.getUsername());
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> delete(@PathVariable String id, @AuthenticationPrincipal UserAccount user) {
+        service.delete(id, user.getUsername());
         return ResponseEntity.noContent().build();
     }
 }
