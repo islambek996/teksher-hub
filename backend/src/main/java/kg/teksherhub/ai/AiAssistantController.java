@@ -66,8 +66,14 @@ public class AiAssistantController {
                 .map(item -> new FeedbackItem(item.getId(), item.getUsername(), item.getCategory(),
                         item.getQuestionText(), item.getAnswerText(), item.getSourceTitles(), item.getCreatedAt()))
                 .toList();
-        return new FeedbackSummary(feedbackRepository.count(), feedbackRepository.countByRating("positive"),
-                feedbackRepository.countByRating("negative"), recentNegative);
+        List<CategoryCount> negativeCategories = feedbackRepository.countCategoriesByRating("negative").stream()
+                .map(row -> new CategoryCount(String.valueOf(row[0]), ((Number) row[1]).longValue()))
+                .toList();
+        long total = feedbackRepository.count();
+        long positive = feedbackRepository.countByRating("positive");
+        long negative = feedbackRepository.countByRating("negative");
+        double positiveRate = total == 0 ? 0.0 : Math.round((positive * 1000.0) / total) / 10.0;
+        return new FeedbackSummary(total, positive, negative, positiveRate, negativeCategories, recentNegative);
     }
 
     private static String safe(String value, int maxLength) {
@@ -83,9 +89,11 @@ public class AiAssistantController {
             @Size(max = 8_000) String answer,
             @Size(max = 6) List<@Size(max = 240) String> sourceTitles) {}
     public record FeedbackResponse(boolean received, String message, Long id) {}
+    public record CategoryCount(String category, long count) {}
     public record FeedbackItem(Long id, String username, String category, String question, String answer,
                                String sourceTitles, Instant createdAt) {}
-    public record FeedbackSummary(long total, long positive, long negative, List<FeedbackItem> recentNegative) {}
+    public record FeedbackSummary(long total, long positive, long negative, double positiveRate,
+                                  List<CategoryCount> negativeCategories, List<FeedbackItem> recentNegative) {}
 
     public record AskRequest(@NotBlank @Size(max = 2_000) String question,
                              @Size(max = 8) List<ChatTurn> history) {}
