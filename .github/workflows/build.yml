@@ -95,4 +95,21 @@ jobs:
           curl --silent --show-error --fail "http://localhost:8080/api/documents/export.csv" -H "Authorization: Bearer $TOKEN" -o /tmp/teksher-hub-export.csv
           grep -q 'CI imported document' /tmp/teksher-hub-export.csv
           grep -q 'Содержание' /tmp/teksher-hub-export.csv
+
+          RELATED=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/documents -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"title":"CI related deletion test document","jurisdiction":"KG","kind":"Инструкция","area":"CI delete","description":"Temporary linked record for delete regression test","content":"Linked document smoke test","sourceUrl":"https://www.gov.kg/","status":"","changeNote":"CI delete regression test"}')
+          RELATED_ID=$(echo "$RELATED" | jq -r '.id')
+          test -n "$RELATED_ID" && test "$RELATED_ID" != "null"
+
+          LINKED_BODY=$(curl --silent --show-error --fail "http://localhost:8080/api/documents/$DOC_ID" -H "Authorization: Bearer $TOKEN" | jq --arg related "$RELATED_ID" '{title,jurisdiction,kind,area,productGroup,keywords,relatedDocumentIds:[$related],documentNumber,documentDate,effectiveFrom,effectiveUntil,sourceUrl,description,content,status,changeNote:"CI deletion linked-doc regression test"}')
+          curl --silent --show-error --fail -X PUT "http://localhost:8080/api/documents/$DOC_ID" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d "$LINKED_BODY" | jq -e --arg related "$RELATED_ID" '(.relatedDocumentIds | index($related)) != null'
+
+          RELATED_BODY=$(curl --silent --show-error --fail "http://localhost:8080/api/documents/$RELATED_ID" -H "Authorization: Bearer $TOKEN" | jq --arg target "$DOC_ID" '{title,jurisdiction,kind,area,productGroup,keywords,relatedDocumentIds:[$target],documentNumber,documentDate,effectiveFrom,effectiveUntil,sourceUrl,description,content,status,changeNote:"CI deletion inbound-link regression test"}')
+          curl --silent --show-error --fail -X PUT "http://localhost:8080/api/documents/$RELATED_ID" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d "$RELATED_BODY" | jq -e --arg target "$DOC_ID" '(.relatedDocumentIds | index($target)) != null'
+
+          curl --silent --show-error --fail -X DELETE "http://localhost:8080/api/documents/$DOC_ID" -H "Authorization: Bearer $TOKEN"
+          curl --silent --show-error --fail "http://localhost:8080/api/documents/$RELATED_ID" -H "Authorization: Bearer $TOKEN" | jq -e '.relatedDocumentIds == []'
+          curl --silent --show-error --fail "http://localhost:8080/api/documents" -H "Authorization: Bearer $TOKEN" | jq -e --arg id "$DOC_ID" 'all(.[]; .id != $id)'
+          curl --silent --show-error --fail "http://localhost:8080/api/documents?q=attachment-search-marker-unique-9876" -H "Authorization: Bearer $TOKEN" | jq -e --arg id "$DOC_ID" 'all(.[]; .id != $id)'
+
+          curl --silent --show-error --fail -X DELETE "http://localhost:8080/api/documents/$RELATED_ID" -H "Authorization: Bearer $TOKEN"
           kill "$(cat /tmp/teksher-hub-api.pid)" || true
