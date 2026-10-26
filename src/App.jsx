@@ -1399,6 +1399,9 @@ function KnowledgeCenterSection({ documents, onSelectKind, onOpenAll, onAdd, can
   </section>
 }
 
+const COSMETICS_TNVED_GROUP = 'Косметика, бытовая химия и товары личной гигиены'
+const normalizeTnvedGroup = groupName => groupName === 'Бритвы' ? COSMETICS_TNVED_GROUP : groupName
+
 function ProductGroupsSection({ onOpen, onSearchGroup }) {
   const mzkmGroups = [
     'Обувные товары',
@@ -1469,10 +1472,6 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
     document.addEventListener('mousedown', handleOutsideClick)
     return () => document.removeEventListener('mousedown', handleOutsideClick)
   }, [])
-
-  // The Excel source lists razors separately, but they belong under the cosmetics product group in the UI.
-  const cosmeticsGroupName = 'Косметика, бытовая химия и товары личной гигиены'
-  const normalizeTnvedGroup = groupName => groupName === 'Бритвы' ? cosmeticsGroupName : groupName
 
   const tnvedGroupCounts = useMemo(() => {
     const counts = new Map()
