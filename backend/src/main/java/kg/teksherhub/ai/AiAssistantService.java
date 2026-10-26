@@ -170,7 +170,7 @@ public class AiAssistantService {
         answer = citationCheck.answer();
         if (citationCheck.invalidFound()) {
             answer = answer.stripTrailing()
-                    + "\\n\\nПримечание: часть ссылок в черновом ответе не удалось сопоставить с найденными материалами; проверьте утверждения по источникам, показанным ниже.";
+                    + "\n\nПримечание: часть ссылок в черновом ответе не удалось сопоставить с найденными материалами; проверьте утверждения по источникам, показанным ниже.";
         }
         List<String> reviewStatuses = evidence.stream()
                 .filter(item -> "DOCUMENT".equals(item.sourceType()))
@@ -179,7 +179,7 @@ public class AiAssistantService {
                 .distinct()
                 .toList();
         if (!reviewStatuses.isEmpty()) {
-            answer = answer.stripTrailing() + "\\n\\nВажно: среди найденных материалов есть документы со статусом "
+            answer = answer.stripTrailing() + "\n\nВажно: среди найденных материалов есть документы со статусом "
                     + String.join(", ", reviewStatuses)
                     + ". Их сведения нельзя считать подтверждёнными действующими требованиями без дополнительной проверки.";
         }
