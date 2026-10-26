@@ -1855,3 +1855,7 @@ html[data-theme="dark"] .assistant-feedback-toggle:hover{background:#203b58;bord
 .notification-read-button{font-size:10px;padding:8px 10px}
 .notification-card.is-read .notification-icon{opacity:.7}
 @media(max-width:760px){.home-task-comment-form{grid-template-columns:1fr}.home-task-comment-form .primary-button{justify-self:start}.home-task-comments-trigger{padding:6px 8px}.notification-card{grid-template-columns:32px minmax(0,1fr);gap:9px;padding:12px}.notification-icon{width:31px;height:31px}.notification-title-row{flex-direction:column;gap:4px}.notification-read-button{grid-column:2;justify-self:start}}
+
+.process-editor-step-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+.process-editor-step-actions .secondary-button{padding:5px 8px;font-size:11px}
+@media(max-width:560px){.process-editor-repeat-heading{align-items:flex-start}.process-editor-step-actions{max-width:100%;gap:4px}.process-editor-step-actions .secondary-button{padding:5px 6px;font-size:10px}}
