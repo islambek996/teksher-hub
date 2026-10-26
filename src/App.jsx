@@ -1192,7 +1192,7 @@ function App() {
         <div className="sidebar-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
         {navGroups.map((group) => {
           const items = group.items.filter(item => {
-            if (!API_ENABLED && ['monitoring', 'users'].includes(item.id)) return false
+            if (!API_ENABLED && ['monitoring', 'users', 'tasks', 'notifications'].includes(item.id)) return false
             if (item.id === 'users' && currentUser?.role !== 'ADMIN') return false
             if (item.id === 'audit' && (!API_ENABLED || currentUser?.role !== 'ADMIN')) return false
             return true
@@ -3852,7 +3852,7 @@ function AuditLogSection() {
   const filtered = rows.filter(row => [row.username, row.action, row.entityType, row.entityId, row.entityLabel, row.details].join(' ').toLocaleLowerCase('ru-RU').includes(query.trim().toLocaleLowerCase('ru-RU')))
   const actionLabels = {
     CREATE: 'Создание', UPDATE: 'Изменение', DELETE: 'Удаление', RESTORE: 'Восстановление версии',
-    UPDATE_PROGRESS: 'Сохранение прогресса', RESET_PROGRESS: 'Сброс прогресса',
+    UPDATE_PROGRESS: 'Сохранение прогресса', RESET_PROGRESS: 'Сброс прогресса', COMMENT: 'Комментарий к задаче',
     CREATE_USER: 'Создание пользователя', RESET_PASSWORD: 'Сброс пароля',
     ENABLE_USER: 'Включение пользователя', DISABLE_USER: 'Отключение пользователя',
     REVIEW: 'Проверка актуальности', CHECK_SOURCE: 'Проверка источника'
