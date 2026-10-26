@@ -2455,6 +2455,7 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
     setSavingGuide(true)
     setEditorError('')
     setGuideMessage('')
+    let progressResetFailed = false
     try {
       let saved
       if (API_ENABLED) {
@@ -2491,7 +2492,7 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
             try {
               await apiRequest('/api/business-process-progress/' + encodeURIComponent(saved.id), { method: 'DELETE' })
             } catch {
-              setGuideMessage('Инструкция сохранена, но прогресс шагов не удалось сбросить на сервере. Обнови страницу и проверь прогресс.')
+              progressResetFailed = true
             }
           }
         }
@@ -2499,9 +2500,10 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
       setSelectedGuideId(saved.id)
       setEditorOpen(false)
       setEditingGuide(null)
-      setGuideMessage('')
       setGuideLoadError('')
-      setGuideMessage('Инструкция «' + saved.title + '» сохранена.')
+      setGuideMessage(progressResetFailed
+        ? 'Инструкция «' + saved.title + '» сохранена, но прогресс шагов не удалось сбросить на сервере. Обнови страницу и проверь прогресс.'
+        : 'Инструкция «' + saved.title + '» сохранена.')
     } catch (error) {
       setEditorError(error.message || 'Не удалось сохранить инструкцию.')
     } finally {
