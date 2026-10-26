@@ -3647,7 +3647,8 @@ function AuditLogSection() {
     CREATE: 'Создание', UPDATE: 'Изменение', DELETE: 'Удаление', RESTORE: 'Восстановление версии',
     UPDATE_PROGRESS: 'Сохранение прогресса', RESET_PROGRESS: 'Сброс прогресса',
     CREATE_USER: 'Создание пользователя', RESET_PASSWORD: 'Сброс пароля',
-    ENABLE_USER: 'Включение пользователя', DISABLE_USER: 'Отключение пользователя'
+    ENABLE_USER: 'Включение пользователя', DISABLE_USER: 'Отключение пользователя',
+    REVIEW: 'Проверка актуальности', CHECK_SOURCE: 'Проверка источника'
   }
 
   return <section className="management-page">
