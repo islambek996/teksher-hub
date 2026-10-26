@@ -5,6 +5,7 @@ import kg.teksherhub.document.DocumentTextExtractionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+import org.mockito.ArgumentMatchers;
 
 import java.net.http.HttpClient;
 import java.net.http.HttpHeaders;
@@ -55,7 +56,7 @@ class AiSummaryServiceTest {
         when(response.body()).thenReturn("""
                 {"output":[{"type":"message","content":[{"type":"output_text","text":"Материал описывает порядок маркировки товаров."}]}]}
                 """);
-        when(client.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(response);
+        when(client.send(any(HttpRequest.class), ArgumentMatchers.<HttpResponse.BodyHandler<String>>any())).thenReturn(response);
         AiSummaryService service = new AiSummaryService(
                 "test-key", "openai/gpt-oss-20b", objectMapper, textExtraction, client);
 
@@ -77,7 +78,7 @@ class AiSummaryServiceTest {
                 "retry-after", List.of("40"),
                 "x-ratelimit-limit-tokens", List.of("12000"),
                 "x-ratelimit-remaining-tokens", List.of("0")), (name, value) -> true));
-        when(client.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(response);
+        when(client.send(any(HttpRequest.class), ArgumentMatchers.<HttpResponse.BodyHandler<String>>any())).thenReturn(response);
         AiSummaryService service = new AiSummaryService(
                 "test-key", "openai/gpt-oss-20b", objectMapper, textExtraction, client);
 
