@@ -6,4 +6,5 @@ import java.util.UUID;
 
 public interface DocumentVersionRepository extends JpaRepository<DocumentVersion, Long> {
     List<DocumentVersion> findAllByDocumentIdOrderByVersionNumberDesc(UUID documentId);
+    void deleteAllByDocumentId(UUID documentId);
 }
