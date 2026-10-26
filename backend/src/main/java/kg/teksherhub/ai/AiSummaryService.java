@@ -47,13 +47,18 @@ public class AiSummaryService {
             @Value("${app.ai.groq-model:openai/gpt-oss-20b}") String model,
             ObjectMapper objectMapper,
             DocumentTextExtractionService textExtraction) {
+        this(apiKey, model, objectMapper, textExtraction, HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .build());
+    }
+
+    AiSummaryService(String apiKey, String model, ObjectMapper objectMapper,
+                     DocumentTextExtractionService textExtraction, HttpClient httpClient) {
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.model = model == null || model.isBlank() ? "openai/gpt-oss-20b" : model.trim();
         this.objectMapper = objectMapper;
         this.textExtraction = textExtraction;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
-                .build();
+        this.httpClient = httpClient;
     }
 
     public SummaryResponse summarize(SummaryRequest request, MultipartFile file) {
