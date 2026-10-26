@@ -1155,7 +1155,7 @@ function App() {
             : active === 'assistant' ? <AiAssistantSection apiEnabled={API_ENABLED} onOpenDocument={docId => { const target = documents.find(item => String(item.id) === String(docId)); if (target) { setActive('documents'); setSelectedDoc(target); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы'); syncRoute('documents', target.id) } }} />
             : active === 'knowledge' ? <KnowledgeCenterSection documents={documents} onSelectKind={(kind) => { setActive('documents'); setSelectedDoc(null); setQuery(''); setFilter(kind); setStatusFilter('Все статусы'); syncRoute('documents') }} onOpenAll={() => openSection('documents')} onAdd={openNewDocumentModal} canAdd={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} />
             : active === 'groups' ? <ProductGroupsSection onOpen={openSection} onSearchGroup={searchProductGroupMaterials} />
-            : active === 'processes' ? <ProcessGuidesSection onSearchMaterials={searchProductGroupMaterials} />
+            : active === 'processes' ? <ProcessGuidesSection onSearchMaterials={searchProductGroupMaterials} canEdit={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'} />
             : active === 'monitoring' ? <MonitorSection monitors={monitors} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
                 onAdd={() => { setActionError(''); setMonitorModalOpen(true) }} onCheck={handleCheckMonitor} onDelete={handleDeleteMonitor} />
             : active === 'users' ? <UsersSection users={users} onAdd={() => { setActionError(''); setUserModalOpen(true) }} onToggle={handleToggleUser} onReset={user => { setActionError(''); setPasswordResetTarget(user) }} />
@@ -1956,6 +1956,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
 
 
 const PROCESS_PROGRESS_KEY = 'teksher-hub-process-guide-progress-v1'
+const PROCESS_GUIDES_STORAGE_KEY = 'teksher-hub-custom-process-guides-v1'
 
 const PROCESS_GUIDES = [
   {
@@ -2090,16 +2091,69 @@ function loadProcessGuideProgress() {
   }
 }
 
-function ProcessGuidesSection({ onSearchMaterials }) {
+function loadLocalProcessGuides() {
+  try {
+    const raw = window.localStorage.getItem(PROCESS_GUIDES_STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) : null
+    return Array.isArray(parsed) ? parsed : PROCESS_GUIDES
+  } catch {
+    return PROCESS_GUIDES
+  }
+}
+
+function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = false }) {
+  const [guides, setGuides] = useState(loadLocalProcessGuides)
   const [selectedGuideId, setSelectedGuideId] = useState(PROCESS_GUIDES[0].id)
   const [progress, setProgress] = useState(loadProcessGuideProgress)
-  const guide = PROCESS_GUIDES.find(item => item.id === selectedGuideId) || PROCESS_GUIDES[0]
-  const completed = Array.isArray(progress[guide.id]) ? progress[guide.id] : []
+  const [guidesLoading, setGuidesLoading] = useState(API_ENABLED)
+  const [guideLoadError, setGuideLoadError] = useState('')
+  const [guideMessage, setGuideMessage] = useState('')
+  const [editingGuide, setEditingGuide] = useState(null)
+  const [editorOpen, setEditorOpen] = useState(false)
+  const [savingGuide, setSavingGuide] = useState(false)
+  const [deletingGuideId, setDeletingGuideId] = useState('')
+
+  useEffect(() => {
+    if (!API_ENABLED) {
+      setGuides(loadLocalProcessGuides())
+      setGuidesLoading(false)
+      return undefined
+    }
+    let cancelled = false
+    setGuidesLoading(true)
+    setGuideLoadError('')
+    apiRequest('/api/business-processes')
+      .then(rows => {
+        if (cancelled) return
+        const loaded = Array.isArray(rows) ? rows : []
+        setGuides(loaded)
+        setSelectedGuideId(current => loaded.some(item => item.id === current) ? current : (loaded[0]?.id || ''))
+      })
+      .catch(error => {
+        if (!cancelled) {
+          setGuideLoadError(error.message || 'Не удалось загрузить бизнес-процессы с сервера.')
+          setGuidesLoading(false)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setGuidesLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  const guide = guides.find(item => item.id === selectedGuideId) || guides[0] || PROCESS_GUIDES[0]
+  const completed = Array.isArray(progress[guide.id])
+    ? progress[guide.id].filter(index => Number.isInteger(index) && index >= 0 && index < guide.steps.length)
+    : []
   const guideDone = completed.length
-  const totalCompleted = PROCESS_GUIDES.reduce((total, item) =>
-    total + (Array.isArray(progress[item.id]) ? progress[item.id].length : 0), 0)
-  const totalSteps = PROCESS_GUIDES.reduce((total, item) => total + item.steps.length, 0)
-  const percent = Math.round(guideDone / guide.steps.length * 100)
+  const totalCompleted = guides.reduce((total, item) => {
+    const steps = Array.isArray(progress[item.id]) ? progress[item.id] : []
+    return total + steps.filter(index => Number.isInteger(index) && index >= 0 && index < item.steps.length).length
+  }, 0)
+  const totalSteps = guides.reduce((total, item) => total + item.steps.length, 0)
+  const percent = guide.steps.length ? Math.round(guideDone / guide.steps.length * 100) : 0
+  const canManageGuides = canEdit && (!API_ENABLED || !guideLoadError)
+  const localOnly = !API_ENABLED
 
   useEffect(() => {
     try { window.localStorage.setItem(PROCESS_PROGRESS_KEY, JSON.stringify(progress)) } catch { /* storage unavailable */ }
@@ -2110,7 +2164,7 @@ function ProcessGuidesSection({ onSearchMaterials }) {
       const currentSteps = Array.isArray(current[guide.id]) ? current[guide.id] : []
       const next = currentSteps.includes(index)
         ? currentSteps.filter(step => step !== index)
-        : [...currentSteps, index]
+        : [...currentSteps.filter(step => Number.isInteger(step) && step >= 0 && step < guide.steps.length), index]
       return { ...current, [guide.id]: next }
     })
   }
@@ -2119,71 +2173,310 @@ function ProcessGuidesSection({ onSearchMaterials }) {
     setProgress(current => ({ ...current, [guide.id]: [] }))
   }
 
+  const openNewGuideEditor = () => {
+    setEditingGuide(null)
+    setEditorOpen(true)
+    setGuideMessage('')
+  }
+
+  const openGuideEditor = item => {
+    setEditingGuide({
+      ...item,
+      sources: (item.sources || []).map(source => ({ ...source })),
+      steps: (item.steps || []).map(step => ({ ...step })),
+    })
+    setEditorOpen(true)
+    setGuideMessage('')
+  }
+
+  const saveGuide = async draft => {
+    const editingId = editingGuide?.id || ''
+    const cleanedSources = (draft.sources || [])
+      .filter(source => String(source.label || '').trim() && String(source.url || '').trim())
+      .map(source => ({ label: source.label.trim(), url: source.url.trim() }))
+    const body = {
+      category: String(draft.category || '').trim(),
+      title: String(draft.title || '').trim(),
+      summary: String(draft.summary || '').trim(),
+      scope: String(draft.scope || '').trim(),
+      time: String(draft.time || '').trim(),
+      searchTerm: String(draft.searchTerm || '').trim() || String(draft.title || '').trim(),
+      sources: cleanedSources,
+      steps: (draft.steps || []).map(step => ({ title: String(step.title || '').trim(), detail: String(step.detail || '').trim() })),
+      orderIndex: Number.isInteger(draft.orderIndex) ? draft.orderIndex : (guides.length + 1),
+    }
+    if (!body.steps.length || body.steps.some(step => !step.title || !step.detail)) {
+      setGuideMessage('У каждого шага должны быть заполнены название и описание.')
+      return
+    }
+    setSavingGuide(true)
+    setGuideMessage('')
+    try {
+      let saved
+      if (API_ENABLED) {
+        saved = await apiRequest(
+          editingId ? '/api/business-processes/' + encodeURIComponent(editingId) : '/api/business-processes',
+          { method: editingId ? 'PUT' : 'POST', body }
+        )
+      } else {
+        const id = editingId || ('local-' + (window.crypto?.randomUUID?.() || Date.now().toString(36)))
+        saved = {
+          ...body,
+          id,
+          sources: body.sources,
+          steps: body.steps,
+          createdBy: editingGuide?.createdBy || 'Локальный пользователь',
+          updatedBy: 'Локальный пользователь',
+          updatedAt: new Date().toISOString(),
+        }
+      }
+      const next = editingId
+        ? guides.map(item => item.id === editingId ? saved : item)
+        : [...guides, saved]
+      setGuides(next)
+      if (!API_ENABLED) {
+        try { window.localStorage.setItem(PROCESS_GUIDES_STORAGE_KEY, JSON.stringify(next)) } catch {
+          throw new Error('Не удалось сохранить изменения в браузере. Проверь доступное место в хранилище.')
+        }
+      }
+      setSelectedGuideId(saved.id)
+      setEditorOpen(false)
+      setEditingGuide(null)
+      setGuideMessage('')
+      setGuideLoadError('')
+      setGuideMessage('Инструкция «' + saved.title + '» сохранена.')
+    } catch (error) {
+      setGuideMessage(error.message || 'Не удалось сохранить инструкцию.')
+    } finally {
+      setSavingGuide(false)
+    }
+  }
+
+  const deleteGuide = async item => {
+    if (!canDelete) return
+    const confirmed = window.confirm('Удалить бизнес-процесс «' + item.title + '»? Это действие нельзя отменить.')
+    if (!confirmed) return
+    setDeletingGuideId(item.id)
+    setGuideMessage('')
+    try {
+      if (API_ENABLED) {
+        await apiRequest('/api/business-processes/' + encodeURIComponent(item.id), { method: 'DELETE' })
+      }
+      const next = guides.filter(guideItem => guideItem.id !== item.id)
+      setGuides(next)
+      if (!API_ENABLED) {
+        try { window.localStorage.setItem(PROCESS_GUIDES_STORAGE_KEY, JSON.stringify(next)) } catch {
+          throw new Error('Изменение выполнено в интерфейсе, но не удалось обновить локальное хранилище.')
+        }
+      }
+      setProgress(current => {
+        const nextProgress = { ...current }
+        delete nextProgress[item.id]
+        return nextProgress
+      })
+      if (selectedGuideId === item.id) setSelectedGuideId(next[0]?.id || '')
+      setGuideMessage('Бизнес-процесс удалён.')
+    } catch (error) {
+      setGuideMessage(error.message || 'Не удалось удалить бизнес-процесс.')
+    } finally {
+      setDeletingGuideId('')
+    }
+  }
+
   return <section className="process-guides-page">
     <div className="page-heading process-page-heading">
       <div>
         <div className="section-kicker">РАБОЧИЕ СЦЕНАРИИ / ПОШАГОВЫЕ ИНСТРУКЦИИ</div>
         <h1>Интерактивные инструкции</h1>
-        <p>Выбери процесс, проходи контрольные шаги и отмечай выполненное. Прогресс сохраняется в этом браузере.</p>
+        <p>Выбери процесс, проходи контрольные шаги и отмечай выполненное. Сохранённые инструкции доступны всей команде.</p>
       </div>
-      <div className="process-overall-progress"><strong>{totalCompleted} / {totalSteps}</strong><span>шагов выполнено</span></div>
+      <div className="process-heading-actions">
+        <div className="process-overall-progress"><strong>{totalCompleted} / {totalSteps}</strong><span>шагов выполнено</span></div>
+        {canManageGuides && <button type="button" className="primary-button process-create-guide-button" onClick={openNewGuideEditor}><FilePlus2 size={15}/> Новая инструкция</button>}
+      </div>
     </div>
 
     <div className="process-notice"><CircleHelp size={17}/><span>Это рабочие чек-листы для самопроверки. Точные названия операций, статусы, лимиты и обязательные действия зависят от страны, товарной группы и текущих правил соответствующей системы. При расхождении следуй актуальной инструкции оператора и нормативным требованиям.</span></div>
+    {localOnly && <div className="process-edit-mode-note"><Pencil size={14}/> Сейчас изменения сохраняются только в этом браузере. После подключения сервера они будут доступны всей команде.</div>}
+    {guideLoadError && <div className="feedback feedback-error process-edit-feedback" role="alert"><CircleHelp size={15}/><span>Не удалось загрузить редакцию с сервера: {guideLoadError}. Редактирование отключено, чтобы не перезаписать сохранённые данные.</span></div>}
+    {guideMessage && <div className={'feedback process-edit-feedback ' + (guideMessage.startsWith('Не удалось') || guideMessage.startsWith('У каждого') ? 'feedback-error' : 'feedback-success')} role="status"><span>{guideMessage}</span><button type="button" onClick={() => setGuideMessage('')} aria-label="Закрыть сообщение"><X size={14}/></button></div>}
 
-    <div className="process-guides-layout">
-      <nav className="process-guide-list" aria-label="Выбор инструкции">
-        <div className="process-list-title"><span className="section-kicker">ВЫБЕРИТЕ ПРОЦЕСС</span><span>{PROCESS_GUIDES.length} сценариев</span></div>
-        {PROCESS_GUIDES.map((item, index) => {
-          const itemDone = Array.isArray(progress[item.id]) ? progress[item.id].length : 0
-          const itemPercent = Math.round(itemDone / item.steps.length * 100)
-          return <button type="button" key={item.id} className={'process-guide-choice' + (item.id === guide.id ? ' active' : '')} onClick={() => setSelectedGuideId(item.id)}>
-            <span className="process-guide-index">{String(index + 1).padStart(2, '0')}</span>
-            <span className="process-guide-choice-copy"><small>{item.category}</small><strong>{item.title}</strong><span>{itemDone} из {item.steps.length} шагов</span><i><em style={{ width: itemPercent + '%' }}/></i></span>
-            <ArrowUpRight size={15}/>
-          </button>
-        })}
-      </nav>
+    {guidesLoading
+      ? <div className="empty-state"><RefreshCw size={24} className="spin"/><b>Загружаем бизнес-процессы…</b><span>Получаем сохранённые инструкции из общей базы.</span></div>
+      : !guides.length
+        ? <div className="empty-state"><Workflow size={28}/><b>Бизнес-процессы ещё не добавлены</b><span>Создай первую инструкцию, чтобы команда могла пользоваться пошаговым сценарием.</span>{canManageGuides && <button type="button" className="primary-button" onClick={openNewGuideEditor}><FilePlus2 size={15}/> Создать инструкцию</button>}</div>
+        : <div className="process-guides-layout">
+          <nav className="process-guide-list" aria-label="Выбор инструкции">
+            <div className="process-list-title"><span className="section-kicker">ВЫБЕРИТЕ ПРОЦЕСС</span><span>{guides.length} сценариев</span></div>
+            {guides.map((item, index) => {
+              const itemSteps = Array.isArray(item.steps) ? item.steps : []
+              const itemDone = (Array.isArray(progress[item.id]) ? progress[item.id] : [])
+                .filter(step => Number.isInteger(step) && step >= 0 && step < itemSteps.length).length
+              const itemPercent = itemSteps.length ? Math.round(itemDone / itemSteps.length * 100) : 0
+              return <button type="button" key={item.id} className={'process-guide-choice' + (item.id === guide.id ? ' active' : '')} onClick={() => setSelectedGuideId(item.id)}>
+                <span className="process-guide-index">{String(index + 1).padStart(2, '0')}</span>
+                <span className="process-guide-choice-copy"><small>{item.category}</small><strong>{item.title}</strong><span>{itemDone} из {itemSteps.length} шагов</span><i><em style={{ width: itemPercent + '%' }}/></i></span>
+                <ArrowUpRight size={15}/>
+              </button>
+            })}
+          </nav>
 
-      <article className="process-guide-detail">
-        <header className="process-guide-detail-header">
-          <div className="process-guide-detail-icon"><Workflow size={22}/></div>
-          <div className="process-guide-detail-heading">
-            <span className="section-kicker">{guide.scope}</span>
-            <h2>{guide.title}</h2>
-            <p>{guide.summary}</p>
-          </div>
-          <span className="process-guide-progress-pill">{guideDone}/{guide.steps.length}</span>
-        </header>
+          <article className="process-guide-detail">
+            <header className="process-guide-detail-header">
+              <div className="process-guide-detail-icon"><Workflow size={22}/></div>
+              <div className="process-guide-detail-heading">
+                <span className="section-kicker">{guide.scope}</span>
+                <h2>{guide.title}</h2>
+                <p>{guide.summary}</p>
+              </div>
+              <div className="process-guide-detail-actions">
+                <span className="process-guide-progress-pill">{guideDone}/{guide.steps.length}</span>
+                {canManageGuides && <button type="button" className="secondary-button process-edit-guide-button" onClick={() => openGuideEditor(guide)}><Pencil size={14}/> Редактировать</button>}
+                {canDelete && <button type="button" className="danger-button process-delete-guide-button" onClick={() => deleteGuide(guide)} disabled={deletingGuideId === guide.id}>{deletingGuideId === guide.id ? <RefreshCw size={14} className="spin"/> : <Trash2 size={14}/>} Удалить</button>}
+              </div>
+            </header>
 
-        <div className="process-progress-track" aria-label={'Выполнено ' + percent + '%'}>
-          <span style={{ width: percent + '%' }}/>
+            <div className="process-progress-track" aria-label={'Выполнено ' + percent + '%'}>
+              <span style={{ width: percent + '%' }}/>
+            </div>
+            <div className="process-progress-caption"><span>{percent === 100 ? 'Все шаги отмечены' : 'Выполнено ' + percent + '%'}</span><button type="button" className="tnved-clear-button" onClick={resetGuide}>Сбросить отметки</button></div>
+
+            <div className="process-step-list">
+              {guide.steps.map((step, index) => {
+                const isDone = completed.includes(index)
+                return <label className={'process-step' + (isDone ? ' completed' : '')} key={step.title + '-' + index}>
+                  <input type="checkbox" checked={isDone} onChange={() => toggleStep(index)} />
+                  <span className="process-step-number">{String(index + 1).padStart(2, '0')}</span>
+                  <span className="process-step-content"><strong>{step.title}</strong><span>{step.detail}</span></span>
+                  {isDone && <CheckCircle2 className="process-step-check" size={18}/>}
+                </label>
+              })}
+            </div>
+
+            <div className="process-guide-footer">
+              <div className="process-guide-sources">
+                <strong><BookOpen size={15}/> Полезные ссылки</strong>
+                {(guide.sources || []).map((source, index) => <a href={source.url} key={source.url || index} target="_blank" rel="noreferrer">{source.label}<ExternalLink size={13}/></a>)}
+                {!(guide.sources || []).length && <span className="process-no-sources">Ссылки не добавлены.</span>}
+              </div>
+              <button type="button" className="primary-button process-materials-button" onClick={() => onSearchMaterials(guide.searchTerm || guide.title)}><Search size={15}/> Найти материалы в базе</button>
+            </div>
+            <p className="process-local-note">Отметки выполненных шагов хранятся локально в текущем браузере и не синхронизируются между пользователями.</p>
+          </article>
         </div>
-        <div className="process-progress-caption"><span>{percent === 100 ? 'Все шаги отмечены' : 'Выполнено ' + percent + '%'}</span><button type="button" className="tnved-clear-button" onClick={resetGuide}>Сбросить отметки</button></div>
+    }
 
-        <div className="process-step-list">
-          {guide.steps.map((step, index) => {
-            const isDone = completed.includes(index)
-            return <label className={'process-step' + (isDone ? ' completed' : '')} key={step.title}>
-              <input type="checkbox" checked={isDone} onChange={() => toggleStep(index)} />
-              <span className="process-step-number">{String(index + 1).padStart(2, '0')}</span>
-              <span className="process-step-content"><strong>{step.title}</strong><span>{step.detail}</span></span>
-              {isDone && <CheckCircle2 className="process-step-check" size={18}/>}
-            </label>
-          })}
-        </div>
-
-        <div className="process-guide-footer">
-          <div className="process-guide-sources">
-            <strong><BookOpen size={15}/> Полезные ссылки</strong>
-            {guide.sources.map(source => <a href={source.url} key={source.url} target="_blank" rel="noreferrer">{source.label}<ExternalLink size={13}/></a>)}
-          </div>
-          <button type="button" className="primary-button process-materials-button" onClick={() => onSearchMaterials(guide.searchTerm)}><Search size={15}/> Найти материалы в базе</button>
-        </div>
-        <p className="process-local-note">Отметки выполненных шагов хранятся локально в текущем браузере и не синхронизируются между пользователями.</p>
-      </article>
-    </div>
+    {editorOpen && <ProcessGuideEditorModal
+      key={editingGuide?.id || 'new-business-process'}
+      guide={editingGuide}
+      saving={savingGuide}
+      onClose={() => { if (!savingGuide) { setEditorOpen(false); setEditingGuide(null) } }}
+      onSave={saveGuide}
+    />}
   </section>
+}
+
+function ProcessGuideEditorModal({ guide, saving, onClose, onSave }) {
+  const [form, setForm] = useState(() => ({
+    category: guide?.category || '',
+    title: guide?.title || '',
+    summary: guide?.summary || '',
+    scope: guide?.scope || '',
+    time: guide?.time || '',
+    searchTerm: guide?.searchTerm || '',
+    orderIndex: guide?.orderIndex,
+    sources: (guide?.sources || []).map(source => ({ ...source })),
+    steps: (guide?.steps || [{ title: '', detail: '' }]).map(step => ({ ...step })),
+  }))
+  const [formError, setFormError] = useState('')
+  const updateField = (field, value) => setForm(current => ({ ...current, [field]: value }))
+  const updateSource = (index, field, value) => setForm(current => ({
+    ...current,
+    sources: current.sources.map((source, i) => i === index ? { ...source, [field]: value } : source),
+  }))
+  const removeSource = index => setForm(current => ({ ...current, sources: current.sources.filter((_, i) => i !== index) }))
+  const updateStep = (index, field, value) => setForm(current => ({
+    ...current,
+    steps: current.steps.map((step, i) => i === index ? { ...step, [field]: value } : step),
+  }))
+  const removeStep = index => setForm(current => ({ ...current, steps: current.steps.filter((_, i) => i !== index) }))
+  const addStep = () => setForm(current => current.steps.length >= 30
+    ? current
+    : ({ ...current, steps: [...current.steps, { title: '', detail: '' }] }))
+  const addSource = () => setForm(current => current.sources.length >= 10
+    ? current
+    : ({ ...current, sources: [...current.sources, { label: '', url: '' }] }))
+
+  const handleSubmit = event => {
+    event.preventDefault()
+    setFormError('')
+    if (!form.steps.length) {
+      setFormError('В инструкции должен оставаться хотя бы один шаг.')
+      return
+    }
+    if (form.steps.some(step => !step.title.trim() || !step.detail.trim())) {
+      setFormError('Заполни название и описание каждого шага.')
+      return
+    }
+    if (form.sources.some(source => (source.label.trim() || source.url.trim()) && (!source.label.trim() || !source.url.trim()))) {
+      setFormError('У каждой добавленной ссылки должны быть и название, и URL. Или удали пустую строку.')
+      return
+    }
+    onSave({ ...form, id: guide?.id })
+  }
+
+  return <div className="modal-backdrop process-guide-editor-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !saving) onClose() }}>
+    <section className="create-modal process-guide-editor-modal" role="dialog" aria-modal="true" aria-labelledby="process-guide-editor-title">
+      <header className="modal-header">
+        <div>
+          <div className="section-kicker">УПРАВЛЕНИЕ БИЗНЕС-ПРОЦЕССОМ</div>
+          <h2 id="process-guide-editor-title">{guide ? 'Редактировать инструкцию' : 'Новая инструкция'}</h2>
+          <p>Изменения сохраняются в общей базе и становятся доступны другим пользователям.</p>
+        </div>
+        <button className="icon-button" type="button" onClick={onClose} disabled={saving} aria-label="Закрыть редактор"><X size={20}/></button>
+      </header>
+
+      <form onSubmit={handleSubmit}>
+        <div className="process-guide-edit-fields">
+          <label className="form-field"><span>Категория *</span><input required maxLength={120} value={form.category} onChange={event => updateField('category', event.target.value)} placeholder="Например, Заказ кодов"/></label>
+          <label className="form-field"><span>Рабочий контур *</span><input required maxLength={160} value={form.scope} onChange={event => updateField('scope', event.target.value)} placeholder="Например, МЗКМ / Текшер"/></label>
+          <label className="form-field full-field"><span>Название инструкции *</span><input required maxLength={240} value={form.title} onChange={event => updateField('title', event.target.value)} placeholder="Короткое и понятное название"/></label>
+          <label className="form-field full-field"><span>Краткое описание *</span><textarea required maxLength={1500} rows={2} value={form.summary} onChange={event => updateField('summary', event.target.value)} placeholder="Что пользователь должен сделать по этой инструкции"/></label>
+          <label className="form-field"><span>Оценка времени *</span><input required maxLength={120} value={form.time} onChange={event => updateField('time', event.target.value)} placeholder="Например, 5 контрольных шагов"/></label>
+          <label className="form-field"><span>Поисковый запрос *</span><input required maxLength={200} value={form.searchTerm} onChange={event => updateField('searchTerm', event.target.value)} placeholder="Ключевое слово для поиска материалов"/></label>
+        </div>
+
+        <section className="process-editor-section">
+          <div className="process-editor-section-heading"><div><b>Шаги инструкции</b><span>Название и подробное описание для каждого действия</span></div><button type="button" className="secondary-button" onClick={addStep} disabled={form.steps.length >= 30}><FilePlus2 size={14}/> Добавить шаг</button></div>
+          <div className="process-editor-repeat-list">
+            {form.steps.map((step, index) => <article className="process-editor-repeat-card" key={index}>
+              <div className="process-editor-repeat-heading"><strong>Шаг {index + 1}</strong><button type="button" className="process-editor-remove" onClick={() => removeStep(index)} disabled={form.steps.length <= 1} title="Удалить шаг"><Trash2 size={14}/><span>Удалить</span></button></div>
+              <label className="form-field"><span>Название шага *</span><input required maxLength={200} value={step.title} onChange={event => updateStep(index, 'title', event.target.value)} placeholder="Например, Проверь код ТН ВЭД"/></label>
+              <label className="form-field"><span>Описание *</span><textarea required maxLength={4000} rows={3} value={step.detail} onChange={event => updateStep(index, 'detail', event.target.value)} placeholder="Что именно нужно проверить или выполнить"/></label>
+            </article>)}
+          </div>
+        </section>
+
+        <section className="process-editor-section">
+          <div className="process-editor-section-heading"><div><b>Полезные ссылки</b><span>До 10 ссылок на сайты и материалы</span></div><button type="button" className="secondary-button" onClick={addSource} disabled={form.sources.length >= 10}><Link2 size={14}/> Добавить ссылку</button></div>
+          {!form.sources.length && <div className="process-editor-empty-links">Пока ссылок нет. Их можно добавить или оставить список пустым.</div>}
+          <div className="process-editor-repeat-list">
+            {form.sources.map((source, index) => <article className="process-editor-repeat-card process-editor-source-card" key={index}>
+              <div className="process-editor-repeat-heading"><strong>Ссылка {index + 1}</strong><button type="button" className="process-editor-remove" onClick={() => removeSource(index)}><Trash2 size={14}/><span>Удалить</span></button></div>
+              <label className="form-field"><span>Название *</span><input required value={source.label} onChange={event => updateSource(index, 'label', event.target.value)} maxLength={200} placeholder="Официальный портал"/></label>
+              <label className="form-field"><span>URL *</span><input required type="url" pattern="https?://.+" value={source.url} onChange={event => updateSource(index, 'url', event.target.value)} maxLength={2000} placeholder="https://example.gov.kg"/></label>
+            </article>)}
+          </div>
+        </section>
+
+        {formError && <div className="feedback feedback-error" role="alert"><CircleHelp size={15}/><span>{formError}</span></div>}
+        <div className="modal-actions process-editor-actions">
+          <button type="button" className="secondary-button" onClick={onClose} disabled={saving}>Отмена</button>
+          <button type="submit" className="primary-button" disabled={saving}>{saving ? <><RefreshCw size={15} className="spin"/> Сохранение…</> : <><CheckCircle2 size={15}/> Сохранить инструкцию</>}</button>
+        </div>
+      </form>
+    </section>
+  </div>
 }
 
 function JurisdictionCard({ code, title, subtitle, description, count, onClick }) {
