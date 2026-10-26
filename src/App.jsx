@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { API_ENABLED, API_BASE, apiRequest, clearStoredToken, getStoredToken, storeToken } from './lib/api.js'
+import { loadTnvedCatalog } from './data/tnved-catalog.js'
 import {
   ArrowDownRight, ArrowUpRight, BookOpen, Boxes, CalendarDays, ChevronDown,
   CircleHelp, ExternalLink, FileCheck2, FilePlus2, FileText, Globe2, Home,
@@ -1420,15 +1421,218 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
     },
   ]
 
+  const [tnvedCatalog, setTnvedCatalog] = useState([])
+  const [tnvedLoading, setTnvedLoading] = useState(true)
+  const [tnvedLoadError, setTnvedLoadError] = useState('')
+  const [tnvedMode, setTnvedMode] = useState('code')
+  const [tnvedScope, setTnvedScope] = useState('ALL')
+  const [tnvedInput, setTnvedInput] = useState('')
+  const [tnvedSubmitted, setTnvedSubmitted] = useState(null)
+  const [tnvedGroupFilter, setTnvedGroupFilter] = useState('')
+  const [tnvedValidation, setTnvedValidation] = useState('')
+  const [tnvedPage, setTnvedPage] = useState(0)
+  const [showInternalGskp, setShowInternalGskp] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    loadTnvedCatalog()
+      .then(rows => {
+        if (!cancelled) {
+          setTnvedCatalog(Array.isArray(rows) ? rows : [])
+          setTnvedLoadError('')
+          setTnvedLoading(false)
+        }
+      })
+      .catch(error => {
+        if (!cancelled) {
+          setTnvedLoadError(error?.message || 'Не удалось загрузить справочник ТН ВЭД.')
+          setTnvedLoading(false)
+        }
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  const tnvedGroupCounts = useMemo(() => {
+    const counts = new Map()
+    tnvedCatalog.forEach(row => {
+      const key = row.t + '|' + row.g
+      counts.set(key, (counts.get(key) || 0) + 1)
+    })
+    return counts
+  }, [tnvedCatalog])
+
+  const selectTnvedGroup = (groupName, scope = 'MZKM') => {
+    setTnvedGroupFilter(groupName)
+    setTnvedScope(scope)
+    setTnvedMode('code')
+    setTnvedInput('')
+    setTnvedSubmitted('__GROUP__')
+    setTnvedValidation('')
+    setTnvedPage(0)
+    document.getElementById('tnved-checker')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const clearTnvedFilters = () => {
+    setTnvedGroupFilter('')
+    setTnvedScope('ALL')
+    setTnvedInput('')
+    setTnvedSubmitted(null)
+    setTnvedValidation('')
+    setTnvedPage(0)
+    setShowInternalGskp('')
+  }
+
+  const handleTnvedSubmit = event => {
+    event?.preventDefault()
+    const raw = tnvedInput.trim()
+    if (!raw) {
+      setTnvedValidation(tnvedMode === 'code' ? 'Введите код ТН ВЭД: от 4 до 10 цифр.' : 'Введите название товара или его часть.')
+      return
+    }
+    if (tnvedMode === 'code') {
+      const normalized = raw.replace(/[.\s-]/g, '')
+      if (!/^\d{4,10}$/.test(normalized)) {
+        setTnvedValidation('Для поиска по ТН ВЭД введите от 4 до 10 цифр без букв.')
+        return
+      }
+      setTnvedInput(normalized)
+      setTnvedSubmitted(normalized)
+    } else {
+      if (raw.length < 2) {
+        setTnvedValidation('Для поиска по названию введите минимум 2 символа.')
+        return
+      }
+      setTnvedSubmitted(raw)
+    }
+    setTnvedGroupFilter('')
+    setTnvedValidation('')
+    setTnvedPage(0)
+    setShowInternalGskp('')
+  }
+
+  const tnvedResults = useMemo(() => {
+    if (!tnvedCatalog.length || tnvedSubmitted === null) return []
+    const query = String(tnvedSubmitted === '__GROUP__' ? '' : tnvedSubmitted).trim().toLocaleLowerCase('ru-RU')
+    return tnvedCatalog.filter(row => {
+      if (tnvedScope === 'MZKM' && row.t !== 'MZKM') return false
+      if (tnvedScope === 'INTERNAL' && row.t !== 'INTERNAL') return false
+      if (tnvedGroupFilter && row.g !== tnvedGroupFilter) return false
+      if (tnvedSubmitted === '__GROUP__') return true
+      if (tnvedMode === 'code') return String(row.c || '').startsWith(query)
+      const haystack = [row.n, row.g, row.c, row.p, row.gc, row.gn].filter(Boolean).join(' ').toLocaleLowerCase('ru-RU')
+      return haystack.includes(query)
+    }).sort((a, b) => String(a.c).localeCompare(String(b.c)) || String(a.g).localeCompare(String(b.g), 'ru'))
+  }, [tnvedCatalog, tnvedSubmitted, tnvedMode, tnvedScope, tnvedGroupFilter])
+
+  const tnvedPageSize = 25
+  const tnvedPageCount = Math.max(1, Math.ceil(tnvedResults.length / tnvedPageSize))
+  const tnvedVisibleResults = tnvedResults.slice(tnvedPage * tnvedPageSize, (tnvedPage + 1) * tnvedPageSize)
+  const getCount = (group, scope) => tnvedGroupCounts.get(scope + '|' + group) || 0
+
   return <div className="product-groups-page">
     <div className="page-heading">
       <div>
         <div className="section-kicker">СПРАВОЧНИК / МАРКИРОВКА ТОВАРОВ</div>
         <h1>Товарные группы</h1>
-        <p>Списки разделены по назначению: товарные группы из руководства МЗКМ v2.1 и внутренние национальные группы Кыргызстана.</p>
+        <p>Единые группы МЗКМ, национальные товарные группы КР и поиск кодов ТН ВЭД по предоставленному перечню.</p>
       </div>
       <div className="record-count">10 групп МЗКМ · 2 внутренние</div>
     </div>
+
+    <section className="tnved-checker" id="tnved-checker" aria-labelledby="tnved-checker-title">
+      <div className="tnved-checker-header">
+        <div className="tnved-checker-icon"><Search size={20}/></div>
+        <div className="tnved-checker-heading">
+          <div className="section-kicker">ПОИСК ПО СПРАВОЧНИКУ</div>
+          <h2 id="tnved-checker-title">Проверка кодов ТН ВЭД</h2>
+          <p>Проверьте, встречается ли код или товар в предоставленном Excel, и посмотрите, к какой группе он отнесён.</p>
+        </div>
+        <div className="tnved-catalog-counter">
+          <strong>{tnvedLoading ? '…' : tnvedCatalog.length.toLocaleString('ru-RU')}</strong>
+          <span>записей</span>
+        </div>
+      </div>
+
+      <div className="tnved-scope-switch" role="group" aria-label="Источник списка для поиска">
+        {[
+          { value: 'ALL', label: 'Все списки' },
+          { value: 'MZKM', label: 'МЗКМ' },
+          { value: 'INTERNAL', label: 'Внутренняя маркировка КР' },
+        ].map(option => <button key={option.value} type="button" className={tnvedScope === option.value ? 'active' : ''} onClick={() => { setTnvedScope(option.value); setTnvedPage(0); setShowInternalGskp('') }}>{option.label}</button>)}
+      </div>
+
+      <div className="tnved-search-tabs" role="tablist" aria-label="Тип поиска">
+        <button type="button" role="tab" aria-selected={tnvedMode === 'code'} className={tnvedMode === 'code' ? 'active' : ''} onClick={() => { setTnvedMode('code'); setTnvedInput(''); setTnvedSubmitted(null); setTnvedValidation('') }}>
+          <span>ТН ВЭД</span><small>Поиск по коду</small>
+        </button>
+        <button type="button" role="tab" aria-selected={tnvedMode === 'name'} className={tnvedMode === 'name' ? 'active' : ''} onClick={() => { setTnvedMode('name'); setTnvedInput(''); setTnvedSubmitted(null); setTnvedValidation('') }}>
+          <span>Название товара</span><small>Поиск по описанию</small>
+        </button>
+      </div>
+
+      <form className="tnved-search-form" onSubmit={handleTnvedSubmit}>
+        <label htmlFor="tnved-search-input">{tnvedMode === 'code' ? 'Введите код ТН ВЭД или его первые цифры' : 'Введите название товара или часть наименования'}</label>
+        <div className="tnved-search-control">
+          <input
+            id="tnved-search-input"
+            value={tnvedInput}
+            onChange={event => { setTnvedInput(event.target.value); setTnvedValidation('') }}
+            placeholder={tnvedMode === 'code' ? 'Например, 950300 или 9503005500' : 'Например, шампунь, обувь, детская игрушка'}
+            inputMode={tnvedMode === 'code' ? 'numeric' : 'search'}
+            maxLength={tnvedMode === 'code' ? 15 : 160}
+            aria-invalid={Boolean(tnvedValidation)}
+          />
+          <button type="submit" className="primary-button" disabled={tnvedLoading}><Search size={16}/> Проверить</button>
+        </div>
+        {tnvedValidation && <div className="tnved-validation" role="alert">{tnvedValidation}</div>}
+        {tnvedMode === 'code' && <p className="tnved-input-help">Допускается ввод от 4 до 10 цифр. Поиск выполняется по началу кода.</p>}
+      </form>
+
+      {tnvedLoading && <div className="tnved-loading"><RefreshCw size={17} className="spin"/> Загружаем справочник кодов из Excel…</div>}
+      {tnvedLoadError && <div className="feedback feedback-error tnved-load-error" role="alert">{tnvedLoadError}</div>}
+
+      {tnvedSubmitted !== null && !tnvedLoading && !tnvedLoadError && <section className="tnved-results" aria-live="polite">
+        <div className="tnved-results-heading">
+          <div>
+            <h3>{tnvedGroupFilter ? 'Коды товарной группы' : 'Результаты проверки'}</h3>
+            <p>{tnvedGroupFilter ? tnvedGroupFilter : (tnvedMode === 'code' ? 'Код начинается с ' + tnvedSubmitted : 'Поиск по названию: «' + tnvedSubmitted + '»')}</p>
+          </div>
+          <div className="tnved-result-actions">
+            <span className="record-count">{tnvedResults.length.toLocaleString('ru-RU')} записей</span>
+            <button type="button" className="tnved-clear-button" onClick={clearTnvedFilters}><X size={14}/> Сбросить</button>
+          </div>
+        </div>
+
+        {tnvedResults.length === 0
+          ? <div className="tnved-empty"><Search size={22}/><b>Совпадений не найдено</b><span>Код или название не встретились в выбранном перечне Excel. Это не означает, что товар не подлежит маркировке.</span></div>
+          : <>
+            <div className="tnved-table-wrap">
+              <table className="tnved-table">
+                <thead><tr><th>Код ТН ВЭД</th><th>Наименование товара</th><th>Товарная группа</th><th>Список</th><th>ГСКП</th></tr></thead>
+                <tbody>
+                  {tnvedVisibleResults.map((row, index) => <tr key={row.t + '|' + row.c + '|' + row.g + '|' + row.r + '|' + index}>
+                    <td><button type="button" className="tnved-code-link" onClick={() => { setTnvedMode('code'); setTnvedInput(row.c); setTnvedSubmitted(row.c); setTnvedGroupFilter(''); setTnvedPage(0) }}>{row.c}</button></td>
+                    <td className="tnved-product-name">{row.n}</td>
+                    <td>{row.g}</td>
+                    <td><span className={'tnved-list-badge ' + (row.t === 'INTERNAL' ? 'internal' : 'mzkm')}>{row.t === 'INTERNAL' ? 'Внутренняя КР' : 'МЗКМ'}</span></td>
+                    <td>{row.t === 'INTERNAL' && (row.gc || row.gn) ? <button type="button" className="tnved-gskp-toggle" onClick={() => setShowInternalGskp(showInternalGskp === row.t + row.c ? '' : row.t + row.c)}>{showInternalGskp === row.t + row.c ? 'Скрыть' : 'Показать'}</button> : '—'}
+                      {row.t === 'INTERNAL' && showInternalGskp === row.t + row.c && <div className="tnved-gskp-details"><b>ГСКП:</b><span>{row.gc || '—'}</span><b>Наименование ГСКП:</b><span>{row.gn || '—'}</span></div>}
+                    </td>
+                  </tr>)}
+                </tbody>
+              </table>
+            </div>
+            {tnvedResults.length > tnvedPageSize && <div className="tnved-pagination">
+              <button type="button" className="secondary-button" disabled={tnvedPage === 0} onClick={() => setTnvedPage(page => Math.max(0, page - 1))}>Назад</button>
+              <span>Страница {tnvedPage + 1} из {tnvedPageCount}</span>
+              <button type="button" className="secondary-button" disabled={tnvedPage + 1 >= tnvedPageCount} onClick={() => setTnvedPage(page => Math.min(tnvedPageCount - 1, page + 1))}>Дальше</button>
+            </div>}
+          </>
+        }
+      </section>}
+
+      <div className="tnved-advisory-note"><CircleHelp size={16}/><span>Справочник основан на файле «Список ТН ВЭД.xlsx». Совпадение означает только то, что код присутствует в переданном перечне и отнесён в файле к указанной группе. Проверка не подтверждает юридическую обязательность маркировки. Для решения сверяйте полный код, описание товара, исключения и актуальный нормативный акт.</span></div>
+    </section>
 
     <section className="mzkm-product-group-section">
       <div className="mzkm-section-heading">
@@ -1436,25 +1640,32 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
         <div>
           <div className="section-kicker">РУКОВОДСТВО МЗКМ v2.1 · 09.10.2026</div>
           <h2>Товарные группы МЗКМ</h2>
-          <p>Единый список с титульной страницы руководства – без дополнительного деления на внутренние и внешние группы внутри МЗКМ.</p>
+          <p>Единый список с титульной страницы руководства. Нажмите «Коды ТН ВЭД», чтобы открыть соответствующие строки из Excel.</p>
         </div>
         <span className="record-count">10 групп</span>
       </div>
       <section className="mzkm-groups-grid" aria-label="Единый список товарных групп МЗКМ v2.1">
-        {mzkmGroups.map((name, index) => <button type="button" className="mzkm-group-card mzkm-group-card-button" key={name} onClick={() => onSearchGroup(name)} aria-label={'Найти материалы по группе: ' + name}>
+        {mzkmGroups.map((name, index) => <article className="mzkm-group-card mzkm-group-card-interactive" key={name}>
           <div className="mzkm-group-number">{String(index + 1).padStart(2, '0')}</div>
           <div className="mzkm-group-copy">
             <h3>{name}</h3>
-            <p>В перечне МЗКМ v2.1 · нажмите, чтобы найти связанные инструкции и документы</p>
+            <p>{getCount(name, 'MZKM')} кодов из Excel · МЗКМ v2.1</p>
+            <div className="tnved-group-actions">
+              <button type="button" className="tnved-group-button primary" onClick={() => selectTnvedGroup(name, 'MZKM')}>Коды ТН ВЭД ({getCount(name, 'MZKM')})</button>
+              <button type="button" className="tnved-group-button" onClick={() => onSearchGroup(name)}>Материалы</button>
+            </div>
           </div>
-          <Search className="mzkm-group-search-icon" size={16} aria-hidden="true"/>
-        </button>)}
+        </article>)}
       </section>
+      <article className="tnved-supplemental-group">
+        <div className="tnved-supplemental-copy"><b>Бритвы</b><span>{getCount('Бритвы', 'MZKM')} кода в Excel. Группа есть в файле, но отсутствует в перечне 10 групп на титульной странице руководства МЗКМ v2.1.</span></div>
+        <button type="button" className="tnved-group-button primary" onClick={() => selectTnvedGroup('Бритвы', 'MZKM')}>Показать коды</button>
+      </article>
       <div className="notice mzkm-groups-version-note">
         <CircleHelp size={17}/>
         <div>
           <b>Примечание к руководству</b>
-          <span>«Бритвы» описаны в разделе атрибутов v2.1, но отсутствуют в списке из десяти групп на титульной странице. Поэтому они не включены в основной список без подтверждения оператора.</span>
+          <span>«Бритвы» описаны в разделе атрибутов v2.1, но отсутствуют в списке из десяти групп на титульной странице. В Excel для них есть отдельные четыре кода; поэтому они доступны в проверке как дополнительный список, а не включены в основной список десяти групп.</span>
         </div>
       </div>
     </section>
@@ -1465,7 +1676,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
         <div>
           <div className="section-kicker">КЫРГЫЗСКАЯ РЕСПУБЛИКА · НАЦИОНАЛЬНЫЕ ТРЕБОВАНИЯ</div>
           <h2>Товарные группы внутренней маркировки</h2>
-          <p>По официальной странице регистрации оператора «Текшер» во внутреннем списке указаны алкоголь и табак.</p>
+          <p>По официальному перечню и приложенному Excel внутренние коды представлены для алкоголя и табака.</p>
         </div>
         <span className="record-count">2 группы</span>
       </div>
@@ -1477,6 +1688,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
             <p>{group.description}</p>
             <div className="internal-group-actions">
               <button type="button" className="internal-group-find" onClick={() => onSearchGroup(group.name)}><Search size={13}/> Найти материалы</button>
+              <button type="button" className="internal-group-find" onClick={() => selectTnvedGroup(group.name, 'INTERNAL')}>Коды ТН ВЭД ({getCount(group.name, 'INTERNAL')})</button>
               <a href={group.source} target="_blank" rel="noreferrer"><ExternalLink size={13}/> Официальная страница</a>
             </div>
           </div>
@@ -1486,10 +1698,10 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
         <CircleHelp size={17}/>
         <div>
           <b>Отдельный национальный режим: упакованная вода и УКМ</b>
-          <span>Кабинет Министров КР отдельно установил режим учетно-контрольных марок для упакованной воды (ТН ВЭД 2201). Это отдельный режим учёта/контроля, поэтому он указан здесь в примечании и не смешивается с десятью товарными группами МЗКМ или с внутренним списком «Алкоголь / Табак».</span>
+          <span>Кабинет Министров КР отдельно установил режим учетно-контрольных марок для упакованной воды (ТН ВЭД 2201). В приложенном Excel отдельного списка внутренней маркировки для воды нет; здесь не добавляем коды из внешнего перечня к внутреннему списку без основания.</span>
           <div className="internal-ukm-actions">
             <a href="https://www.gov.kg/ru/npa/s/4687" target="_blank" rel="noreferrer">Постановление КМ КР № 385 от 01.07.2025 <ExternalLink size={13}/></a>
-            <button type="button" className="internal-group-find" onClick={() => onSearchGroup('упакованная вода УКМ') }><Search size={13}/> Найти материалы по воде и УКМ</button>
+            <button type="button" className="internal-group-find" onClick={() => selectTnvedGroup('Упакованная вода', 'INTERNAL')}><Search size={13}/> Найти код воды во внутреннем списке</button>
           </div>
         </div>
       </div>
@@ -1497,15 +1709,13 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
 
     <section className="contour-reference mzkm-groups-sources">
       <div className="section-kicker">ИСТОЧНИКИ И ПРОВЕРКА</div>
-      <h2>Где сверять актуальные сведения</h2>
-      <p className="mzkm-groups-source-note">Для состава списка МЗКМ используется руководство v2.1 от 09.10.2026. Для внутренней маркировки и УКМ сверяйте отдельные нормативные основания Кыргызской Республики; наличие группы в справочнике само по себе не заменяет проверку применимого акта.</p>
+      <h2>Источники справочника</h2>
+      <p className="mzkm-groups-source-note">Справочник формируется из файла «Список ТН ВЭД.xlsx»: лист «Полный список ТН ВЭД внешки» для МЗКМ и лист «Полный список ТН ВЭД внутренней» для алкоголя/табака. Дубликаты по одинаковому коду и описанию сгруппированы; разные связи с ГСКП сохранены. Файл загружен пользователем, дата актуальности исходного перечня в нём отдельно не подтверждена.</p>
       <div className="reference-links">
-        <a href="https://main.teksher.kg/register.html" target="_blank" rel="noreferrer"><b>Товарные группы в регистрации «Текшер»</b><span>Официальная страница отдельно показывает внутренние и внешние группы</span><ExternalLink size={16}/></a>
-        <a href="https://main.teksher.kg/internal-marking.html" target="_blank" rel="noreferrer"><b>Внутренняя маркировка КР</b><span>Перечень товаров, подлежащих обязательной маркировке</span><ExternalLink size={16}/></a>
-        <a href="https://www.gov.kg/ru/npa/s/4687" target="_blank" rel="noreferrer"><b>Постановление КМ КР № 385</b><span>Учетно-контрольные марки</span><ExternalLink size={16}/></a>
-        <a href="https://cbd.minjust.gov.kg/" target="_blank" rel="noreferrer"><b>Правовая база Минюста КР</b><span>Актуальные редакции нормативных актов</span><ExternalLink size={16}/></a>
+        <a href="https://xn--80ajghhoc2aj1c8b.xn--p1ai/checking_codes/" target="_blank" rel="noreferrer"><b>Пример проверки кода</b><span>Принцип поиска по коду ТН ВЭД или наименованию</span><ExternalLink size={16}/></a>
+        <a href="https://main.teksher.kg/news.html" target="_blank" rel="noreferrer"><b>Новости «Текшер»</b><span>Опубликованные оператором перечни и изменения</span><ExternalLink size={16}/></a>
+        <a href="https://cbd.minjust.gov.kg/" target="_blank" rel="noreferrer"><b>Правовая база КР</b><span>Нормативные акты Кыргызской Республики</span><ExternalLink size={16}/></a>
       </div>
-      <button className="primary-button mzkm-groups-open-docs" type="button" onClick={() => onOpen('KG')}>Открыть нормативные документы КР <ArrowUpRight size={15}/></button>
     </section>
   </div>
 }
