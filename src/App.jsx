@@ -1191,6 +1191,34 @@ function App() {
               </button>
             </section>
 
+            <section className="home-shortcuts" aria-label="Быстрые рабочие действия">
+              <div className="section-title-row compact">
+                <div><div className="section-kicker">БЫСТРЫЕ ДЕЙСТВИЯ</div><h2>Продолжить работу</h2><p>Переход к частым задачам платформы.</p></div>
+              </div>
+              <div className="home-shortcuts-grid">
+                <button type="button" className="home-shortcut-card" onClick={() => openSection('processes')}>
+                  <span className="home-shortcut-icon"><Workflow size={19} /></span>
+                  <span><b>Бизнес-процессы</b><small>Открыть инструкции и чек-листы</small></span>
+                  <ArrowUpRight size={16} />
+                </button>
+                <button type="button" className="home-shortcut-card" onClick={() => openSection('assistant')}>
+                  <span className="home-shortcut-icon"><Bot size={19} /></span>
+                  <span><b>Спросить ИИ-помощника</b><small>Найти сведения по маркировке</small></span>
+                  <ArrowUpRight size={16} />
+                </button>
+                <button type="button" className="home-shortcut-card" onClick={() => openSection('monitoring')}>
+                  <span className="home-shortcut-icon"><RefreshCw size={19} /></span>
+                  <span><b>Источники и проверки</b><small>Перейти к контролю источников</small></span>
+                  <ArrowUpRight size={16} />
+                </button>
+                <button type="button" className="home-shortcut-card" onClick={() => openSection('groups')}>
+                  <span className="home-shortcut-icon"><Boxes size={19} /></span>
+                  <span><b>Товарные группы</b><small>Найти группу и рабочий контур</small></span>
+                  <ArrowUpRight size={16} />
+                </button>
+              </div>
+            </section>
+
             <section className="home-workbench">
               <div className="workbench-heading">
                 <div><div className="section-kicker">РАБОЧАЯ ПАНЕЛЬ</div><h2>Материалы и контроль</h2><p>Быстрый переход к документам и проверке актуальности.</p></div>
