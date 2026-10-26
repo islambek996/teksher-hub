@@ -21,6 +21,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -51,7 +52,13 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource(
             @Value("${app.cors.allowed-origins}") String allowedOrigins) {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(Arrays.stream(allowedOrigins.split(",")).map(String::trim).filter(s -> !s.isBlank()).toList());
+        List<String> origins = new ArrayList<>(Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim).filter(s -> !s.isBlank()).toList());
+        // Always allow the canonical production frontend; environment origins can add local/staging hosts.
+        if (!origins.contains("https://teksher-hub.netlify.app")) {
+            origins.add("https://teksher-hub.netlify.app");
+        }
+        config.setAllowedOrigins(origins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
         config.setExposedHeaders(List.of("Content-Disposition"));
