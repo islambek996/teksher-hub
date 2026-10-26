@@ -36,8 +36,8 @@ public class DocumentFileController {
     }
 
     @GetMapping
-    public List<FileResponse> list(@PathVariable UUID documentId) {
-        documents.findEntity(documentId);
+    public List<FileResponse> list(@PathVariable UUID documentId, @AuthenticationPrincipal UserAccount user) {
+        DocumentReadAccessPolicy.requireReadable(user.getRole(), documents.get(documentId));
         return files.findAllByDocumentIdOrderByUploadedAtDesc(documentId).stream().map(FileResponse::from).toList();
     }
 
@@ -87,8 +87,11 @@ public class DocumentFileController {
 
     @GetMapping("/{fileId}/download")
     @Transactional(readOnly = true)
-    public ResponseEntity<Resource> download(@PathVariable UUID documentId, @PathVariable UUID fileId) throws IOException {
-        DocumentFile file = files.findByIdAndDocumentId(fileId, documentId).orElseThrow(() -> new IllegalArgumentException("Файл не найден"));
+    public ResponseEntity<Resource> download(@PathVariable UUID documentId, @PathVariable UUID fileId,
+                                             @AuthenticationPrincipal UserAccount user) throws IOException {
+        DocumentReadAccessPolicy.requireReadable(user.getRole(), documents.get(documentId));
+        DocumentFile file = files.findByIdAndDocumentId(fileId, documentId)
+                .orElseThrow(() -> new IllegalArgumentException("Файл не найден"));
         var path = storage.resolve(file.getStoredName());
         Resource resource = new UrlResource(path.toUri());
         if (!resource.exists() || !resource.isReadable()) throw new IllegalArgumentException("Файл недоступен");
