@@ -134,7 +134,7 @@ async function evaluateCase(item, index) {
   }
 
   const checks = {
-    validResponseSchema: Boolean(answer) && Array.isArray(sources) && typeof data.insufficientEvidence === "boolean",
+    validResponseSchema: Boolean(answer) && Array.isArray(data.sources) && typeof data.insufficientEvidence === "boolean",
     citationNumbersMapToReturnedSources: invalidCitations.length === 0 && !citationGuardWarning,
     noConfidentAnswerWithoutCitation: !noCitationButConfident,
     statusWarningWhenUsingUnreviewedOrArchivedDocuments: !requiresStatusWarning || statusWarningPresent,
