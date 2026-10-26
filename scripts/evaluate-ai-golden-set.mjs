@@ -154,6 +154,7 @@ async function evaluateCase(item, index) {
       statusLabel: source.statusLabel,
       effectiveFrom: source.effectiveFrom,
       effectiveUntil: source.effectiveUntil,
+      excerpt: source.excerpt,
       sourceUrl: source.sourceUrl
     })),
     automatedChecks: checks,
