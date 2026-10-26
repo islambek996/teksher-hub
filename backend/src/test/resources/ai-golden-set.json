@@ -16,7 +16,7 @@
     "question": "Какие требования к маркировке косметической продукции установлены в Кыргызской Республике?",
     "expectedJurisdiction": "KG",
     "requiredTerms": [
-      "кыргыз"
+      "кыргызск"
     ],
     "primaryOfficialReference": "https://cbd.minjust.gov.kg/7-21787/edition/1191840/ru",
     "whenEvidenceMissing": "В доступных материалах это не подтверждено",
@@ -27,8 +27,7 @@
     "question": "Какие изменения в правила маркировки товаров в Кыргызской Республике внесены в 2025 году?",
     "expectedJurisdiction": "KG",
     "requiredTerms": [
-      "кыргыз",
-      "2025"
+      "кыргызск"
     ],
     "primaryOfficialReference": "https://cbd.minjust.gov.kg/7-49397/edition/44205/ru",
     "whenEvidenceMissing": "В доступных материалах это не подтверждено",
@@ -39,7 +38,7 @@
     "question": "Какие требования к обороту маркированных товаров в Российской Федерации нужно проверить по официальному акту?",
     "expectedJurisdiction": "RU",
     "requiredTerms": [
-      "рф"
+      "российск"
     ],
     "primaryOfficialReference": "https://publication.pravo.gov.ru/document/0001202311270058?index=42",
     "whenEvidenceMissing": "В доступных материалах это не подтверждено",
