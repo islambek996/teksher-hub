@@ -77,7 +77,7 @@ public class DocumentService {
         return csv.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
 
-    private static void appendCsvRow(StringBuilder output, Object... values) {
+    static void appendCsvRow(StringBuilder output, Object... values) {
         for (int i = 0; i < values.length; i++) {
             if (i > 0) output.append(';');
             String value = values[i] == null ? "" : values[i].toString();
