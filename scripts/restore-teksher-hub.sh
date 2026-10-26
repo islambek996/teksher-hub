@@ -46,7 +46,7 @@ docker compose exec -T "$DB_SERVICE" pg_restore --clean --if-exists --no-owner -
   -U "$DB_USERNAME" -d "$DB_NAME" < "$DB_BACKUP"
 
 echo "Заменяю архив вложений..."
-docker compose run --rm --no-deps --entrypoint sh "$API_SERVICE" -c \
+docker compose run -T --rm --no-deps --entrypoint sh "$API_SERVICE" -c \
   'set -eu; mkdir -p /app/uploads; find /app/uploads -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +; tar -xzf - -C /app' \
   < "$UPLOADS_BACKUP"
 
