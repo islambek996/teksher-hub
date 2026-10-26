@@ -18,7 +18,6 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Set;
 
 @RestController
 @RequestMapping("/api/tasks")
@@ -137,8 +136,8 @@ public class TaskController {
                 VALUES (?, ?, ?, NOW()) RETURNING id
                 """, Long.class, id, user.getUsername(), body);
         audit(user.getUsername(), "COMMENT", id, task.title(), "Добавлен комментарий к задаче");
-        Set<String> recipients = Set.of(task.createdBy(), task.assignedTo());
-        recipients.stream().filter(recipient -> !recipient.equalsIgnoreCase(user.getUsername())).distinct()
+        java.util.stream.Stream.of(task.createdBy(), task.assignedTo())
+                .filter(recipient -> !recipient.equalsIgnoreCase(user.getUsername())).distinct()
                 .forEach(recipient -> notifyUser(recipient, id, "Новый комментарий к задаче",
                         user.getUsername() + " прокомментировал задачу «" + task.title() + "»"));
         return jdbc.queryForObject("""
