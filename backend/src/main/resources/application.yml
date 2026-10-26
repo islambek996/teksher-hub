@@ -27,7 +27,7 @@ app:
     secret: ${JWT_SECRET:local-dev-only-secret-change-this-to-at-least-32-characters}
     expiration-minutes: ${JWT_EXPIRATION_MINUTES:480}
   cors:
-    allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5173,http://localhost:4173}
+    allowed-origins: ${APP_CORS_ORIGINS:https://teksher-hub.netlify.app,http://localhost:5173,http://localhost:4173}
   storage:
     directory: ${UPLOAD_DIR:./uploads}
   bootstrap:
