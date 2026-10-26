@@ -2243,6 +2243,12 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
         }
       }
       setGuides(next)
+      if (editingId) {
+        const previous = guides.find(item => item.id === editingId)
+        if (JSON.stringify(previous?.steps || []) !== JSON.stringify(saved.steps || [])) {
+          setProgress(current => ({ ...current, [saved.id]: [] }))
+        }
+      }
       setSelectedGuideId(saved.id)
       setEditorOpen(false)
       setEditingGuide(null)
