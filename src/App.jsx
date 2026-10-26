@@ -2111,6 +2111,7 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
   const [editingGuide, setEditingGuide] = useState(null)
   const [editorOpen, setEditorOpen] = useState(false)
   const [savingGuide, setSavingGuide] = useState(false)
+  const [editorError, setEditorError] = useState('')
   const [deletingGuideId, setDeletingGuideId] = useState('')
 
   useEffect(() => {
@@ -2175,6 +2176,7 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
 
   const openNewGuideEditor = () => {
     setEditingGuide(null)
+    setEditorError('')
     setEditorOpen(true)
     setGuideMessage('')
   }
@@ -2185,6 +2187,7 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
       sources: (item.sources || []).map(source => ({ ...source })),
       steps: (item.steps || []).map(step => ({ ...step })),
     })
+    setEditorError('')
     setEditorOpen(true)
     setGuideMessage('')
   }
@@ -2206,10 +2209,11 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
       orderIndex: Number.isInteger(draft.orderIndex) ? draft.orderIndex : (guides.length + 1),
     }
     if (!body.steps.length || body.steps.some(step => !step.title || !step.detail)) {
-      setGuideMessage('У каждого шага должны быть заполнены название и описание.')
+      setEditorError('У каждого шага должны быть заполнены название и описание.')
       return
     }
     setSavingGuide(true)
+    setEditorError('')
     setGuideMessage('')
     try {
       let saved
@@ -2233,12 +2237,12 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
       const next = editingId
         ? guides.map(item => item.id === editingId ? saved : item)
         : [...guides, saved]
-      setGuides(next)
       if (!API_ENABLED) {
         try { window.localStorage.setItem(PROCESS_GUIDES_STORAGE_KEY, JSON.stringify(next)) } catch {
           throw new Error('Не удалось сохранить изменения в браузере. Проверь доступное место в хранилище.')
         }
       }
+      setGuides(next)
       setSelectedGuideId(saved.id)
       setEditorOpen(false)
       setEditingGuide(null)
@@ -2246,7 +2250,7 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
       setGuideLoadError('')
       setGuideMessage('Инструкция «' + saved.title + '» сохранена.')
     } catch (error) {
-      setGuideMessage(error.message || 'Не удалось сохранить инструкцию.')
+      setEditorError(error.message || 'Не удалось сохранить инструкцию.')
     } finally {
       setSavingGuide(false)
     }
@@ -2263,12 +2267,12 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
         await apiRequest('/api/business-processes/' + encodeURIComponent(item.id), { method: 'DELETE' })
       }
       const next = guides.filter(guideItem => guideItem.id !== item.id)
-      setGuides(next)
       if (!API_ENABLED) {
         try { window.localStorage.setItem(PROCESS_GUIDES_STORAGE_KEY, JSON.stringify(next)) } catch {
-          throw new Error('Изменение выполнено в интерфейсе, но не удалось обновить локальное хранилище.')
+          throw new Error('Не удалось сохранить удаление в браузере. Проверь доступное место в хранилище.')
         }
       }
+      setGuides(next)
       setProgress(current => {
         const nextProgress = { ...current }
         delete nextProgress[item.id]
@@ -2370,13 +2374,14 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
       key={editingGuide?.id || 'new-business-process'}
       guide={editingGuide}
       saving={savingGuide}
-      onClose={() => { if (!savingGuide) { setEditorOpen(false); setEditingGuide(null) } }}
+      error={editorError}
+      onClose={() => { if (!savingGuide) { setEditorOpen(false); setEditingGuide(null); setEditorError('') } }}
       onSave={saveGuide}
     />}
   </section>
 }
 
-function ProcessGuideEditorModal({ guide, saving, onClose, onSave }) {
+function ProcessGuideEditorModal({ guide, saving, error, onClose, onSave }) {
   const [form, setForm] = useState(() => ({
     category: guide?.category || '',
     title: guide?.title || '',
@@ -2470,6 +2475,7 @@ function ProcessGuideEditorModal({ guide, saving, onClose, onSave }) {
         </section>
 
         {formError && <div className="feedback feedback-error" role="alert"><CircleHelp size={15}/><span>{formError}</span></div>}
+        {error && <div className="feedback feedback-error" role="alert"><CircleHelp size={15}/><span>{error}</span></div>}
         <div className="modal-actions process-editor-actions">
           <button type="button" className="secondary-button" onClick={onClose} disabled={saving}>Отмена</button>
           <button type="submit" className="primary-button" disabled={saving}>{saving ? <><RefreshCw size={15} className="spin"/> Сохранение…</> : <><CheckCircle2 size={15}/> Сохранить инструкцию</>}</button>
