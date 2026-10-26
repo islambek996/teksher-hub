@@ -3245,7 +3245,15 @@ function AiAssistantSection({ apiEnabled, isAdmin, onOpenDocument }) {
                 <div><span>Всего оценок</span><b>{feedbackSummary.total}</b></div>
                 <div><span>Полезные</span><b>{feedbackSummary.positive}</b></div>
                 <div><span>Неполезные</span><b>{feedbackSummary.negative}</b></div>
+                <div><span>Доля полезных</span><b>{feedbackSummary.positiveRate ?? 0}%</b></div>
               </div>
+              {feedbackSummary.negativeCategories?.length > 0 && <div className="assistant-feedback-categories">
+                <b>Причины отрицательных оценок</b>
+                {feedbackSummary.negativeCategories.map(item => <div className="assistant-feedback-category" key={item.category}>
+                  <div><span>{({ incorrect: 'Неточность', no_source: 'Нет источника', outdated: 'Устаревшие сведения', unclear: 'Непонятный ответ', other: 'Другое', answer: 'Ответ' })[item.category] || item.category}</span><strong>{item.count}</strong></div>
+                  <i><em style={{ width: (item.count * 100 / Math.max(1, ...feedbackSummary.negativeCategories.map(category => category.count))) + '%' }}/></i>
+                </div>)}
+              </div>}
               {feedbackSummary.recentNegative?.length > 0 ? <div className="assistant-feedback-review-list">
                 <b>Последние отрицательные оценки</b>
                 {feedbackSummary.recentNegative.map(item => <article className="assistant-feedback-review-item" key={item.id}>
