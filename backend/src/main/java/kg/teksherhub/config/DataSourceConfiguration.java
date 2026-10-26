@@ -35,6 +35,9 @@ public class DataSourceConfiguration {
                 "");
 
         ParsedDatabaseUrl parsed = normalizeUrl(rawUrl, username, password);
+        if (parsed.password().isBlank()) {
+            throw new IllegalStateException("DATABASE_PASSWORD must be explicitly configured; no default password is allowed");
+        }
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(parsed.jdbcUrl());
         config.setUsername(parsed.username());
