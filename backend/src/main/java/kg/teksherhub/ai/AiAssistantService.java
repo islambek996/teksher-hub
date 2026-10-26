@@ -98,6 +98,12 @@ public class AiAssistantService {
                     "ИИ не настроен на сервере. Администратору нужно указать GROQ_API_KEY в настройках backend.");
         }
 
+        // Greetings and conversational acknowledgements should not require knowledge-base evidence.
+        String conversationalReply = conversationalReply(question);
+        if (conversationalReply != null) {
+            return new AssistantResponse(conversationalReply, List.of(), false);
+        }
+
         List<String> terms = searchTerms(question);
         if (terms.isEmpty()) {
             return insufficient("Не удалось выделить поисковые слова из вопроса. Попробуйте сформулировать его конкретнее, указав систему, документ, товарную группу или текст ошибки.", List.of());
@@ -145,6 +151,21 @@ public class AiAssistantService {
         String answer = generateAnswer(question, evidence);
         boolean insufficient = looksInsufficient(answer);
         return new AssistantResponse(answer, evidence.stream().map(Evidence::reference).toList(), insufficient);
+    }
+
+    private static String conversationalReply(String question) {
+        String normalized = question.toLowerCase(Locale.ROOT).replace('ё', 'е')
+                .replaceAll("[^\\p{L}\\p{N}\\s]", " ").trim().replaceAll("\\s+", " ");
+        if (normalized.matches("^(привет|приветик|здравствуй|здравствуйте|доброе утро|добрый день|добрый вечер|салам|саламатсызбы|ассалом алейкум|салам алейкум)( всем)?$")) {
+            return "Здравствуйте! Я TEKSHER AI – помощник по маркировке товаров. Могу помочь разобраться с нормативными документами, бизнес-процессами, работой МЗКМ и ошибками системы. Что хотите узнать?";
+        }
+        if (normalized.matches("^(спасибо|спасибо большое|благодарю|рахмат|чон рахмат)$")) {
+            return "Пожалуйста! Если появятся вопросы по маркировке или работе TEKSHER HUB, обращайтесь.";
+        }
+        if (normalized.matches("^(пока|до свидания|до встречи|хорошего дня|сау бол)$")) {
+            return "До встречи! Буду рад помочь, если появятся вопросы по маркировке товаров.";
+        }
+        return null;
     }
 
     private List<RankedDocument> retrieve(String question, List<String> terms) {
