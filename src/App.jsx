@@ -1155,6 +1155,7 @@ function App() {
             : active === 'assistant' ? <AiAssistantSection apiEnabled={API_ENABLED} onOpenDocument={docId => { const target = documents.find(item => String(item.id) === String(docId)); if (target) { setActive('documents'); setSelectedDoc(target); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы'); syncRoute('documents', target.id) } }} />
             : active === 'knowledge' ? <KnowledgeCenterSection documents={documents} onSelectKind={(kind) => { setActive('documents'); setSelectedDoc(null); setQuery(''); setFilter(kind); setStatusFilter('Все статусы'); syncRoute('documents') }} onOpenAll={() => openSection('documents')} onAdd={openNewDocumentModal} canAdd={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} />
             : active === 'groups' ? <ProductGroupsSection onOpen={openSection} onSearchGroup={searchProductGroupMaterials} />
+            : active === 'processes' ? <ProcessGuidesSection onSearchMaterials={searchProductGroupMaterials} />
             : active === 'monitoring' ? <MonitorSection monitors={monitors} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
                 onAdd={() => { setActionError(''); setMonitorModalOpen(true) }} onCheck={handleCheckMonitor} onDelete={handleDeleteMonitor} />
             : active === 'users' ? <UsersSection users={users} onAdd={() => { setActionError(''); setUserModalOpen(true) }} onToggle={handleToggleUser} onReset={user => { setActionError(''); setPasswordResetTarget(user) }} />
@@ -1402,6 +1403,32 @@ function KnowledgeCenterSection({ documents, onSelectKind, onOpenAll, onAdd, can
 const COSMETICS_TNVED_GROUP = 'Косметика, бытовая химия и товары личной гигиены'
 const normalizeTnvedGroup = groupName => groupName === 'Бритвы' ? COSMETICS_TNVED_GROUP : groupName
 
+function normalizeTnvedSearchText(value) {
+  return String(value || '')
+    .toLocaleLowerCase('ru-RU')
+    .replace(/ё/g, 'е')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zа-я0-9]+/gi, ' ')
+    .trim()
+}
+
+const TNVED_SEARCH_SYNONYMS = [
+  { group: 'Обувные товары', scope: 'MZKM', terms: ['обувь', 'кроссовки', 'ботинки', 'туфли', 'сапоги', 'сандалии', 'сланцы', 'кеды'] },
+  { group: 'Белье постельное, столовое, туалетное и кухонное', scope: 'MZKM', terms: ['постельное белье', 'постельное бельё', 'простыни', 'наволочки', 'полотенца', 'кухонный текстиль', 'скатерти', 'белье'] },
+  { group: 'Предметы одежды', scope: 'MZKM', terms: ['одежда', 'футболка', 'футболки', 'рубашка', 'рубашки', 'брюки', 'джинсы', 'куртка', 'платье', 'трикотаж'] },
+  { group: 'Духи и туалетная вода', scope: 'MZKM', terms: ['духи', 'парфюм', 'парфюмерия', 'туалетная вода', 'одеколон'] },
+  { group: 'Фотокамеры (кроме кинокамер), фотовспышки и лампы-вспышки', scope: 'MZKM', terms: ['камера', 'фотоаппарат', 'фотокамера', 'фотовспышка', 'фотооборудование'] },
+  { group: 'Молочная продукция', scope: 'MZKM', terms: ['молоко', 'сыр', 'йогурт', 'кефир', 'сливки', 'творог', 'молочка', 'молочная продукция'] },
+  { group: 'Продукты, используемые для кормления животных', scope: 'MZKM', terms: ['корм', 'корма', 'корм для кошек', 'корм для собак', 'корм для животных', 'зоокорм', 'питание животных'] },
+  { group: COSMETICS_TNVED_GROUP, scope: 'MZKM', terms: ['косметика', 'шампунь', 'шампуни', 'бальзам', 'мыло', 'зубная паста', 'дезодорант', 'крем для лица', 'средство гигиены', 'бытовая химия', 'моющее средство', 'средство для мытья'] },
+  { group: COSMETICS_TNVED_GROUP, scope: 'MZKM', matchGroup: false, terms: ['бритва', 'бритвы', 'бритье', 'бритья', 'лезвие для бритья', 'бритвенный станок'] },
+  { group: 'Моторные масла, смазочные материалы, тормозные жидкости и антифризы', scope: 'MZKM', terms: ['моторное масло', 'масло моторное', 'антифриз', 'смазка', 'тормозная жидкость', 'техническая жидкость'] },
+  { group: 'Игры и игрушки для детей', scope: 'MZKM', terms: ['игрушка', 'игрушки', 'кукла', 'конструктор', 'пазл', 'настольная игра', 'детская игрушка'] },
+  { group: 'Алкоголь', scope: 'INTERNAL', terms: ['алкоголь', 'водка', 'вино', 'пиво', 'спиртные напитки'] },
+  { group: 'Табак', scope: 'INTERNAL', terms: ['табак', 'сигареты', 'табачная продукция', 'табачные изделия'] },
+]
+
 function ProductGroupsSection({ onOpen, onSearchGroup }) {
   const mzkmGroups = [
     'Обувные товары',
@@ -1442,6 +1469,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
   const [tnvedValidation, setTnvedValidation] = useState('')
   const [tnvedPage, setTnvedPage] = useState(0)
   const [showInternalGskp, setShowInternalGskp] = useState('')
+  const [tnvedCopyMessage, setTnvedCopyMessage] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -1589,17 +1617,77 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
     setTnvedSuggestionIndex(-1)
   }
 
+  const copyTnvedCode = async code => {
+    try {
+      const value = String(code || '')
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value)
+      } else {
+        const field = document.createElement('textarea')
+        field.value = value
+        field.setAttribute('readonly', '')
+        field.style.position = 'fixed'
+        field.style.opacity = '0'
+        document.body.appendChild(field)
+        field.select()
+        const copied = document.execCommand('copy')
+        field.remove()
+        if (!copied) throw new Error('Копирование недоступно в этом браузере.')
+      }
+      setTnvedCopyMessage('Код ' + value + ' скопирован')
+      window.setTimeout(() => setTnvedCopyMessage(''), 2200)
+    } catch {
+      setTnvedCopyMessage('Не удалось скопировать код. Выделите его и скопируйте вручную.')
+    }
+  }
+
+  const exportTnvedResults = () => {
+    if (!tnvedResults.length) return
+    const headers = ['Код ТН ВЭД', 'Наименование товара', 'Товарная группа', 'Список', 'Код ГСКП', 'Наименование ГСКП']
+    const safeCell = value => {
+      const raw = String(value ?? '')
+      const safe = /^[\s]*[=+\-@]/.test(raw) ? "'" + raw : raw
+      return '"' + safe.replace(/"/g, '""') + '"'
+    }
+    const lines = [headers, ...tnvedResults.map(row => [
+      row.c, row.n, normalizeTnvedGroup(row.g), row.t === 'INTERNAL' ? 'Внутренняя маркировка КР' : 'МЗКМ', row.gc || '', row.gn || ''
+    ])].map(row => row.map(safeCell).join(';')).join('\r\n')
+    const blob = new Blob(['\uFEFF', lines], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'tnved-results-' + new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-') + '.csv'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
   const tnvedResults = useMemo(() => {
     if (!tnvedCatalog.length || tnvedSubmitted === null) return []
-    const query = String(tnvedSubmitted === '__GROUP__' ? '' : tnvedSubmitted).trim().toLocaleLowerCase('ru-RU')
+    const query = normalizeTnvedSearchText(tnvedSubmitted === '__GROUP__' ? '' : tnvedSubmitted)
+    const synonymMatches = tnvedMode === 'name' && query.length >= 2
+      ? TNVED_SEARCH_SYNONYMS.filter(item => item.terms.some(term => {
+          const normalized = normalizeTnvedSearchText(term)
+          return normalized === query || (query.length >= 3 && (normalized.startsWith(query) || normalized.includes(query)))
+        }))
+      : []
     return tnvedCatalog.filter(row => {
       if (tnvedScope === 'MZKM' && row.t !== 'MZKM') return false
       if (tnvedScope === 'INTERNAL' && row.t !== 'INTERNAL') return false
       if (tnvedGroupFilter && normalizeTnvedGroup(row.g) !== tnvedGroupFilter) return false
       if (tnvedSubmitted === '__GROUP__') return true
-      if (tnvedMode === 'code') return String(row.c || '').startsWith(query)
-      const haystack = [row.n, row.g, row.c, row.p, row.gc, row.gn].filter(Boolean).join(' ').toLocaleLowerCase('ru-RU')
-      return haystack.includes(query)
+      if (tnvedMode === 'code') return String(row.c || '').startsWith(query.replace(/\s/g, ''))
+      const haystack = normalizeTnvedSearchText([
+        row.n, row.g, normalizeTnvedGroup(row.g), row.c, row.p, row.gc, row.gn
+      ].filter(Boolean).join(' '))
+      const directMatch = haystack.includes(query)
+      const synonymGroupMatch = synonymMatches.some(item =>
+        item.matchGroup !== false
+        && normalizeTnvedGroup(row.g) === item.group
+        && (!item.scope || (item.scope === 'INTERNAL' ? row.t === 'INTERNAL' : row.t === 'MZKM'))
+      )
+      return directMatch || synonymGroupMatch
     }).sort((a, b) => String(a.c).localeCompare(String(b.c)) || String(a.g).localeCompare(String(b.g), 'ru'))
   }, [tnvedCatalog, tnvedSubmitted, tnvedMode, tnvedScope, tnvedGroupFilter])
 
@@ -1721,7 +1809,9 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
           <button type="submit" className="primary-button" disabled={tnvedLoading}><Search size={16}/> Проверить</button>
         </div>
         {tnvedValidation && <div className="tnved-validation" role="alert">{tnvedValidation}</div>}
-        {tnvedMode === 'code' && <p className="tnved-input-help">Допускается ввод от 4 до 10 цифр. Поиск выполняется по началу кода.</p>}
+        {tnvedMode === 'code'
+          ? <p className="tnved-input-help">Допускается ввод от 4 до 10 цифр. Поиск выполняется по началу кода.</p>
+          : <p className="tnved-input-help">Поиск учитывает наименования, распространённые синонимы и соответствующие товарные группы. Например: «бритва», «кроссовки», «шампунь», «корм для кошек».</p>}
       </form>
 
       {tnvedLoading && <div className="tnved-loading"><RefreshCw size={17} className="spin"/> Загружаем справочник кодов из Excel…</div>}
@@ -1735,9 +1825,11 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
           </div>
           <div className="tnved-result-actions">
             <span className="record-count">{tnvedResults.length.toLocaleString('ru-RU')} записей</span>
+            {tnvedResults.length > 0 && <button type="button" className="tnved-export-button" onClick={exportTnvedResults}><Download size={14}/> Excel (CSV)</button>}
             <button type="button" className="tnved-clear-button" onClick={clearTnvedFilters}><X size={14}/> Сбросить</button>
           </div>
         </div>
+        {tnvedCopyMessage && <div className="tnved-copy-feedback" role="status">{tnvedCopyMessage}</div>}
 
         {tnvedResults.length === 0
           ? <div className="tnved-empty"><Search size={22}/><b>Совпадений не найдено</b><span>Код или название не встретились в выбранном перечне Excel. Это не означает, что товар не подлежит маркировке.</span></div>
@@ -1747,7 +1839,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
                 <thead><tr><th>Код ТН ВЭД</th><th>Наименование товара</th><th>Товарная группа</th><th>Список</th><th>ГСКП</th></tr></thead>
                 <tbody>
                   {tnvedVisibleResults.map((row, index) => <tr key={row.t + '|' + row.c + '|' + row.g + '|' + row.r + '|' + index}>
-                    <td><button type="button" className="tnved-code-link" onClick={() => { setTnvedMode('code'); setTnvedInput(row.c); setTnvedSubmitted(row.c); setTnvedGroupFilter(''); setTnvedPage(0) }}>{row.c}</button></td>
+                    <td><div className="tnved-code-actions"><button type="button" className="tnved-code-link" title="Показать все коды с этим началом" onClick={() => { setTnvedMode('code'); setTnvedInput(row.c); setTnvedSubmitted(row.c); setTnvedGroupFilter(''); setTnvedPage(0) }}>{row.c}</button><button type="button" className="tnved-copy-button" onClick={() => copyTnvedCode(row.c)} title="Копировать код ТН ВЭД" aria-label={'Копировать код ' + row.c}><Copy size={13}/></button></div></td>
                     <td className="tnved-product-name">{row.n}</td>
                     <td>{normalizeTnvedGroup(row.g)}</td>
                     <td><span className={'tnved-list-badge ' + (row.t === 'INTERNAL' ? 'internal' : 'mzkm')}>{row.t === 'INTERNAL' ? 'Внутренняя КР' : 'МЗКМ'}</span></td>
@@ -1842,6 +1934,237 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
       </div>
     </section>
   </div>
+}
+
+
+const PROCESS_PROGRESS_KEY = 'teksher-hub-process-guide-progress-v1'
+
+const PROCESS_GUIDES = [
+  {
+    id: 'registration',
+    category: 'Доступ и участник',
+    title: 'Регистрация участника и доступ',
+    summary: 'Подготовить регистрацию, проверить реквизиты и безопасно получить доступ к рабочему контуру.',
+    scope: 'МЗКМ / Текшер',
+    time: '10–20 мин на проверку',
+    searchTerm: 'регистрация участника МЗКМ',
+    sources: [
+      { label: 'Официальная страница регистрации', url: 'https://main.teksher.kg/register-mzkm.html' },
+      { label: 'Портал «Текшер»', url: 'https://main.teksher.kg/' },
+    ],
+    steps: [
+      { title: 'Открой актуальную страницу регистрации', detail: 'Проверь действующий порядок и форму обращения на официальном портале. Если порядок или ссылка изменились, используй текущую версию сайта.' },
+      { title: 'Подготовь документы по своему типу участника', detail: 'Сверь необходимый пакет и требования к полномочиям представителя с актуальным списком оператора. Не полагайся на старую копию списка без перепроверки.' },
+      { title: 'Проверь регистрационные реквизиты', detail: 'Сверь наименование организации или ИП, ИНН, контактную почту и данные ответственного лица. Ошибки в исходных данных могут затруднить регистрацию и поддержку.' },
+      { title: 'Отправь заявление через официальный канал', detail: 'Сохрани подтверждение отправки, номер обращения и переписку с оператором. Не передавай пароль через письмо или мессенджер.' },
+      { title: 'После подтверждения проверь доступ', detail: 'Войди по официальному адресу, проверь профиль участника, доступные товарные группы и условия договора. Пароль храни отдельно и не вводи его на сторонних страницах.' },
+    ],
+  },
+  {
+    id: 'product-card',
+    category: 'Карточка товара',
+    title: 'Создание и проверка карточки товара',
+    summary: 'До заказа кодов убедиться, что выбран правильный товар, идентификатор и набор атрибутов.',
+    scope: 'Карточка товара',
+    time: '5 контрольных шагов',
+    searchTerm: 'карточка товара ТН ВЭД GTIN',
+    sources: [
+      { label: 'Портал «Текшер»', url: 'https://main.teksher.kg/' },
+      { label: 'Новости оператора и разъяснения', url: 'https://main.teksher.kg/news.html' },
+    ],
+    steps: [
+      { title: 'Определи рабочую систему и товарную группу', detail: 'Проверь, в каком контуре выполняется операция, и выбери группу по характеристикам товара и актуальной инструкции. Не определяй обязательность маркировки только по названию группы.' },
+      { title: 'Сверь код ТН ВЭД и описание товара', detail: 'Проверь полный код, описание, страну/сценарий оборота и применимые исключения. Поиск в справочнике помогает найти позицию, но не заменяет классификацию и проверку действующих правил.' },
+      { title: 'Проверь GTIN и отсутствие дубликата', detail: 'Сверь идентификатор с упаковкой и данными производителя/поставщика. Не создавай повторную карточку только ради обхода ошибки уже существующей записи.' },
+      { title: 'Заполни обязательные атрибуты выбранной группы', detail: 'Наименование, бренд, модель, состав, размер, объём и другие поля заполняй по фактическим сведениям о товаре и требованиям формы выбранной группы.' },
+      { title: 'Проверь результат до публикации', detail: 'Перечитай карточку, проверь соответствие идентификаторов и атрибутов первичным документам, отправь её на предусмотренную системой проверку и дождись подходящего статуса перед следующим действием.' },
+    ],
+  },
+  {
+    id: 'order-codes',
+    category: 'Заказ кодов',
+    title: 'Заказ кодов маркировки',
+    summary: 'Проверить готовность карточки, объём заказа, баланс и результат обработки заказа.',
+    scope: 'Заказ КМ',
+    time: '5 контрольных шагов',
+    searchTerm: 'заказ кодов маркировки баланс МЗКМ',
+    sources: [
+      { label: 'Портал «Текшер»', url: 'https://main.teksher.kg/' },
+      { label: 'Новости оператора', url: 'https://main.teksher.kg/news.html' },
+    ],
+    steps: [
+      { title: 'Убедись, что карточка готова к заказу', detail: 'Проверь статус карточки, выбранную товарную группу, GTIN и необходимые атрибуты. Если карточка на проверке или отклонена, сначала устрани причину в установленном порядке.' },
+      { title: 'Рассчитай нужное количество кодов', detail: 'Сверь планируемый объём партии, упаковку и тип операции. Не заказывай запас кода без понятной потребности и не превышай лимиты, которые показывает текущий интерфейс.' },
+      { title: 'Проверь баланс и стоимость', detail: 'Перед подтверждением проверь доступный баланс, стоимость, валюту/конвертацию и правила списания в текущем интерфейсе и договоре. При сомнении не отправляй повторный заказ.' },
+      { title: 'Отправь заказ и сохрани его реквизиты', detail: 'Запиши номер/идентификатор заказа, дату, количество и статус. Если система показала ошибку, сначала проверь, был ли заказ фактически создан.' },
+      { title: 'Проверь готовность полученных кодов', detail: 'Убедись, что количество и статус соответствуют заказу. Загружай и храни файл кодов в рабочем защищённом месте; не редактируй сами значения DataMatrix.' },
+    ],
+  },
+  {
+    id: 'print-apply',
+    category: 'Печать и нанесение',
+    title: 'Печать, нанесение и контроль DataMatrix',
+    summary: 'Проверить читаемость маркировки, соответствие упаковке и количество кодов до завершения партии.',
+    scope: 'Печать и нанесение',
+    time: '5 контрольных шагов',
+    searchTerm: 'печать нанесение DataMatrix',
+    sources: [
+      { label: 'Портал «Текшер»', url: 'https://main.teksher.kg/' },
+      { label: 'Новости оператора', url: 'https://main.teksher.kg/news.html' },
+    ],
+    steps: [
+      { title: 'Подготовь коды и настройки печати', detail: 'Используй файл и формат, предусмотренные рабочим процессом. Не теряй управляющие разделители GS1 и не преобразуй строку DataMatrix обычным текстовым редактором.' },
+      { title: 'Распечатай тестовую этикетку', detail: 'Проверь, что код не обрезан, не растянут и имеет достаточный контраст и свободное поле вокруг символа. Просканируй образец до запуска всей партии.' },
+      { title: 'Сопоставь этикетку с конкретным товаром', detail: 'Убедись, что код относится к правильной карточке/GTIN и наносится на соответствующую единицу или упаковку согласно выбранной схеме маркировки.' },
+      { title: 'Нанеси код и проверь сканированием', detail: 'После нанесения повторно считай DataMatrix с фактической поверхности. Проверь, что код читается, данные не обрезаны, а скан не распознаётся как дубликат.' },
+      { title: 'Сверь итоги партии', detail: 'Сравни количество подготовленных, нанесённых, отбракованных и оставшихся этикеток. Отдельно зафиксируй нечитаемые или повреждённые коды и действуй по инструкции системы для их дальнейшей обработки.' },
+    ],
+  },
+  {
+    id: 'circulation',
+    category: 'Статус товара',
+    title: 'Проверка перед вводом в оборот',
+    summary: 'Перед подтверждением операции убедиться, что товар, коды и документы согласованы.',
+    scope: 'Ввод в оборот',
+    time: '5 контрольных шагов',
+    searchTerm: 'ввод в оборот статус кода маркировки',
+    sources: [
+      { label: 'Портал «Текшер»', url: 'https://main.teksher.kg/' },
+      { label: 'Новости оператора', url: 'https://main.teksher.kg/news.html' },
+    ],
+    steps: [
+      { title: 'Уточни применимый процесс и страну оборота', detail: 'Определи, какие правила и система применяются к конкретной операции. Не переноси автоматически порядок из РФ, КР или ЕАЭС на другой контур.' },
+      { title: 'Проверь готовность товара и документов', detail: 'Сверь карточку, GTIN, фактическую партию, необходимые сопроводительные документы и выбранный вид операции.' },
+      { title: 'Проверь коды до отправки события', detail: 'Считай коды с товара/упаковки, проверь количество, читаемость и отсутствие дублей. Используй текущие статусы и ограничения, показываемые системой.' },
+      { title: 'Отправь предусмотренную операцию', detail: 'Заполняй документ в соответствующей системе по текущей инструкции. Перед подтверждением повторно сверь реквизиты участника, дату, партию и количество.' },
+      { title: 'Убедись в принятии результата', detail: 'Не считай операцию завершённой только после нажатия кнопки. Проверь конечный статус, запиши идентификатор документа и разберись с отклонёнными строками по тексту ошибки.' },
+    ],
+  },
+  {
+    id: 'dispatch',
+    category: 'Отгрузка и перемещение',
+    title: 'Отгрузка и движение кодов',
+    summary: 'Проверить состав отгрузки, корректность кодов и подтверждение со стороны системы/получателя.',
+    scope: 'Отгрузка / перемещение',
+    time: '5 контрольных шагов',
+    searchTerm: 'отгрузка перемещение кодов маркировки',
+    sources: [
+      { label: 'Портал «Текшер»', url: 'https://main.teksher.kg/' },
+      { label: 'Новости оператора', url: 'https://main.teksher.kg/news.html' },
+    ],
+    steps: [
+      { title: 'Подготовь список фактически отгружаемых товаров', detail: 'Сверь состав партии с документами и фактическим количеством упаковок. Не включай в отправку код, который не относится к отгружаемому товару.' },
+      { title: 'Собери и проверь коды партии', detail: 'Отсканируй коды или импортируй предусмотренный файл. Проверь дубликаты, пропуски и соответствие количества товаросопроводительным документам.' },
+      { title: 'Заполни документ перемещения/отгрузки', detail: 'Выбери предусмотренный для этого сценария тип документа, проверь реквизиты отправителя и получателя, дату и состав партии.' },
+      { title: 'Подтверди передачу по правилам системы', detail: 'Выполни требуемые действия отправителя и получателя в соответствующем контуре. Не считай передачу завершённой без подтверждённого статуса.' },
+      { title: 'Проверь результат и сохрани подтверждения', detail: 'Проверь статус документа, ошибки по отдельным кодам и финальный состав отгрузки. Сохрани идентификатор/подтверждение и передай ответственному сотруднику ошибки, которые требуют разбора.' },
+    ],
+  },
+]
+
+function loadProcessGuideProgress() {
+  try {
+    const raw = window.localStorage.getItem(PROCESS_PROGRESS_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+function ProcessGuidesSection({ onSearchMaterials }) {
+  const [selectedGuideId, setSelectedGuideId] = useState(PROCESS_GUIDES[0].id)
+  const [progress, setProgress] = useState(loadProcessGuideProgress)
+  const guide = PROCESS_GUIDES.find(item => item.id === selectedGuideId) || PROCESS_GUIDES[0]
+  const completed = Array.isArray(progress[guide.id]) ? progress[guide.id] : []
+  const guideDone = completed.length
+  const totalCompleted = PROCESS_GUIDES.reduce((total, item) =>
+    total + (Array.isArray(progress[item.id]) ? progress[item.id].length : 0), 0)
+  const totalSteps = PROCESS_GUIDES.reduce((total, item) => total + item.steps.length, 0)
+  const percent = Math.round(guideDone / guide.steps.length * 100)
+
+  useEffect(() => {
+    try { window.localStorage.setItem(PROCESS_PROGRESS_KEY, JSON.stringify(progress)) } catch { /* storage unavailable */ }
+  }, [progress])
+
+  const toggleStep = index => {
+    setProgress(current => {
+      const currentSteps = Array.isArray(current[guide.id]) ? current[guide.id] : []
+      const next = currentSteps.includes(index)
+        ? currentSteps.filter(step => step !== index)
+        : [...currentSteps, index]
+      return { ...current, [guide.id]: next }
+    })
+  }
+
+  const resetGuide = () => {
+    setProgress(current => ({ ...current, [guide.id]: [] }))
+  }
+
+  return <section className="process-guides-page">
+    <div className="page-heading process-page-heading">
+      <div>
+        <div className="section-kicker">РАБОЧИЕ СЦЕНАРИИ / ПОШАГОВЫЕ ИНСТРУКЦИИ</div>
+        <h1>Интерактивные инструкции</h1>
+        <p>Выбери процесс, проходи контрольные шаги и отмечай выполненное. Прогресс сохраняется в этом браузере.</p>
+      </div>
+      <div className="process-overall-progress"><strong>{totalCompleted} / {totalSteps}</strong><span>шагов выполнено</span></div>
+    </div>
+
+    <div className="process-notice"><CircleHelp size={17}/><span>Это рабочие чек-листы для самопроверки. Точные названия операций, статусы, лимиты и обязательные действия зависят от страны, товарной группы и текущих правил соответствующей системы. При расхождении следуй актуальной инструкции оператора и нормативным требованиям.</span></div>
+
+    <div className="process-guides-layout">
+      <nav className="process-guide-list" aria-label="Выбор инструкции">
+        <div className="process-list-title"><span className="section-kicker">ВЫБЕРИТЕ ПРОЦЕСС</span><span>{PROCESS_GUIDES.length} сценариев</span></div>
+        {PROCESS_GUIDES.map((item, index) => {
+          const itemDone = Array.isArray(progress[item.id]) ? progress[item.id].length : 0
+          const itemPercent = Math.round(itemDone / item.steps.length * 100)
+          return <button type="button" key={item.id} className={'process-guide-choice' + (item.id === guide.id ? ' active' : '')} onClick={() => setSelectedGuideId(item.id)}>
+            <span className="process-guide-index">{String(index + 1).padStart(2, '0')}</span>
+            <span className="process-guide-choice-copy"><small>{item.category}</small><strong>{item.title}</strong><span>{itemDone} из {item.steps.length} шагов</span><i><em style={{ width: itemPercent + '%' }}/></i></span>
+            <ArrowUpRight size={15}/>
+          </button>
+        })}
+      </nav>
+
+      <article className="process-guide-detail">
+        <header className="process-guide-detail-header">
+          <div className="process-guide-detail-icon"><Workflow size={22}/></div>
+          <div className="process-guide-detail-heading">
+            <span className="section-kicker">{guide.scope}</span>
+            <h2>{guide.title}</h2>
+            <p>{guide.summary}</p>
+          </div>
+          <span className="process-guide-progress-pill">{guideDone}/{guide.steps.length}</span>
+        </header>
+
+        <div className="process-progress-track" aria-label={'Выполнено ' + percent + '%'}>
+          <span style={{ width: percent + '%' }}/>
+        </div>
+        <div className="process-progress-caption"><span>{percent === 100 ? 'Все шаги отмечены' : 'Выполнено ' + percent + '%'}</span><button type="button" className="tnved-clear-button" onClick={resetGuide}>Сбросить отметки</button></div>
+
+        <div className="process-step-list">
+          {guide.steps.map((step, index) => {
+            const isDone = completed.includes(index)
+            return <label className={'process-step' + (isDone ? ' completed' : '')} key={step.title}>
+              <input type="checkbox" checked={isDone} onChange={() => toggleStep(index)} />
+              <span className="process-step-number">{String(index + 1).padStart(2, '0')}</span>
+              <span className="process-step-content"><strong>{step.title}</strong><span>{step.detail}</span></span>
+              {isDone && <CheckCircle2 className="process-step-check" size={18}/>}
+            </label>
+          })}
+        </div>
+
+        <div className="process-guide-footer">
+          <div className="process-guide-sources">
+            <strong><BookOpen size={15}/> Полезные ссылки</strong>
+            {guide.sources.map(source => <a href={source.url} key={source.url} target="_blank" rel="noreferrer">{source.label}<ExternalLink size={13}/></a>)}
+          </div>
+          <button type="button" className="primary-button process-materials-button" onClick={() => onSearchMaterials(guide.searchTerm)}><Search size={15}/> Найти материалы в базе</button>
+        </div>
+        <p className="process-local-note">Отметки выполненных шагов хранятся локально в текущем браузере и не синхронизируются между пользователями.</p>
+      </article>
+    </div>
+  </section>
 }
 
 function JurisdictionCard({ code, title, subtitle, description, count, onClick }) {
