@@ -105,11 +105,21 @@ async function evaluateCase(item, index) {
   const citedNumbers = [...answer.matchAll(validCitationPattern)].map(match => Number(match[1]));
   const invalidCitations = citedNumbers.filter(number => !availableNumbers.has(number));
   const citationGuardWarning = answer.includes("не удалось сопоставить с найденными материалами");
-  const noCitationButConfident = !data.insufficientEvidence && citedNumbers.length === 0;
+  const answerExplicitlyAbstains = hasInsufficientEvidenceLanguage(answer);
+  const noCitationButConfident = !answerExplicitlyAbstains && citedNumbers.length === 0;
   const documentSources = sources.filter(source => source.sourceType === "DOCUMENT");
   const flaggedDocumentSources = documentSources.filter(source => staleStatuses.has(String(source.status || "").toUpperCase()));
   const requiresStatusWarning = flaggedDocumentSources.length > 0;
   const statusWarningPresent = answer.includes("среди найденных материалов есть документы со статусом");
+  const today = new Date().toISOString().slice(0, 10);
+  const activeDateConflicts = documentSources.filter(source => {
+    if (String(source.status || "").toUpperCase() !== "ACTIVE") return false;
+    const from = source.effectiveFrom || null;
+    const until = source.effectiveUntil || null;
+    return (from && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(from) || from > today)) ||
+      (until && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(until) || until < today));
+  });
+  const dateWarningPresent = answer.includes("указанный период дат не покрывает текущую дату");
 
   let matchedJurisdictionSources = [];
   let jurisdictionMismatch = false;
@@ -128,6 +138,7 @@ async function evaluateCase(item, index) {
     citationNumbersMapToReturnedSources: invalidCitations.length === 0 && !citationGuardWarning,
     noConfidentAnswerWithoutCitation: !noCitationButConfident,
     statusWarningWhenUsingUnreviewedOrArchivedDocuments: !requiresStatusWarning || statusWarningPresent,
+    dateWarningWhenActiveDocumentDatesConflict: activeDateConflicts.length === 0 || dateWarningPresent,
     jurisdictionHasSupportingSourceOrAssistantAbstains: !jurisdictionMismatch,
     insufficientEvidenceFlagConsistentWithFallback: !(hasInsufficientEvidenceLanguage(answer) && data.insufficientEvidence === false)
   };
@@ -164,6 +175,7 @@ async function evaluateCase(item, index) {
       citedNumbers,
       invalidCitations,
       flaggedDocumentSources: flaggedDocumentSources.map(source => source.title),
+      activeDateConflicts: activeDateConflicts.map(source => source.title),
       matchingJurisdictionSources: matchedJurisdictionSources.map(source => source.title)
     }
   };
