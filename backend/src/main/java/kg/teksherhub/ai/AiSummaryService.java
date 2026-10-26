@@ -156,7 +156,9 @@ public class AiSummaryService {
                     httpRequest, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 log.warn("Groq Responses API returned HTTP {}", response.statusCode());
-                throw providerFailure(response.statusCode());
+                String rateLimitDetails = response.statusCode() == 429
+                        ? GroqRateLimitDetails.describe(response.headers(), response.body()) : null;
+                throw providerFailure(response.statusCode(), rateLimitDetails);
             }
 
             JsonNode root = objectMapper.readTree(response.body());
@@ -181,14 +183,16 @@ public class AiSummaryService {
         }
     }
 
-    private static ResponseStatusException providerFailure(int status) {
+    private static ResponseStatusException providerFailure(int status, String rateLimitDetails) {
         if (status == 401 || status == 403) {
             return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                     "Сервис ИИ отклонил ключ или у него нет доступа. Проверьте GROQ_API_KEY и доступность выбранной модели.");
         }
         if (status == 429) {
             return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "Сервис ИИ временно ограничил запросы. Проверьте лимиты и биллинг API.");
+                    rateLimitDetails == null || rateLimitDetails.isBlank()
+                            ? "Сервис ИИ временно ограничил запросы. Проверьте лимиты и биллинг API."
+                            : rateLimitDetails);
         }
         if (status == 400) {
             return new ResponseStatusException(HttpStatus.BAD_GATEWAY,
