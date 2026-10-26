@@ -584,12 +584,19 @@ public class AiAssistantService {
         String q = question.toLowerCase(Locale.ROOT).replace('ё', 'е');
         String requested = null;
         if (q.contains("кыргыз") || q.contains("гаис") || q.contains("текшер")
-                || Pattern.compile("(?iu)(^|[^\\p{L}\\p{N}])кр($|[^\\p{L}\\p{N}])").matcher(q).find()) requested = "KG";
-        else if (q.contains("росси") || q.contains("честный знак") || q.contains("рф")) requested = "RU";
+                || containsToken(q, "кр")) requested = "KG";
+        else if (q.contains("росси") || q.contains("честный знак") || containsToken(q, "рф")) requested = "RU";
         else if (q.contains("еаэс") || q.contains("евразий")) requested = "EAEU";
         if (requested == null) return 0;
         String actual = safe(document.getJurisdiction()).toUpperCase(Locale.ROOT);
         return requested.equals(actual) ? 6 : -3;
+    }
+
+    private static boolean containsToken(String text, String token) {
+        if (text == null || text.isBlank() || token == null || token.isBlank()) return false;
+        String expression = "(?iu)(^|[^\\p{L}\\p{N}])" + Pattern.quote(token)
+                + "($|[^\\p{L}\\p{N}])";
+        return Pattern.compile(expression).matcher(text).find();
     }
 
     private static String normalizeText(String text) {
