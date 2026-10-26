@@ -21,10 +21,10 @@ is_running "$DB_SERVICE" || { echo "Ошибка: сервис '$DB_SERVICE' н�
 is_running "$API_SERVICE" || { echo "Ошибка: сервис '$API_SERVICE' не запущен; архив вложений создать нельзя." >&2; exit 1; }
 
 if [[ -z "$DB_USERNAME" ]]; then
-  DB_USERNAME="$(docker compose exec -T "$DB_SERVICE" sh -c 'printf "%s" "${POSTGRES_USER:-teksher}"' | tr -d '\\r')"
+  DB_USERNAME="$(docker compose exec -T "$DB_SERVICE" sh -c 'printf "%s" "${POSTGRES_USER:-teksher}"' | tr -d '\r')"
 fi
 if [[ -z "$DB_NAME" ]]; then
-  DB_NAME="$(docker compose exec -T "$DB_SERVICE" sh -c 'printf "%s" "${POSTGRES_DB:-teksher_hub}"' | tr -d '\\r')"
+  DB_NAME="$(docker compose exec -T "$DB_SERVICE" sh -c 'printf "%s" "${POSTGRES_DB:-teksher_hub}"' | tr -d '\r')"
 fi
 
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
