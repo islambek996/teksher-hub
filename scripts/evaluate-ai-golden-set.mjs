@@ -16,7 +16,7 @@ const maxRateLimitRetries = Math.max(0, Number(process.env.TEKSHER_AI_RATE_LIMIT
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const isRateLimitResponse = (status, body) =>
-  status === 429 || /ограничил запросы|rate.?limit|too many requests|\\b429\\b/i.test(String(body || ""));
+  status === 429 || /ограничил запросы|rate.?limit|too many requests|\b429\b/i.test(String(body || ""));
 
 if (!token) {
   console.error("TEKSHER_API_TOKEN is required. Supply a temporary bearer token for a test account.");
