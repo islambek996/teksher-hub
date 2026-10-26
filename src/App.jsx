@@ -3114,6 +3114,7 @@ function AiAssistantSection({ apiEnabled, isAdmin, onOpenDocument }) {
   const [error, setError] = useState('')
   const [feedbackSummary, setFeedbackSummary] = useState(null)
   const [feedbackSummaryLoading, setFeedbackSummaryLoading] = useState(false)
+  const [feedbackPanelOpen, setFeedbackPanelOpen] = useState(false)
   const [feedbackReasonTarget, setFeedbackReasonTarget] = useState(null)
   const inputRef = useRef(null)
   const messagesEndRef = useRef(null)
@@ -3233,9 +3234,10 @@ function AiAssistantSection({ apiEnabled, isAdmin, onOpenDocument }) {
           <div className="assistant-chat-heading">
             <div className="assistant-chat-avatar"><Bot size={19}/></div>
             <div><b>TEKSHER AI</b><small>Помощник по базе знаний</small></div>
+            {isAdmin && apiEnabled && <button type="button" className="assistant-feedback-toggle" aria-expanded={feedbackPanelOpen} onClick={() => setFeedbackPanelOpen(open => !open)}><ChevronDown size={14} className={feedbackPanelOpen ? 'assistant-feedback-toggle-icon is-open' : 'assistant-feedback-toggle-icon'}/>{feedbackPanelOpen ? 'Скрыть' : 'Контроль качества'}</button>}
             <span className="assistant-online-dot">Поиск по источникам</span>
           </div>
-          {isAdmin && apiEnabled && <section className="assistant-feedback-admin">
+          {isAdmin && apiEnabled && feedbackPanelOpen && <section className="assistant-feedback-admin">
             <div className="assistant-feedback-admin-heading">
               <div><b>Контроль качества ответов</b><small>Сохранённые оценки пользователей</small></div>
               <button type="button" className="secondary-button" onClick={refreshFeedbackSummary} disabled={feedbackSummaryLoading}>{feedbackSummaryLoading ? 'Обновление…' : 'Обновить'}</button>
