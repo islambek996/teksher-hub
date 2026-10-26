@@ -34,7 +34,12 @@ fi
 
 echo "Проверяю структуру резервных копий..."
 docker compose exec -T "$DB_SERVICE" pg_restore --list < "$DB_BACKUP" >/dev/null
-tar -tzf "$UPLOADS_BACKUP" | grep -Eq '^uploads/?
+tar -tzf "$UPLOADS_BACKUP" | grep -Eq '^uploads/?$' || {
+  echo "Ошибка: архив не содержит ожидаемый каталог uploads/." >&2
+  exit 1
+}
+
+cat <<'WARNING'
 ВНИМАНИЕ: восстановление заменит данные в PostgreSQL из указанного дампа
 и удалит текущие файлы из каталога вложений перед распаковкой архива.
 Сначала убедись, что выбраны правильные файлы и сервисы.
