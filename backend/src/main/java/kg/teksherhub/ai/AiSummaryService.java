@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import kg.teksherhub.document.DocumentTextExtractionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -42,6 +43,7 @@ public class AiSummaryService {
     private final ObjectMapper objectMapper;
     private final DocumentTextExtractionService textExtraction;
 
+    @Autowired
     public AiSummaryService(
             @Value("${app.ai.groq-api-key:}") String apiKey,
             @Value("${app.ai.groq-model:openai/gpt-oss-20b}") String model,
