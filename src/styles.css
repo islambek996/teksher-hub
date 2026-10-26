@@ -1583,3 +1583,84 @@ html[data-theme="dark"] .process-local-note{color:#899eb5}
   .process-guide-footer{flex-direction:column}
   .process-materials-button{width:100%;justify-content:center}
 }
+
+
+/* Business process authoring and management */
+.process-heading-actions{display:flex;align-items:flex-start;justify-content:flex-end;gap:9px;flex-shrink:0}
+.process-create-guide-button{min-height:39px;white-space:nowrap;font-size:10px}
+.process-edit-mode-note{display:flex;align-items:flex-start;gap:8px;margin:0 0 13px;padding:10px 12px;border:1px solid #d9e4f1;border-radius:9px;background:#f5f8fc;color:#71849b;font-size:10px;line-height:1.6}
+.process-edit-mode-note svg{flex:0 0 auto;margin-top:1px;color:#5881ae}
+.process-edit-feedback{margin:0 0 14px;font-size:10px}
+.process-guide-detail-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap;max-width:230px}
+.process-edit-guide-button,.process-delete-guide-button{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:7px 9px;min-height:30px;font-size:9px;white-space:nowrap}
+.process-delete-guide-button{border-radius:7px}
+.process-delete-guide-button:disabled{opacity:.65;cursor:wait}
+.process-no-sources{color:#8798aa;font-size:10px}
+.process-guide-editor-backdrop{z-index:120;align-items:flex-start;overflow-y:auto;padding:20px}
+.process-guide-editor-modal{width:min(920px,100%);max-width:920px;max-height:calc(100vh - 40px);overflow-y:auto;overscroll-behavior:contain}
+.process-guide-editor-modal .modal-header{position:sticky;top:-1px;z-index:3;background:inherit;padding-bottom:15px}
+.process-guide-editor-modal .modal-header h2{font-size:20px;line-height:1.35}
+.process-guide-editor-modal .modal-header p{max-width:650px;font-size:10px;line-height:1.65}
+.process-guide-editor-modal>form{display:flex;flex-direction:column;gap:17px}
+.process-guide-edit-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.process-guide-edit-fields .form-field,.process-editor-repeat-card .form-field{min-width:0;gap:6px}
+.process-guide-editor-modal .form-field>span{font-size:10px}
+.process-guide-editor-modal .form-field input,.process-guide-editor-modal .form-field textarea{width:100%;min-width:0;border-radius:8px}
+.process-guide-edit-fields .full-field{grid-column:1/-1}
+.process-editor-section{padding-top:15px;border-top:1px solid #e5ecf4}
+.process-editor-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:11px}
+.process-editor-section-heading>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.process-editor-section-heading b{color:#2a435f;font-size:12px}
+.process-editor-section-heading span{color:#8393a6;font-size:9px;line-height:1.5}
+.process-editor-section-heading .secondary-button{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;padding:8px 10px;font-size:9px;white-space:nowrap}
+.process-editor-repeat-list{display:flex;flex-direction:column;gap:10px}
+.process-editor-repeat-card{display:flex;flex-direction:column;gap:10px;padding:13px;border:1px solid #dfe7f0;border-radius:10px;background:#fbfcfe}
+.process-editor-repeat-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.process-editor-repeat-heading>strong{color:#526b85;font-size:10px}
+.process-editor-remove{display:inline-flex;align-items:center;gap:4px;padding:4px 6px;border:1px solid transparent;border-radius:6px;background:transparent;color:#a35c5c;font:inherit;font-size:9px;cursor:pointer}
+.process-editor-remove:hover:not(:disabled){border-color:#edcece;background:#fff4f4}
+.process-editor-remove:disabled{opacity:.4;cursor:not-allowed}
+.process-editor-empty-links{padding:12px;border:1px dashed #d7e0eb;border-radius:8px;color:#8999aa;font-size:10px}
+.process-editor-actions{position:sticky;bottom:-1px;margin:0 -2px;padding:12px 2px 2px;background:inherit;border-top:1px solid #e5ecf4}
+.process-editor-actions .primary-button,.process-editor-actions .secondary-button{display:inline-flex;align-items:center;justify-content:center;gap:7px}
+html[data-theme="dark"] .process-edit-mode-note{background:#1b3048;border-color:#344a62;color:#9aadc2}
+html[data-theme="dark"] .process-edit-mode-note svg{color:#9bc8f5}
+html[data-theme="dark"] .process-no-sources{color:#9aadc2}
+html[data-theme="dark"] .process-guide-editor-modal .modal-header{background:#14263b}
+html[data-theme="dark"] .process-guide-edit-fields .form-field input,
+html[data-theme="dark"] .process-guide-edit-fields .form-field textarea,
+html[data-theme="dark"] .process-editor-repeat-card .form-field input,
+html[data-theme="dark"] .process-editor-repeat-card .form-field textarea{background:#102136;border-color:#3a526b;color:#e4edf7}
+html[data-theme="dark"] .process-editor-section,
+html[data-theme="dark"] .process-editor-actions{border-color:#31475f}
+html[data-theme="dark"] .process-editor-section-heading b{color:#dbe6f2}
+html[data-theme="dark"] .process-editor-section-heading span{color:#9aadc2}
+html[data-theme="dark"] .process-editor-repeat-card{background:#102136;border-color:#31475f}
+html[data-theme="dark"] .process-editor-repeat-heading>strong{color:#b4c6d9}
+html[data-theme="dark"] .process-editor-remove{color:#e5a5a5}
+html[data-theme="dark"] .process-editor-remove:hover:not(:disabled){background:#39252a;border-color:#674047}
+html[data-theme="dark"] .process-editor-empty-links{border-color:#3a526b;color:#9aadc2}
+@media(max-width:900px){
+  .process-page-heading{align-items:flex-start}
+  .process-heading-actions{flex-direction:column;align-items:stretch}
+  .process-heading-actions .process-overall-progress{align-items:flex-end}
+  .process-guide-detail-actions{max-width:190px}
+}
+@media(max-width:760px){
+  .process-page-heading{flex-direction:column}
+  .process-heading-actions{width:100%;flex-direction:row;justify-content:space-between;align-items:center}
+  .process-create-guide-button{flex:1;justify-content:center}
+  .process-guide-detail-actions{max-width:none;justify-content:flex-start}
+  .process-guide-detail-header{flex-wrap:wrap}
+  .process-guide-detail-heading{flex:1 1 calc(100% - 60px)}
+  .process-guide-detail-actions{width:100%;margin-top:4px}
+  .process-guide-editor-backdrop{padding:8px}
+  .process-guide-editor-modal{max-height:calc(100vh - 16px);padding:15px 12px}
+  .process-guide-editor-modal .modal-header h2{font-size:18px}
+  .process-guide-edit-fields{grid-template-columns:1fr;gap:11px}
+  .process-guide-edit-fields .full-field{grid-column:auto}
+  .process-editor-section-heading{align-items:flex-start;flex-direction:column}
+  .process-editor-section-heading .secondary-button{width:100%;justify-content:center}
+  .process-editor-actions{flex-direction:column-reverse}
+  .process-editor-actions>*{width:100%}
+}
