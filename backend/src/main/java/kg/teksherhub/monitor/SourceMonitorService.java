@@ -2,6 +2,7 @@ package kg.teksherhub.monitor;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
@@ -23,12 +24,14 @@ import java.util.Set;
 public class SourceMonitorService {
     private static final int MAX_BODY_BYTES = 2 * 1024 * 1024;
     private final SourceMonitorRepository repository;
+    private final JdbcTemplate jdbc;
     private final Set<String> allowedHosts;
     private final HttpClient httpClient;
 
-    public SourceMonitorService(SourceMonitorRepository repository,
+    public SourceMonitorService(SourceMonitorRepository repository, JdbcTemplate jdbc,
                                 @Value("${app.monitor.allowed-hosts}") String hosts) {
         this.repository = repository;
+        this.jdbc = jdbc;
         this.allowedHosts = java.util.Arrays.stream(hosts.split(",")).map(String::trim)
                 .map(s -> s.toLowerCase(Locale.ROOT)).filter(s -> !s.isBlank()).collect(java.util.stream.Collectors.toUnmodifiableSet());
         this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5))
@@ -51,11 +54,13 @@ public class SourceMonitorService {
         m.setCreatedBy(username);
         m.setCreatedAt(Instant.now());
         m.setUpdatedAt(Instant.now());
-        return SourceMonitorResponse.from(repository.save(m));
+        SourceMonitor saved = repository.save(m);
+        audit(username, "CREATE", saved, "Добавлен источник мониторинга");
+        return SourceMonitorResponse.from(saved);
     }
 
     @Transactional
-    public SourceMonitorResponse update(Long id, SourceMonitorRequest request) {
+    public SourceMonitorResponse update(Long id, SourceMonitorRequest request, String username) {
         SourceMonitor m = find(id);
         URI uri = validateAllowedUrl(request.sourceUrl());
         m.setName(request.name().trim());
@@ -64,17 +69,32 @@ public class SourceMonitorService {
         m.setEnabled(request.enabled());
         m.setIntervalHours(request.intervalHours() < 1 ? 24 : request.intervalHours());
         m.setUpdatedAt(Instant.now());
-        return SourceMonitorResponse.from(repository.save(m));
+        SourceMonitor saved = repository.save(m);
+        audit(username, "UPDATE", saved, "Изменены настройки источника мониторинга");
+        return SourceMonitorResponse.from(saved);
     }
 
     @Transactional
-    public void delete(Long id) { repository.delete(find(id)); }
+    public void delete(Long id, String username) {
+        SourceMonitor monitor = find(id);
+        audit(username, "DELETE", monitor, "Источник мониторинга удалён");
+        repository.delete(monitor);
+    }
 
     @Transactional
-    public SourceMonitorResponse checkNow(Long id) {
+    public SourceMonitorResponse checkNow(Long id, String username) {
         SourceMonitor m = find(id);
         check(m);
-        return SourceMonitorResponse.from(repository.save(m));
+        SourceMonitor saved = repository.save(m);
+        audit(username, "CHECK_SOURCE", saved, saved.getLastError() == null ? "Источник проверен" : "Ошибка проверки: " + saved.getLastError());
+        return SourceMonitorResponse.from(saved);
+    }
+
+    private void audit(String username, String action, SourceMonitor monitor, String details) {
+        jdbc.update("""
+                INSERT INTO audit_log(username, action, entity_type, entity_id, entity_label, details, created_at)
+                VALUES (?, ?, 'SOURCE_MONITOR', ?, ?, ?, NOW())
+                """, username, action, String.valueOf(monitor.getId()), monitor.getName(), details);
     }
 
     @Transactional
