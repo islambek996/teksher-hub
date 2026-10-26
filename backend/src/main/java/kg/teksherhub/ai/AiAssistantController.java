@@ -3,7 +3,7 @@ package kg.teksherhub.ai;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import kg.teksherhub.ai.AiAssistantService.AssistantResponse;
+import kg.teksherhub.ai.AiAssistantService.AssistantResponse;\nimport kg.teksherhub.ai.AiAssistantService.ChatTurn;
 import kg.teksherhub.ai.AiAssistantService.SourceReference;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,8 +26,8 @@ public class AiAssistantController {
     @PostMapping("/ask")
     @PreAuthorize("hasAnyRole('ADMIN','EDITOR','READER')")
     public AssistantResponse ask(@Valid @RequestBody AskRequest request) {
-        return service.ask(request.question());
+        return service.ask(request.question(), request.history());
     }
 
-    public record AskRequest(@NotBlank @Size(max = 2000) String question) {}
+    public record AskRequest(@NotBlank @Size(max = 2000) String question, @Size(max = 8) List<ChatTurn> history) {}
 }
