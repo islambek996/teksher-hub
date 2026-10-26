@@ -3,7 +3,7 @@ import { API_ENABLED, API_BASE, apiRequest, clearStoredToken, getStoredToken, st
 import { loadTnvedCatalog } from './data/tnved-catalog.js'
 import {
   ArrowDownRight, ArrowUpRight, BookOpen, Boxes, CalendarDays, ChevronDown,
-  CircleHelp, ExternalLink, FileCheck2, FilePlus2, FileText, Globe2, Home,
+  CircleHelp, ExternalLink, FileCheck2, FilePlus2, FileText, Globe2, Home, Star,
   Landmark, Layers3, LibraryBig, Link2, Search, ShieldCheck, SlidersHorizontal,
   Sparkles, Bot, Send, Workflow, X, Pencil, Trash2, RefreshCw, UsersRound, LogOut, Paperclip, Download, History, CheckCircle2, UserPlus, Moon, Sun, Copy, ListTree, Clock3, Printer, ThumbsUp, ThumbsDown
 } from 'lucide-react'
@@ -55,6 +55,17 @@ const navGroups = [
 
 const STORAGE_KEY = 'teksher-hub-user-documents'
 const THEME_STORAGE_KEY = 'teksher-hub-theme'
+const FAVORITES_STORAGE_KEY = 'teksher-hub-favorite-documents'
+
+function loadFavoriteDocumentIds() {
+  try {
+    const raw = window.localStorage.getItem(FAVORITES_STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? [...new Set(parsed.map(String))] : []
+  } catch {
+    return []
+  }
+}
 
 function loadTheme() {
   try { return window.localStorage.getItem(THEME_STORAGE_KEY) === 'dark' ? 'dark' : 'light' } catch { return 'light' }
@@ -345,6 +356,7 @@ function App() {
   const [editingDoc, setEditingDoc] = useState(null)
   const [userDocuments, setUserDocuments] = useState(loadUserDocuments)
   const [apiDocuments, setApiDocuments] = useState([])
+  const [favoriteDocumentIds, setFavoriteDocumentIds] = useState(() => API_ENABLED ? [] : loadFavoriteDocumentIds())
   const [apiSearchResults, setApiSearchResults] = useState([])
   const [apiSearchTerm, setApiSearchTerm] = useState('')
   const [apiFiles, setApiFiles] = useState([])
@@ -507,6 +519,22 @@ function App() {
   }, [currentUser])
 
   useEffect(() => {
+    if (!API_ENABLED) {
+      try { window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favoriteDocumentIds)) } catch { /* storage unavailable */ }
+      return undefined
+    }
+    if (!currentUser) {
+      setFavoriteDocumentIds([])
+      return undefined
+    }
+    let cancelled = false
+    apiRequest('/api/favorites')
+      .then(rows => { if (!cancelled) setFavoriteDocumentIds(Array.isArray(rows) ? [...new Set(rows.map(String))] : []) })
+      .catch(error => { if (!cancelled) setActionError(error.message || 'Не удалось загрузить избранные материалы.') })
+    return () => { cancelled = true }
+  }, [currentUser])
+
+  useEffect(() => {
     if (!API_ENABLED || !currentUser) return
     const term = query.trim()
     if (!term) {
@@ -627,6 +655,38 @@ function App() {
       window.removeEventListener('hashchange', restoreRoute)
     }
   }, [documents])
+
+  const toggleFavoriteDocument = async doc => {
+    if (!doc?.id) return
+    const id = String(doc.id)
+    const isFavorite = favoriteDocumentIds.includes(id)
+    setActionError('')
+    setSuccessMessage('')
+    if (API_ENABLED) {
+      if (!currentUser) {
+        setActionError('Войдите в систему, чтобы сохранять избранные материалы в своей учётной записи.')
+        return
+      }
+      if (doc.isDemo) {
+        setActionError('Демонстрационную запись нельзя сохранить в серверном избранном.')
+        return
+      }
+      try {
+        await apiRequest('/api/favorites/' + encodeURIComponent(id), { method: isFavorite ? 'DELETE' : 'PUT' })
+        setFavoriteDocumentIds(current => isFavorite ? current.filter(item => item !== id) : (current.includes(id) ? current : [id, ...current]))
+        setSuccessMessage(isFavorite ? 'Материал удалён из избранного.' : 'Материал добавлен в избранное.')
+      } catch (error) {
+        setActionError(error.message || 'Не удалось изменить избранное.')
+      }
+      return
+    }
+    setFavoriteDocumentIds(current => {
+      const next = current.includes(id) ? current.filter(item => item !== id) : [id, ...current]
+      try { window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(next)) } catch { /* storage unavailable */ }
+      return next
+    })
+    setSuccessMessage(isFavorite ? 'Материал удалён из избранного.' : 'Материал добавлен в избранное.')
+  }
 
   const refreshDocuments = async () => {
     if (!API_ENABLED) return
@@ -1243,6 +1303,18 @@ function App() {
                   setActive('documents'); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы'); syncRoute('documents', doc.id); setSelectedDoc(doc)
                 }} />
               </div>
+              <div className="home-favorites-panel workbench-panel">
+                <div className="workbench-panel-title"><span className="workbench-panel-icon"><Star size={17}/></span><div><b>Избранные материалы</b><small>{favoriteDocumentIds.length ? 'Личные закладки для быстрого доступа' : 'Сохраняйте важные документы'}</small></div></div>
+                {documents.filter(doc => favoriteDocumentIds.includes(String(doc.id))).length ? documents.filter(doc => favoriteDocumentIds.includes(String(doc.id))).slice(0, 5).map(doc => (
+                  <div className="favorite-document-row" key={doc.id}>
+                    <button type="button" className="recent-document favorite-document-open" onClick={() => { setActive('documents'); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы'); syncRoute('documents', doc.id); setSelectedDoc(doc) }}>
+                      <span className={'recent-jurisdiction ' + (isMzkmCatalogDocument(doc) ? 'ru' : (jurisdictions[doc.jurisdiction]?.className || ''))}>{isMzkmCatalogDocument(doc) ? 'МЗКМ' : (jurisdictions[doc.jurisdiction]?.short || 'НПА')}</span>
+                      <span className="recent-copy"><b>{doc.title}</b><small>{doc.documentNumber ? '№ ' + doc.documentNumber + ' · ' : ''}{doc.kind || 'Материал'} · {doc.statusLabel || doc.status || 'Без статуса'}</small></span>
+                    </button>
+                    <button type="button" className="favorite-remove-button" onClick={() => toggleFavoriteDocument(doc)} aria-label={'Убрать из избранного: ' + doc.title} title="Убрать из избранного"><Star size={15} fill="currentColor"/></button>
+                  </div>
+                )) : <div className="workbench-empty">Откройте материал и нажмите «В избранное», чтобы закрепить его здесь.</div>}
+              </div>
               {!API_ENABLED && <div className="workbench-demo-note"><CircleHelp size={14}/> Сейчас показан демонстрационный режим. Счётчики юридической проверки появятся после подключения API и загрузки общей базы.</div>}
             </section>
 
@@ -1272,6 +1344,7 @@ function App() {
               <a className="system-card" href="http://10.242.17.232:8090/login.action" target="_blank" rel="noopener noreferrer"><span className="system-icon green"><ExternalLink size={20} /></span><span className="system-copy"><b>Конфа</b><small>Внутренняя корпоративная система</small></span><ArrowUpRight size={17} className="system-arrow" /></a>
             </section>
           </> : selectedDoc ? <DocumentDetail doc={selectedDoc} onBack={() => { if (window.history.state?.app === 'teksher-hub') window.history.back(); else { setSelectedDoc(null); syncRoute(active, null, true) } }}
+              isFavorite={favoriteDocumentIds.includes(String(selectedDoc.id))} onToggleFavorite={() => toggleFavoriteDocument(selectedDoc)}
               onEdit={() => { setEditingDoc(selectedDoc); setShowCreateModal(true) }}
               onDelete={() => handleDeleteDocument(selectedDoc)}
               canEdit={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)}
@@ -2806,7 +2879,7 @@ function buildWikiBlocks(content) {
   return blocks
 }
 
-function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, canReview, canReindex, canUploadFiles, files = [], versions = [], documents = [], onOpenRelated, onDownload, onUploadFile, uploadingFile, onReview, onReindexFile, reindexingFileId }) {
+function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, canReview, canReindex, canUploadFiles, files = [], versions = [], documents = [], onOpenRelated, onDownload, onUploadFile, uploadingFile, onReview, onReindexFile, reindexingFileId, isFavorite = false, onToggleFavorite }) {
   const jurisdiction = jurisdictions[doc.jurisdiction] || { label: doc.jurisdiction || 'Не указана', short: doc.jurisdiction || '—', flag: '🌐', className: 'eaeu' }
   const isMzkm = isMzkmCatalogDocument(doc)
   const catalogClass = isMzkm ? 'ru' : jurisdiction.className
@@ -2876,6 +2949,7 @@ function DocumentDetail({ doc, onBack, onEdit, onDelete, canEdit, canDelete, can
           <div className="wiki-article-mark"><BookOpen size={29}/></div>
         </div>
         <div className="wiki-article-actions">
+          {onToggleFavorite && <button type="button" className="secondary-button wiki-favorite-button" onClick={onToggleFavorite}><Star size={14} fill={isFavorite ? 'currentColor' : 'none'}/>{isFavorite ? 'В избранном' : 'В избранное'}</button>}
           {!doc.isDemo && canEdit && <button type="button" className="secondary-button" onClick={onEdit}><Pencil size={14}/> Редактировать</button>}
           {!doc.isDemo && canDelete && <button type="button" className="danger-button" onClick={onDelete}><Trash2 size={14}/> Удалить карточку</button>}
           <span className="wiki-updated"><Clock3 size={13}/> Обновлено {formatDate(doc.updatedAt || doc.createdAt)}</span>
