@@ -2800,7 +2800,7 @@ function ProcessGuideEditorModal({ guide, saving, error, onClose, onSave }) {
     searchTerm: guide?.searchTerm || '',
     orderIndex: guide?.orderIndex,
     sources: (guide?.sources || []).map(source => ({ ...source })),
-    steps: (guide?.steps || [{ title: '', detail: '', responsible: '', documents: '', decision: '', yesOutcome: '', noOutcome: '' }]).map(step => ({ responsible: '', documents: '', decision: '', yesOutcome: '', noOutcome: '', ...step })),
+    steps: (guide?.steps || [{ title: '', detail: '', responsible: '', documents: '', decision: '', yesOutcome: '', noOutcome: '', yesStepIndex: '', noStepIndex: '' }]).map(step => ({ responsible: '', documents: '', decision: '', yesOutcome: '', noOutcome: '', yesStepIndex: '', noStepIndex: '', ...step })),
   }))
   const [formError, setFormError] = useState('')
   const updateField = (field, value) => setForm(current => ({ ...current, [field]: value }))
@@ -2825,7 +2825,7 @@ function ProcessGuideEditorModal({ guide, saving, error, onClose, onSave }) {
   })
   const addStep = () => setForm(current => current.steps.length >= 30
     ? current
-    : ({ ...current, steps: [...current.steps, { title: '', detail: '', responsible: '', documents: '', decision: '', yesOutcome: '', noOutcome: '' }] }))
+    : ({ ...current, steps: [...current.steps, { title: '', detail: '', responsible: '', documents: '', decision: '', yesOutcome: '', noOutcome: '', yesStepIndex: '', noStepIndex: '' }] }))
   const addSource = () => setForm(current => current.sources.length >= 10
     ? current
     : ({ ...current, sources: [...current.sources, { label: '', url: '' }] }))
@@ -2889,6 +2889,8 @@ function ProcessGuideEditorModal({ guide, saving, error, onClose, onSave }) {
                 <label className="form-field"><span>Контрольный вопрос</span><input maxLength={500} value={step.decision || ''} onChange={event => updateStep(index, 'decision', event.target.value)} placeholder="Например, Карточка товара опубликована?"/></label>
                 <label className="form-field"><span>Если «Да»</span><input maxLength={500} value={step.yesOutcome || ''} onChange={event => updateStep(index, 'yesOutcome', event.target.value)} placeholder="Следующее действие при положительном ответе"/></label>
                 <label className="form-field"><span>Если «Нет»</span><input maxLength={500} value={step.noOutcome || ''} onChange={event => updateStep(index, 'noOutcome', event.target.value)} placeholder="Что исправить или куда вернуться"/></label>
+                <label className="form-field"><span>Перейти при «Да»</span><select value={step.yesStepIndex ?? ''} onChange={event => updateStep(index, 'yesStepIndex', event.target.value === '' ? '' : Number(event.target.value))}><option value="">Следующий шаг по порядку</option>{form.steps.map((target, targetIndex) => targetIndex !== index && <option key={'yes-target-' + targetIndex} value={targetIndex}>{'Шаг ' + (targetIndex + 1) + ': ' + (target.title.trim() || 'Без названия')}</option>)}</select></label>
+                <label className="form-field"><span>Перейти при «Нет»</span><select value={step.noStepIndex ?? ''} onChange={event => updateStep(index, 'noStepIndex', event.target.value === '' ? '' : Number(event.target.value))}><option value="">Следующий шаг по порядку</option>{form.steps.map((target, targetIndex) => targetIndex !== index && <option key={'no-target-' + targetIndex} value={targetIndex}>{'Шаг ' + (targetIndex + 1) + ': ' + (target.title.trim() || 'Без названия')}</option>)}</select></label>
               </div>
               <label className="form-field"><span>Ответственный</span><input maxLength={160} value={step.responsible || ''} onChange={event => updateStep(index, 'responsible', event.target.value)} placeholder="Например, участник маркировки или оператор"/></label>
               <label className="form-field"><span>Документы и условия выполнения</span><textarea maxLength={2000} rows={2} value={step.documents || ''} onChange={event => updateStep(index, 'documents', event.target.value)} placeholder="Какие документы нужны и что должно быть выполнено перед началом шага"/></label>
