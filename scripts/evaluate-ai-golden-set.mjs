@@ -11,6 +11,12 @@ const fixturePath = path.join(repoRoot, "backend/src/test/resources/ai-golden-se
 const reportPath = path.join(repoRoot, "backend/target/ai-golden-results.json");
 const baseUrl = (process.env.TEKSHER_API_BASE_URL || "http://localhost:8080").replace(/\/$/, "");
 const token = process.env.TEKSHER_API_TOKEN || "";
+const rateLimitCooldownMs = Math.max(1_000, Number(process.env.TEKSHER_AI_RATE_LIMIT_COOLDOWN_MS || 65_000));
+const maxRateLimitRetries = Math.max(0, Number(process.env.TEKSHER_AI_RATE_LIMIT_RETRIES ?? 1));
+
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const isRateLimitResponse = (status, body) =>
+  status === 429 || /ограничил запросы|rate.?limit|too many requests|\\b429\\b/i.test(String(body || ""));
 
 if (!token) {
   console.error("TEKSHER_API_TOKEN is required. Supply a temporary bearer token for a test account.");
@@ -52,26 +58,43 @@ function hasInsufficientEvidenceLanguage(answer) {
 async function evaluateCase(item, index) {
   let response;
   let responseText = "";
-  try {
-    response = await fetch(baseUrl + "/api/ai/ask", {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + token,
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-      body: JSON.stringify({ question: item.question, history: [] }),
-      signal: AbortSignal.timeout(75_000)
-    });
-    responseText = await response.text();
-  } catch (error) {
-    return {
-      id: item.id,
-      question: item.question,
-      expectedJurisdiction: item.expectedJurisdiction,
-      automatedPass: false,
-      error: String(error)
-    };
+  let rateLimitRetries = 0;
+  while (true) {
+    try {
+      response = await fetch(baseUrl + "/api/ai/ask", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + token,
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({ question: item.question, history: [] }),
+        signal: AbortSignal.timeout(75_000)
+      });
+      responseText = await response.text();
+    } catch (error) {
+      return {
+        id: item.id,
+        question: item.question,
+        expectedJurisdiction: item.expectedJurisdiction,
+        automatedPass: false,
+        error: String(error)
+      };
+    }
+
+    const rateLimited = !response.ok && isRateLimitResponse(response.status, responseText);
+    if (!rateLimited || rateLimitRetries >= maxRateLimitRetries) break;
+
+    rateLimitRetries++;
+    const retryAfterSeconds = Number(response.headers.get("retry-after"));
+    const retryDelay = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+      ? Math.max(rateLimitCooldownMs, retryAfterSeconds * 1_000)
+      : rateLimitCooldownMs;
+    console.warn(
+      `[RATE LIMIT] ${item.id}: retrying in ${Math.ceil(retryDelay / 1_000)}s ` +
+      `(retry ${rateLimitRetries}/${maxRateLimitRetries}).`
+    );
+    await sleep(retryDelay);
   }
 
   if (!response.ok) {
@@ -184,6 +207,7 @@ async function evaluateCase(item, index) {
 console.log("TEKSHER HUB AI golden-set evaluation");
 console.log("Base URL:", baseUrl);
 console.log("Cases:", cases.length);
+console.log("Rate-limit cooldown:", Math.ceil(rateLimitCooldownMs / 1_000), "seconds; retries per case:", maxRateLimitRetries);
 console.log("Note: automated checks do not replace a reviewer comparing each answer with the cited legal text.");
 
 const results = [];
