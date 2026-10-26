@@ -1377,7 +1377,7 @@ function App() {
             </div>
             {(query.trim() || filter !== 'Все типы' || statusFilter !== 'Все статусы' || sortBy !== 'updated') && <div className="catalog-filter-summary"><span>Найдено материалов: <b>{filteredDocuments.length}</b></span><button type="button" onClick={() => { setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы'); setSortBy('updated') }}><X size={13}/> Сбросить поиск и фильтры</button></div>}
             <div className="notice"><CircleHelp size={17} /><div><b>{API_ENABLED ? 'Единая база документов' : 'Локальный демонстрационный режим'}</b><span>{API_ENABLED ? 'Данные загружаются из PostgreSQL через защищённый API. Перед публикацией проверяйте официальный источник и дату действия.' : 'Карточки сохраняются только в этом браузере. Чтобы включить общую базу, вход по ролям, версии и загрузку файлов, задайте VITE_API_URL после развёртывания backend.'}</span></div></div>
-            <div className="document-list">{filteredDocuments.length ? filteredDocuments.map(doc => <DocumentRow key={doc.id} doc={doc} onClick={() => openDocument(doc)} />) : <div className="empty-state"><Search size={28} /><b>{active === 'groups' ? 'Справочник товарных групп пока пуст' : active === 'processes' ? 'Бизнес-процессы ещё не добавлены' : 'Ничего не найдено'}</b><span>{['groups', 'processes'].includes(active) ? 'Добавь первую карточку через форму. Она сохранится в этом браузере.' : 'Измени поисковый запрос или фильтр.'}</span>{['groups', 'processes'].includes(active) && (!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)) && <button className="secondary-button" onClick={openNewDocumentModal}>Добавить первую запись</button>}</div>}</div>
+            <div className="document-list">{filteredDocuments.length ? filteredDocuments.map(doc => <DocumentRow key={doc.id} doc={doc} onClick={() => openDocument(doc)} canEdit={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} onEdit={() => { setEditingDoc(doc); setActionError(''); setShowCreateModal(true) }} />) : <div className="empty-state"><Search size={28} /><b>{active === 'groups' ? 'Справочник товарных групп пока пуст' : active === 'processes' ? 'Бизнес-процессы ещё не добавлены' : 'Ничего не найдено'}</b><span>{['groups', 'processes'].includes(active) ? 'Добавь первую карточку через форму. Она сохранится в этом браузере.' : 'Измени поисковый запрос или фильтр.'}</span>{['groups', 'processes'].includes(active) && (!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)) && <button className="secondary-button" onClick={openNewDocumentModal}>Добавить первую запись</button>}</div>}</div>
           </>}
           <footer className="footer"><span>TEKSHER HUB <i>·</i> Информационная платформа оператора маркировки</span><span>Версия 0.3 · 2026</span></footer>
         </div>
@@ -2817,16 +2817,25 @@ function JurisdictionCard({ code, title, subtitle, description, count, onClick }
   </button>
 }
 
-function DocumentRow({ doc, onClick }) {
+function DocumentRow({ doc, onClick, onEdit, canEdit = false }) {
   const jurisdiction = jurisdictions[doc.jurisdiction] || jurisdictions.EAEU
   const isMzkm = isMzkmCatalogDocument(doc)
   const catalogLabel = isMzkm ? 'МЗКМ' : jurisdiction.short
   const catalogClass = isMzkm ? 'ru' : jurisdiction.className
-  return <button className="document-row" onClick={onClick}>
+  const handleKeyDown = event => {
+    if (event.target !== event.currentTarget) return
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onClick?.()
+    }
+  }
+  return <div className="document-row" role="button" tabIndex={0} onClick={onClick} onKeyDown={handleKeyDown}>
     <span className={`doc-icon ${catalogClass}`}><FileText size={20} /></span>
     <span className="doc-main"><b>{doc.title}</b><span>{doc.description}</span>{doc.matchedInAttachment && <span className="search-match-origin"><Paperclip size={12}/>Найдено в приложенном файле</span>}<small><span className={`tag ${catalogClass}`}>{catalogLabel}</span>{doc.documentNumber && <span>№ {doc.documentNumber}</span>}<span>{doc.kind}</span><span>·</span><span>{doc.area}</span></small></span>
-    <span className={`doc-status ${statusClass(doc)}`}>{doc.statusLabel || doc.status}</span><ArrowDownRight size={17} className="doc-arrow" />
-  </button>
+    <span className={`doc-status ${statusClass(doc)}`}>{doc.statusLabel || doc.status}</span>
+    {canEdit && !doc.isDemo && <button type="button" className="icon-button document-row-edit" aria-label={'Редактировать карточку: ' + doc.title} title="Редактировать карточку" onClick={event => { event.stopPropagation(); onEdit?.() }}><Pencil size={15}/></button>}
+    <ArrowDownRight size={17} className="doc-arrow" />
+  </div>
 }
 
 function statusClass(doc) {
