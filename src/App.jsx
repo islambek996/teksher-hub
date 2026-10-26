@@ -34,6 +34,7 @@ const navGroups = [
     { id: 'home', label: 'Главная', icon: Home },
     { id: 'assistant', label: 'ИИ-помощник', icon: Bot },
     { id: 'documents', label: 'Все документы', icon: LibraryBig },
+    { id: 'favorites', label: 'Избранное', icon: Star },
     { id: 'tasks', label: 'Задачи команды', icon: ListTree },
   ]},
   { title: 'ЮРИСДИКЦИИ', items: [
@@ -474,7 +475,8 @@ function App() {
         : active === 'processes' ? doc.kind === 'Бизнес-процесс'
         : active === 'knowledge' ? ['Нормативный акт', 'Товарная группа', 'Инструкция', 'Внутренний документ', 'Техническая документация', 'Известная ошибка', 'Шаблон', 'Бизнес-процесс', 'Обзор'].includes(doc.kind)
         : true
-      return matchesJurisdiction && matchesQuery && matchesFilter && matchesStatus && matchesSection
+      const matchesFavorites = active !== 'favorites' || favoriteDocumentIds.includes(String(doc.id))
+      return matchesJurisdiction && matchesQuery && matchesFilter && matchesStatus && matchesSection && matchesFavorites
     })
     const updatedAt = doc => {
       const value = doc.updatedAt || doc.createdAt || doc.documentDate
@@ -495,7 +497,7 @@ function App() {
       return filtered.sort((a, b) => endDate(a) - endDate(b) || updatedAt(b) - updatedAt(a))
     }
     return filtered.sort((a, b) => updatedAt(b) - updatedAt(a))
-  }, [documents, apiSearchResults, apiSearchTerm, active, query, filter, statusFilter, sortBy])
+  }, [documents, apiSearchResults, apiSearchTerm, active, query, filter, statusFilter, sortBy, favoriteDocumentIds])
 
   useEffect(() => {
     if (!API_ENABLED) { setAuthInitializing(false); return }
@@ -574,7 +576,7 @@ function App() {
   const pageTitle = active === 'home' ? 'База знаний оператора маркировки'
     : active === 'RU' ? 'МЗКМ · материалы для маркировки в РФ'
     : active === 'KG' ? 'ГАИС МТ · национальные материалы КР'
-    : jurisdictions[active]?.label || ({ assistant: 'ИИ-помощник', documents: 'Все документы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний', monitoring: 'Мониторинг официальных источников', users: 'Управление пользователями', audit: 'Журнал действий', tasks: 'Задачи команды' }[active] || 'TEKSHER HUB')
+    : jurisdictions[active]?.label || ({ assistant: 'ИИ-помощник', documents: 'Все документы', favorites: 'Избранные материалы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний', monitoring: 'Мониторинг официальных источников', users: 'Управление пользователями', audit: 'Журнал действий', tasks: 'Задачи команды' }[active] || 'TEKSHER HUB')
 
   const syncRoute = (section, docId = null, replace = false) => {
     const route = { app: 'teksher-hub', section, docId }
@@ -622,7 +624,7 @@ function App() {
 
   useEffect(() => {
     const knownSections = new Set([
-      'home', 'RU', 'KG', 'EAEU', 'assistant', 'documents', 'groups',
+      'home', 'RU', 'KG', 'EAEU', 'assistant', 'documents', 'favorites', 'groups',
       'processes', 'knowledge', 'monitoring', 'users', 'audit', 'tasks'
     ])
 
@@ -1362,7 +1364,7 @@ function App() {
             : active === 'tasks' ? <MyTasksPanel currentUser={currentUser} canAssign={['ADMIN','EDITOR'].includes(currentUser?.role)} />
             : <>
             <div className="page-heading">
-              <div><div className="section-kicker">БАЗА ЗНАНИЙ / {active === 'RU' ? 'МЗКМ' : active === 'KG' ? 'ГАИС МТ · КР' : (jurisdictions[active]?.short || 'TEKSHER HUB')}</div><h1>{pageTitle}</h1><p>{active === 'RU' ? 'Материалы МЗКМ, инструкции оператора и нормативные источники для маркировки товаров при обороте в РФ. Исходная юрисдикция каждого источника указана в карточке.' : active === 'KG' ? 'Национальные документы Кыргызской Республики и материалы ГАИС МТ. Карточки, классифицированные как МЗКМ, вынесены в отдельный каталог.' : jurisdictions[active] ? `Документы и материалы: ${jurisdictions[active].label}. ` : 'Поиск по нормативным актам и рабочим материалам платформы.'}{API_ENABLED ? ' Проверяйте реквизиты и статус каждого документа перед применением.' : ' Демонстрационные записи не являются официальной нормативной базой.'}</p></div>
+              <div><div className="section-kicker">{active === 'favorites' ? 'ЛИЧНАЯ ПОДБОРКА' : 'БАЗА ЗНАНИЙ / ' + (active === 'RU' ? 'МЗКМ' : active === 'KG' ? 'ГАИС МТ · КР' : (jurisdictions[active]?.short || 'TEKSHER HUB'))}</div><h1>{pageTitle}</h1><p>{active === 'RU' ? 'Материалы МЗКМ, инструкции оператора и нормативные источники для маркировки товаров при обороте в РФ. Исходная юрисдикция каждого источника указана в карточке.' : active === 'KG' ? 'Национальные документы Кыргызской Республики и материалы ГАИС МТ. Карточки, классифицированные как МЗКМ, вынесены в отдельный каталог.' : active === 'favorites' ? 'Сохранённые вами нормативные акты, инструкции и рабочие материалы. Нажмите звезду в карточке документа, чтобы добавить его в эту подборку.' : jurisdictions[active] ? `Документы и материалы: ${jurisdictions[active].label}. ` : 'Поиск по нормативным актам и рабочим материалам платформы.'}{API_ENABLED ? ' Проверяйте реквизиты и статус каждого документа перед применением.' : ' Демонстрационные записи не являются официальной нормативной базой.'}</p></div>
               <div className="heading-actions"><span className="record-count">{filteredDocuments.length} записей</span>{active === 'documents' && API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role) && <button className="secondary-button csv-import-trigger" type="button" onClick={() => setShowImportModal(true)}><FileText size={14}/> Импорт CSV</button>}{active === 'documents' && API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role) && <button className="secondary-button csv-export-trigger" type="button" onClick={handleExportDocuments} disabled={isExporting}><Download size={14}/>{isExporting ? 'Экспорт…' : 'Экспорт CSV'}</button>}{active === 'documents' && API_ENABLED && currentUser?.role === 'ADMIN' && <button className="secondary-button bulk-reindex-button" type="button" onClick={handleBulkReindex} disabled={isBulkReindexing}><RefreshCw size={14} className={isBulkReindexing ? 'spin' : ''}/>{isBulkReindexing ? 'Обработка…' : 'Индексировать старые файлы'}</button>}{(!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)) && <button className="primary-button" onClick={openNewDocumentModal}><FilePlus2 size={16} /> Добавить запись</button>}</div>
             </div>
             <div className="search-panel">
