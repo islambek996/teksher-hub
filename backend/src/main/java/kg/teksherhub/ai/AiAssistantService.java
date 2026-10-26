@@ -601,12 +601,17 @@ public class AiAssistantService {
     static int jurisdictionRankingBoost(DocumentRecord document, String question) {
         if (document == null || question == null || question.isBlank()) return 0;
         String q = question.toLowerCase(Locale.ROOT).replace('ё', 'е');
-        String requested = null;
-        if (q.contains("кыргыз") || q.contains("гаис") || q.contains("текшер")
-                || containsToken(q, "кр")) requested = "KG";
-        else if (q.contains("росси") || q.contains("честный знак") || containsToken(q, "рф")) requested = "RU";
-        else if (q.contains("еаэс") || q.contains("евразий")) requested = "EAEU";
-        if (requested == null) return 0;
+        boolean asksKg = q.contains("кыргыз") || q.contains("гаис") || q.contains("текшер")
+                || containsToken(q, "кр");
+        boolean asksRu = q.contains("росси") || q.contains("честный знак") || containsToken(q, "рф");
+        boolean asksEaeu = q.contains("еаэс") || q.contains("евразий");
+
+        // A comparison or a question combining national and Union-level rules must not
+        // get ranked as if it belonged to just one jurisdiction.
+        int requestedJurisdictions = (asksKg ? 1 : 0) + (asksRu ? 1 : 0) + (asksEaeu ? 1 : 0);
+        if (requestedJurisdictions != 1) return 0;
+
+        String requested = asksKg ? "KG" : asksRu ? "RU" : "EAEU";
         String actual = safe(document.getJurisdiction()).toUpperCase(Locale.ROOT);
         return requested.equals(actual) ? 6 : -3;
     }
