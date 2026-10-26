@@ -26,15 +26,20 @@ public class SourceMonitorController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
-    public SourceMonitorResponse update(@PathVariable Long id, @Valid @RequestBody SourceMonitorRequest request) {
-        return service.update(id, request);
+    public SourceMonitorResponse update(@PathVariable Long id, @Valid @RequestBody SourceMonitorRequest request,
+                                        @AuthenticationPrincipal UserAccount user) {
+        return service.update(id, request, user.getUsername());
     }
 
     @PostMapping("/{id}/check")
     @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
-    public SourceMonitorResponse check(@PathVariable Long id) { return service.checkNow(id); }
+    public SourceMonitorResponse check(@PathVariable Long id, @AuthenticationPrincipal UserAccount user) {
+        return service.checkNow(id, user.getUsername());
+    }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public void delete(@PathVariable Long id) { service.delete(id); }
+    public void delete(@PathVariable Long id, @AuthenticationPrincipal UserAccount user) {
+        service.delete(id, user.getUsername());
+    }
 }
