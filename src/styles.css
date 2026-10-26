@@ -1274,3 +1274,145 @@ html[data-theme="dark"] .mzkm-group-search-icon{color:#a4bdd8}
 html[data-theme="dark"] .internal-group-find{background:#1c3d30;border-color:#3b6652;color:#a7dfbe}
 html[data-theme="dark"] .internal-group-find:hover{background:#244c3a;border-color:#568568}
 @media(max-width:760px){.mzkm-group-search-icon{width:15px;flex:0 0 15px}.internal-group-actions{align-items:flex-start;flex-direction:column}.internal-ukm-actions{align-items:flex-start;flex-direction:column}}
+
+
+/* TN VED code lookup sourced from the user-provided workbook */
+.tnved-checker{margin:0 0 28px;padding:24px;background:#fff;border:1px solid #dfe7f0;border-radius:16px;box-shadow:0 8px 28px rgba(19,42,69,.045);scroll-margin-top:24px;min-width:0}
+.tnved-checker-header{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.tnved-checker-icon{display:grid;place-items:center;flex:0 0 46px;width:46px;height:46px;border-radius:14px;background:#eaf2fc;color:#315f96}
+.tnved-checker-heading{min-width:0;flex:1}
+.tnved-checker-heading h2{margin:4px 0 5px;font-size:21px;line-height:1.35;letter-spacing:-.45px;color:#203752}
+.tnved-checker-heading p{margin:0;font-size:11px;line-height:1.65;color:#78899d}
+.tnved-catalog-counter{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0}
+.tnved-catalog-counter strong{font-size:22px;line-height:1.1;letter-spacing:-.5px;color:#315f96;font-variant-numeric:tabular-nums}
+.tnved-catalog-counter span{margin-top:4px;font-size:9px;color:#8292a5}
+.tnved-scope-switch{display:flex;flex-wrap:wrap;gap:6px;padding:4px;border:1px solid #e5ebf2;border-radius:10px;background:#f7f9fc;margin-bottom:15px}
+.tnved-scope-switch button{border:1px solid transparent;border-radius:7px;background:transparent;color:#64768c;padding:9px 12px;font:inherit;font-size:10px;font-weight:700;cursor:pointer}
+.tnved-scope-switch button.active{border-color:#d5e3f3;background:#fff;color:#244f81;box-shadow:0 1px 2px rgba(19,42,69,.05)}
+.tnved-search-tabs{display:flex;gap:8px;margin-bottom:17px;border-bottom:1px solid #e6edf4}
+.tnved-search-tabs button{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:140px;margin-bottom:-1px;padding:10px 12px 13px;border:0;border-bottom:2px solid transparent;background:transparent;text-align:left;color:#65778d;cursor:pointer}
+.tnved-search-tabs button span{font-size:12px;font-weight:750}
+.tnved-search-tabs button small{font-size:9px;color:#8796a8}
+.tnved-search-tabs button.active{border-bottom-color:#3e78b4;color:#244f81}
+.tnved-search-tabs button.active small{color:#577ba2}
+.tnved-search-form>label{display:block;margin-bottom:8px;color:#53677f;font-size:11px;font-weight:750}
+.tnved-search-control{display:flex;gap:9px}
+.tnved-search-control input{flex:1;min-width:0;width:100%;height:43px;border:1px solid #ccd7e3;border-radius:9px;background:#fff;padding:0 13px;color:#243b56;font:inherit;font-size:12px;outline:none}
+.tnved-search-control input:focus{border-color:#7ca4cf;box-shadow:0 0 0 3px rgba(63,120,180,.12)}
+.tnved-search-control input::placeholder{color:#a0adbd}
+.tnved-search-control .primary-button{min-width:132px;justify-content:center}
+.tnved-input-help{margin:7px 0 0;color:#8594a6;font-size:10px;line-height:1.5}
+.tnved-validation{margin-top:8px;color:#b6423f;font-size:10px;line-height:1.55}
+.tnved-loading{display:flex;align-items:center;gap:9px;padding:15px 0;color:#6e8298;font-size:11px}
+.tnved-load-error{margin-top:14px}
+.tnved-results{margin-top:20px}
+.tnved-results-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.tnved-results-heading h3{margin:0 0 4px;color:#213953;font-size:15px;line-height:1.4}
+.tnved-results-heading p{margin:0;color:#8392a5;font-size:10px;line-height:1.6;overflow-wrap:anywhere}
+.tnved-result-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.tnved-clear-button{display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid #dce5ef;border-radius:7px;background:#fff;color:#64788f;padding:7px 9px;font:inherit;font-size:9px;font-weight:700;cursor:pointer}
+.tnved-clear-button:hover{border-color:#a8bfd8;color:#315f96}
+.tnved-table-wrap{width:100%;overflow:auto;border:1px solid #e0e7ef;border-radius:10px}
+.tnved-table{width:100%;min-width:760px;border-collapse:separate;border-spacing:0;font-size:10px;line-height:1.6}
+.tnved-table th{padding:10px 11px;background:#f4f7fb;border-bottom:1px solid #dfe7f0;text-align:left;color:#657990;font-size:9px;font-weight:800;white-space:nowrap}
+.tnved-table td{padding:10px 11px;border-bottom:1px solid #edf1f6;vertical-align:top;color:#455c74}
+.tnved-table tbody tr:last-child td{border-bottom:0}
+.tnved-table tbody tr:hover td{background:#f9fbfe}
+.tnved-table td:first-child{white-space:nowrap}
+.tnved-code-link{padding:0;border:0;background:transparent;color:#2c69a5;font:inherit;font-size:10px;font-weight:800;text-decoration:underline;text-decoration-color:#b7cde2;text-underline-offset:3px;cursor:pointer}
+.tnved-code-link:hover{color:#194c7e;text-decoration-color:currentColor}
+.tnved-product-name{min-width:250px;max-width:430px}
+.tnved-list-badge{display:inline-flex;align-items:center;border-radius:5px;padding:4px 6px;font-size:8px;font-weight:800;white-space:nowrap}
+.tnved-list-badge.mzkm{background:#eaf2fc;color:#315f96}
+.tnved-list-badge.internal{background:#e8f6ef;color:#287b55}
+.tnved-gskp-toggle{padding:5px 7px;border:1px solid #dfe7ef;border-radius:6px;background:#fff;color:#4f6a83;font:inherit;font-size:9px;cursor:pointer}
+.tnved-gskp-details{display:grid;grid-template-columns:auto;gap:3px;min-width:160px;max-width:260px;margin-top:7px;padding:8px;border-radius:7px;background:#f5f8fc;color:#5d7085;overflow-wrap:anywhere}
+.tnved-gskp-details b{font-size:9px;color:#314b66}
+.tnved-gskp-details span{font-size:9px;margin-bottom:4px}
+.tnved-empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:30px 18px;text-align:center;border:1px dashed #d4dfeb;border-radius:10px;background:#f9fbfd;color:#7c8ea2}
+.tnved-empty svg{color:#7897b7}
+.tnved-empty b{font-size:12px;color:#49617a}
+.tnved-empty span{max-width:440px;font-size:10px;line-height:1.65}
+.tnved-pagination{display:flex;align-items:center;justify-content:center;gap:14px;padding-top:14px}
+.tnved-pagination span{color:#72859b;font-size:10px;font-variant-numeric:tabular-nums}
+.tnved-pagination .secondary-button{padding:7px 12px;font-size:10px}
+.tnved-advisory-note{display:flex;align-items:flex-start;gap:9px;margin-top:17px;padding:11px 12px;border:1px solid #f0e0ba;border-radius:9px;background:#fff9ec;color:#7b673d;font-size:10px;line-height:1.7}
+.tnved-advisory-note svg{flex-shrink:0;margin-top:1px;color:#b18c3b}
+.mzkm-group-card-interactive{display:flex;align-items:flex-start;gap:13px;min-width:0;padding:16px;background:#fff;border:1px solid #e3eaf2;border-radius:12px}
+.mzkm-group-card-interactive .mzkm-group-copy{flex:1;min-width:0}
+.mzkm-group-card-interactive .mzkm-group-copy p{margin-bottom:10px}
+.tnved-group-actions{display:flex;flex-wrap:wrap;gap:7px}
+.tnved-group-button{display:inline-flex;align-items:center;justify-content:center;min-height:28px;padding:6px 8px;border:1px solid #d9e3ed;border-radius:7px;background:#fff;color:#526b84;font:inherit;font-size:9px;font-weight:800;line-height:1.35;text-align:center;cursor:pointer}
+.tnved-group-button:hover{border-color:#9db9d5;color:#315f96;background:#f5f9fd}
+.tnved-group-button.primary{border-color:#c5d9ef;background:#edf5ff;color:#2d6198}
+.tnved-group-button.primary:hover{background:#e1efff;border-color:#98bbdf}
+.tnved-supplemental-group{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:14px 0 0;padding:14px 16px;border:1px dashed #d8c8a5;border-radius:10px;background:#fffaf0}
+.tnved-supplemental-copy{display:flex;flex-direction:column;gap:5px;min-width:0}
+.tnved-supplemental-copy b{font-size:12px;color:#725c2f}
+.tnved-supplemental-copy span{font-size:10px;line-height:1.6;color:#8b7851}
+.internal-group-actions{align-items:center}
+.internal-group-actions .internal-group-find{white-space:nowrap}
+.internal-group-actions a{white-space:nowrap}
+html[data-theme="dark"] .tnved-checker{background:#14263b;border-color:#31475f;box-shadow:none}
+html[data-theme="dark"] .tnved-checker-heading h2{color:#e5eef9}
+html[data-theme="dark"] .tnved-checker-heading p,html[data-theme="dark"] .tnved-catalog-counter span{color:#9fb2c7}
+html[data-theme="dark"] .tnved-catalog-counter strong{color:#9fc9f4}
+html[data-theme="dark"] .tnved-scope-switch{background:#102136;border-color:#31475f}
+html[data-theme="dark"] .tnved-scope-switch button{color:#9aadc2}
+html[data-theme="dark"] .tnved-scope-switch button.active{background:#233d59;border-color:#426384;color:#d5e8fb}
+html[data-theme="dark"] .tnved-search-tabs{border-color:#31475f}
+html[data-theme="dark"] .tnved-search-tabs button{color:#9daec1}
+html[data-theme="dark"] .tnved-search-tabs button.active{color:#d2e6fb;border-bottom-color:#83b6ee}
+html[data-theme="dark"] .tnved-search-tabs button small{color:#8197af}
+html[data-theme="dark"] .tnved-search-form>label{color:#b5c6d9}
+html[data-theme="dark"] .tnved-search-control input{background:#102136;border-color:#3a526b;color:#e4edf7}
+html[data-theme="dark"] .tnved-input-help,html[data-theme="dark"] .tnved-loading{color:#9aadc2}
+html[data-theme="dark"] .tnved-results-heading h3{color:#e5eef9}
+html[data-theme="dark"] .tnved-results-heading p{color:#a0b2c6}
+html[data-theme="dark"] .tnved-clear-button,html[data-theme="dark"] .tnved-gskp-toggle{background:#1b3048;border-color:#39516b;color:#b8cbe0}
+html[data-theme="dark"] .tnved-table-wrap{border-color:#31475f}
+html[data-theme="dark"] .tnved-table th{background:#203751;border-color:#31475f;color:#b2c5d8}
+html[data-theme="dark"] .tnved-table td{border-color:#2a4058;color:#c4d1df}
+html[data-theme="dark"] .tnved-table tbody tr:hover td{background:#1a3048}
+html[data-theme="dark"] .tnved-code-link{color:#9bc8f5}
+html[data-theme="dark"] .tnved-list-badge.mzkm{background:#203b58;color:#bad8fa}
+html[data-theme="dark"] .tnved-list-badge.internal{background:#1c3d30;color:#a7dfbe}
+html[data-theme="dark"] .tnved-gskp-details{background:#102136;color:#adbed1}
+html[data-theme="dark"] .tnved-gskp-details b{color:#dae6f2}
+html[data-theme="dark"] .tnved-empty{background:#102136;border-color:#354d66;color:#9aadc2}
+html[data-theme="dark"] .tnved-empty b{color:#d1dfed}
+html[data-theme="dark"] .tnved-advisory-note{background:#3a321f;border-color:#5e4e2b;color:#f0d6a0}
+html[data-theme="dark"] .tnved-advisory-note svg{color:#e0bf6c}
+html[data-theme="dark"] .mzkm-group-card-interactive{background:#14263b;border-color:#2e435b;box-shadow:none}
+html[data-theme="dark"] .tnved-group-button{background:#1a3048;border-color:#3b526b;color:#bed0e3}
+html[data-theme="dark"] .tnved-group-button.primary{background:#203b58;border-color:#41678e;color:#c9e0f8}
+html[data-theme="dark"] .tnved-supplemental-group{background:#342e1e;border-color:#5a4d2d}
+html[data-theme="dark"] .tnved-supplemental-copy b{color:#f0d6a0}
+html[data-theme="dark"] .tnved-supplemental-copy span{color:#ccba8b}
+@media(max-width:760px){
+  .tnved-checker{padding:17px 13px;border-radius:13px}
+  .tnved-checker-header{align-items:flex-start;gap:10px}
+  .tnved-checker-icon{flex-basis:38px;width:38px;height:38px;border-radius:11px}
+  .tnved-checker-heading h2{font-size:18px}
+  .tnved-checker-heading p{font-size:10px}
+  .tnved-catalog-counter strong{font-size:18px}
+  .tnved-catalog-counter span{font-size:8px}
+  .tnved-scope-switch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tnved-scope-switch button{padding:8px 6px}
+  .tnved-scope-switch button:last-child{grid-column:1/-1}
+  .tnved-search-tabs button{flex:1;min-width:0;padding-left:8px;padding-right:8px}
+  .tnved-search-control{flex-direction:column}
+  .tnved-search-control .primary-button{width:100%;min-height:42px}
+  .tnved-results-heading{flex-direction:column;align-items:stretch}
+  .tnved-result-actions{justify-content:space-between}
+  .tnved-table{min-width:690px}
+  .tnved-pagination{gap:8px}
+  .tnved-pagination span{font-size:9px}
+  .mzkm-group-card-interactive{padding:13px;gap:9px}
+  .tnved-group-actions{flex-direction:column;align-items:stretch}
+  .tnved-group-button{width:100%}
+  .tnved-supplemental-group{align-items:stretch;flex-direction:column}
+  .tnved-supplemental-group>.tnved-group-button{width:100%}
+  .internal-group-actions{align-items:flex-start;flex-direction:column}
+  .internal-group-actions a{white-space:normal}
+}
