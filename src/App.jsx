@@ -599,7 +599,7 @@ function App() {
     const restoreRoute = () => {
       // history.state is not reliably preserved by browsers on refresh; the URL hash is.
       const hash = window.location.hash.replace(/^#/, '')
-      const match = hash.match(/^([^/]+)(?:/document/(.*))?$/)
+      const match = hash.match(/^([^/]+)(?:\\/document\\/(.*))?$/)
       const hashSection = match?.[1] || ''
       const section = knownSections.has(hashSection) ? hashSection : ''
       const docId = match?.[2] ? decodeURIComponent(match[2]) : null
