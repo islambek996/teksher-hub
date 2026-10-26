@@ -13,13 +13,23 @@ DB_BACKUP="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 UPLOADS_BACKUP="$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"
 DB_SERVICE="${DB_SERVICE:-db}"
 API_SERVICE="${API_SERVICE:-api}"
-DB_NAME="${DB_NAME:-teksher_hub}"
-DB_USERNAME="${DB_USERNAME:-teksher}"
+DB_NAME="${DB_NAME:-}"
+DB_USERNAME="${DB_USERNAME:-}"
 
 [[ -s "$DB_BACKUP" ]] || { echo "Ошибка: дамп базы не найден или пуст: $DB_BACKUP" >&2; exit 1; }
 [[ -s "$UPLOADS_BACKUP" ]] || { echo "Ошибка: архив вложений не найден или пуст: $UPLOADS_BACKUP" >&2; exit 1; }
 command -v docker >/dev/null 2>&1 || { echo "Ошибка: Docker не найден." >&2; exit 1; }
 docker compose version >/dev/null 2>&1 || { echo "Ошибка: Docker Compose недоступен." >&2; exit 1; }
+docker compose ps --status running --services | grep -Fxq "$DB_SERVICE" || {
+  echo "Ошибка: сервис базы данных '$DB_SERVICE' не запущен." >&2
+  exit 1
+}
+if [[ -z "$DB_USERNAME" ]]; then
+  DB_USERNAME="$(docker compose exec -T "$DB_SERVICE" sh -c 'printf "%s" "${POSTGRES_USER:-teksher}"' | tr -d '\\r')"
+fi
+if [[ -z "$DB_NAME" ]]; then
+  DB_NAME="$(docker compose exec -T "$DB_SERVICE" sh -c 'printf "%s" "${POSTGRES_DB:-teksher_hub}"' | tr -d '\\r')"
+fi
 
 cat <<'WARNING'
 ВНИМАНИЕ: восстановление заменит данные в PostgreSQL из указанного дампа
