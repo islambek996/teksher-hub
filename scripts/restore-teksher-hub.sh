@@ -31,6 +31,48 @@ if [[ -z "$DB_NAME" ]]; then
   DB_NAME="$(docker compose exec -T "$DB_SERVICE" sh -c 'printf "%s" "${POSTGRES_DB:-teksher_hub}"' | tr -d '\r')"
 fi
 
+
+echo "Проверяю структуру резервных копий..."
+docker compose exec -T "$DB_SERVICE" pg_restore --list < "$DB_BACKUP" >/dev/null
+tar -tzf "$UPLOADS_BACKUP" | grep -Eq '^uploads/?
+ВНИМАНИЕ: восстановление заменит данные в PostgreSQL из указанного дампа
+и удалит текущие файлы из каталога вложений перед распаковкой архива.
+Сначала убедись, что выбраны правильные файлы и сервисы.
+WARNING
+read -r -p "Для продолжения введи RESTORE: " confirmation
+[[ "$confirmation" == "RESTORE" ]] || { echo "Восстановление отменено."; exit 1; }
+
+api_stopped=0
+restart_api() {
+  if [[ "$api_stopped" -eq 1 ]]; then
+    docker compose start "$API_SERVICE" >/dev/null || true
+  fi
+}
+trap restart_api EXIT
+
+echo "Останавливаю API, чтобы избежать записи во время восстановления..."
+docker compose stop "$API_SERVICE"
+api_stopped=1
+
+echo "Восстанавливаю PostgreSQL..."
+docker compose exec -T "$DB_SERVICE" pg_restore --clean --if-exists --no-owner --no-acl --exit-on-error \
+  -U "$DB_USERNAME" -d "$DB_NAME" < "$DB_BACKUP"
+
+echo "Заменяю архив вложений..."
+docker compose run -T --rm --no-deps --entrypoint sh "$API_SERVICE" -c \
+  'set -eu; mkdir -p /app/uploads; find /app/uploads -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +; tar -xzf - -C /app' \
+  < "$UPLOADS_BACKUP"
+
+docker compose start "$API_SERVICE"
+api_stopped=0
+trap - EXIT
+
+echo "Восстановление завершено. Проверь /api/health, вход и открытие нескольких документов с вложениями."
+ || {
+  echo "Ошибка: архив не содержит ожидаемый каталог uploads/." >&2
+  exit 1
+}
+
 cat <<'WARNING'
 ВНИМАНИЕ: восстановление заменит данные в PostgreSQL из указанного дампа
 и удалит текущие файлы из каталога вложений перед распаковкой архива.
