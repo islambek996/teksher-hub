@@ -12,6 +12,8 @@ At the repository root:
 4. Check `http://localhost:8080/api/health`.
 5. Log in using the bootstrap admin credentials from `.env`.
 
+The backend deliberately has no default database password or JWT signing secret. Set both explicitly in the environment; the application will not start with a missing/weak JWT secret. Error responses do not expose Spring's internal exception messages by default.
+
 The initial admin is created only if `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_ADMIN_PASSWORD` are provided and the username does not already exist. The bootstrap password must be at least 12 characters. Changing those variables later does not reset an existing account password.
 
 ## APIs
