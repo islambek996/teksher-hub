@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDate;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AiAssistantRetrievalTest {
@@ -45,6 +46,19 @@ class AiAssistantRetrievalTest {
                 > AiAssistantService.statusRankingBoost(expiredByDate, today));
         assertTrue(AiAssistantService.statusRankingBoost(inForce, today)
                 > AiAssistantService.statusRankingBoost(futureByDate, today));
+    }
+
+
+    @Test
+    void biasesDocumentsOnlyWhenQuestionNamesAJurisdiction() {
+        DocumentRecord kyrgyz = document(DocumentStatus.ACTIVE);
+        kyrgyz.setJurisdiction("KG");
+        DocumentRecord russian = document(DocumentStatus.ACTIVE);
+        russian.setJurisdiction("RU");
+
+        assertTrue(AiAssistantService.jurisdictionRankingBoost(kyrgyz, "Порядок ГАИС МТ в КР") > 0);
+        assertTrue(AiAssistantService.jurisdictionRankingBoost(russian, "Правила Честного ЗНАКА РФ") > 0);
+        assertEquals(0, AiAssistantService.jurisdictionRankingBoost(kyrgyz, "МЗКМ: заказ кодов"));
     }
 
     private static DocumentRecord document(DocumentStatus status) {
