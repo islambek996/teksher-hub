@@ -377,18 +377,22 @@ function App() {
     const onShortcut = (event) => {
       const target = event.target
       const typing = target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      const key = String(event.key || '').toLocaleLowerCase('ru-RU')
+      const isSearchShortcut = (event.metaKey || event.ctrlKey)
+        && (event.code === 'KeyK' || key === 'k' || key === 'л')
+      if (isSearchShortcut) {
         event.preventDefault()
+        event.stopPropagation()
         setGlobalSearchQuery(''); setGlobalSearchActiveIndex(0); setGlobalSearchError(''); setShowGlobalSearch(true)
-      } else if (event.key === '/' && !typing && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      } else if ((event.key === '/' || event.code === 'Slash') && !typing && !event.metaKey && !event.ctrlKey && !event.altKey) {
         event.preventDefault()
         setGlobalSearchQuery(''); setGlobalSearchActiveIndex(0); setGlobalSearchError(''); setShowGlobalSearch(true)
       } else if (event.key === 'Escape') {
         setShowGlobalSearch(false)
       }
     }
-    window.addEventListener('keydown', onShortcut)
-    return () => window.removeEventListener('keydown', onShortcut)
+    window.addEventListener('keydown', onShortcut, true)
+    return () => window.removeEventListener('keydown', onShortcut, true)
   }, [])
 
   const documents = useMemo(() => API_ENABLED ? apiDocuments : [...userDocuments, ...demoDocuments], [apiDocuments, userDocuments])
