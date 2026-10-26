@@ -92,11 +92,14 @@ public class DocumentFileController {
         var path = storage.resolve(file.getStoredName());
         Resource resource = new UrlResource(path.toUri());
         if (!resource.exists() || !resource.isReadable()) throw new IllegalArgumentException("Файл недоступен");
-        MediaType type;
-        try { type = MediaType.parseMediaType(file.getContentType()); }
-        catch (Exception ex) { type = MediaType.APPLICATION_OCTET_STREAM; }
-        return ResponseEntity.ok().contentType(type).contentLength(Files.size(path))
-                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(file.getOriginalName(), StandardCharsets.UTF_8).build().toString())
+        // The stored content type originates from the client upload and is not trustworthy.
+        // Downloads are always served as binary attachments to prevent browser MIME sniffing.
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentLength(Files.size(path))
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename(file.getOriginalName(), StandardCharsets.UTF_8).build().toString())
+                .header("X-Content-Type-Options", "nosniff")
                 .body(resource);
     }
 
