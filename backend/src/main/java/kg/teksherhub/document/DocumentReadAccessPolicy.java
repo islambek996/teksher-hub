@@ -19,7 +19,7 @@ public final class DocumentReadAccessPolicy {
         if (!"ACTIVE".equals(normalizedStatus)) return false;
 
         String normalizedKind = kind == null ? "" : kind.trim().toLowerCase(Locale.ROOT);
-        return !normalizedKind.startsWith("внутрен");
+        return !normalizedKind.contains("внутрен");
     }
 
     public static void requireReadable(String role, DocumentResponse document) {
