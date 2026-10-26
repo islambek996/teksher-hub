@@ -85,7 +85,7 @@ public class AiAssistantService {
         this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     }
 
-    public AssistantResponse ask(String rawQuestion) {
+    public AssistantResponse ask(String rawQuestion) {\n        return ask(rawQuestion, List.of());\n    }\n\n    public AssistantResponse ask(String rawQuestion, List<ChatTurn> rawHistory) {
         String question = rawQuestion == null ? "" : rawQuestion.trim();
         if (question.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Напишите вопрос.");
@@ -116,6 +116,7 @@ public class AiAssistantService {
                     List.of(), false);
         }
 
+        List<ChatTurn> history = sanitizeHistory(rawHistory);
         List<String> terms = searchTerms(question);
         if (terms.isEmpty()) {
             return insufficient("Не удалось выделить поисковые слова из вопроса. Попробуйте сформулировать его конкретнее, указав систему, документ, товарную группу или текст ошибки.", List.of());
@@ -160,7 +161,7 @@ public class AiAssistantService {
             return insufficient("В базе знаний и доступных официальных интернет-источниках не нашлось материалов, которые подтверждают ответ на этот вопрос. Попробуйте другие ключевые слова или обратитесь к ответственному специалисту.", List.of());
         }
 
-        String answer = generateAnswer(question, evidence);
+        String answer = generateAnswer(question, evidence, history);
         boolean insufficient = looksInsufficient(answer);
         return new AssistantResponse(answer, evidence.stream().map(Evidence::reference).toList(), insufficient);
     }
@@ -337,7 +338,7 @@ public class AiAssistantService {
         return result;
     }
 
-    private String generateAnswer(String question, List<Evidence> evidence) {
+    private String generateAnswer(String question, List<Evidence> evidence, List<ChatTurn> history) {
         StringBuilder sourceBlock = new StringBuilder();
         for (Evidence item : evidence) {
             sourceBlock.append("\n\n[SOURCE ").append(item.number()).append("]\n")
@@ -420,6 +421,26 @@ public class AiAssistantService {
             }
         }
         return text.toString();
+    }
+
+    private static List<ChatTurn> sanitizeHistory(List<ChatTurn> history) {
+        if (history == null || history.isEmpty()) return List.of();
+        List<ChatTurn> result = new ArrayList<>();
+        int start = Math.max(0, history.size() - 8);
+        for (int i = start; i < history.size(); i++) {
+            ChatTurn turn = history.get(i);
+            if (turn == null || turn.content() == null || turn.content().isBlank()) continue;
+            String role = "assistant".equalsIgnoreCase(turn.role()) ? "assistant" : "user".equalsIgnoreCase(turn.role()) ? "user" : "";
+            if (role.isBlank()) continue;
+            result.add(new ChatTurn(role, truncate(turn.content().trim(), 1_200)));
+        }
+        return result;
+    }
+
+    private static String formatHistory(List<ChatTurn> history) {
+        if (history == null || history.isEmpty()) return "История отсутствует.";
+        return history.stream().map(turn -> (turn.role().equals("assistant") ? "TEKSHER AI" : "Пользователь")
+                + ": " + turn.content()).collect(Collectors.joining("\\n"));
     }
 
     private static List<String> searchTerms(String question) {
@@ -517,5 +538,5 @@ public class AiAssistantService {
     public record SourceReference(String id, int number, String sourceType, String title, String jurisdiction, String kind, String status,
                                   String statusLabel, String sourceUrl, String effectiveFrom, String effectiveUntil,
                                   String checkedAt, String excerpt) {}
-    public record AssistantResponse(String answer, List<SourceReference> sources, boolean insufficientEvidence) {}
+    public record ChatTurn(String role, String content) {}\n    public record AssistantResponse(String answer, List<SourceReference> sources, boolean insufficientEvidence) {}
 }
