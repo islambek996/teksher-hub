@@ -1631,7 +1631,6 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
         }
       </section>}
 
-      <div className="tnved-advisory-note"><CircleHelp size={16}/><span>Справочник основан на файле «Список ТН ВЭД.xlsx». Совпадение означает только то, что код присутствует в переданном перечне и отнесён в файле к указанной группе. Проверка не подтверждает юридическую обязательность маркировки. Для решения сверяйте полный код, описание товара, исключения и актуальный нормативный акт.</span></div>
     </section>
 
     <section className="mzkm-product-group-section">
