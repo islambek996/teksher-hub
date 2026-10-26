@@ -123,6 +123,14 @@ jobs:
           curl --silent --show-error --fail -X PATCH "http://localhost:8080/api/tasks/$TASK_ID" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"status":"IN_PROGRESS"}' | jq -e '.status == "IN_PROGRESS"'
           curl --silent --show-error --fail "http://localhost:8080/api/tasks" -H "Authorization: Bearer $TOKEN" | jq -e --arg id "$TASK_ID" 'any(.[]; (.id | tostring) == $id and .status == "IN_PROGRESS")'
 
+          MONITOR_CREATED=$(curl --silent --show-error --fail -X POST "http://localhost:8080/api/monitors" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"name":"CI source monitor","jurisdiction":"KG","sourceUrl":"https://minjust.gov.kg/","enabled":false,"intervalHours":24}')
+          MONITOR_ID=$(echo "$MONITOR_CREATED" | jq -r '.id')
+          test -n "$MONITOR_ID" && test "$MONITOR_ID" != "null"
+          echo "$MONITOR_CREATED" | jq -e '.name == "CI source monitor" and .enabled == false'
+          curl --silent --show-error --fail "http://localhost:8080/api/audit-log?limit=250" -H "Authorization: Bearer $TOKEN" | jq -e --arg id "$MONITOR_ID" 'any(.[]; .entityType == "SOURCE_MONITOR" and .entityId == $id and .action == "CREATE")'
+          curl --silent --show-error --fail -X DELETE "http://localhost:8080/api/monitors/$MONITOR_ID" -H "Authorization: Bearer $TOKEN"
+          curl --silent --show-error --fail "http://localhost:8080/api/audit-log?limit=250" -H "Authorization: Bearer $TOKEN" | jq -e --arg id "$MONITOR_ID" 'any(.[]; .entityType == "SOURCE_MONITOR" and .entityId == $id and .action == "DELETE")'
+
           curl --silent --show-error --fail "http://localhost:8080/api/audit-log?limit=250" -H "Authorization: Bearer $TOKEN" | jq -e --arg processId "$PROCESS_ID" --arg taskId "$TASK_ID" 'any(.[]; .entityType == "BUSINESS_PROCESS" and .entityId == $processId and .action == "RESTORE") and any(.[]; .entityType == "TASK" and .entityId == $taskId and .action == "CREATE")'
           curl --silent --show-error --fail -X DELETE "http://localhost:8080/api/tasks/$TASK_ID" -H "Authorization: Bearer $TOKEN"
           curl --silent --show-error --fail -X DELETE "http://localhost:8080/api/business-processes/$PROCESS_ID" -H "Authorization: Bearer $TOKEN"
