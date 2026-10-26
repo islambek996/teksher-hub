@@ -85,8 +85,14 @@ public class AiAssistantService {
             configuredKeys.addAll(Arrays.stream(apiKeysConfig.split("[,;\\s]+"))
                     .map(String::trim).filter(key -> !key.isBlank()).toList());
         }
-        if (apiKey != null && !apiKey.isBlank() && !configuredKeys.contains(apiKey.trim())) {
-            configuredKeys.add(apiKey.trim());
+        // Accept comma/semicolon/whitespace-separated keys in either environment variable.
+        // This also handles deployments where multiple keys were accidentally placed in GROQ_API_KEY.
+        if (apiKey != null && !apiKey.isBlank()) {
+            Arrays.stream(apiKey.split("[,;\\s]+"))
+                    .map(String::trim)
+                    .filter(key -> !key.isBlank())
+                    .filter(key -> !configuredKeys.contains(key))
+                    .forEach(configuredKeys::add);
         }
         this.apiKeys = List.copyOf(configuredKeys);
         this.model = model == null || model.isBlank() ? "openai/gpt-oss-20b" : model.trim();
