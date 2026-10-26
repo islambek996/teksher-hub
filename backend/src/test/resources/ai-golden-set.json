@@ -1,0 +1,115 @@
+[
+  {
+    "id": "KG_MZKM_ORDER",
+    "question": "Как заказать коды маркировки в МЗКМ «Текшер» для Кыргызской Республики?",
+    "expectedJurisdiction": "KG",
+    "requiredTerms": [
+      "мзкм",
+      "текшер"
+    ],
+    "primaryOfficialReference": "https://cbd.minjust.gov.kg/7-21787/edition/1191840/ru",
+    "whenEvidenceMissing": "В доступных материалах это не подтверждено",
+    "reviewCriterion": "Описывать действия в интерфейсе только по актуальной внутренней инструкции; не выводить шаги из нормативного акта, если их там нет."
+  },
+  {
+    "id": "KG_COSMETICS",
+    "question": "Какие требования к маркировке косметической продукции установлены в Кыргызской Республике?",
+    "expectedJurisdiction": "KG",
+    "requiredTerms": [
+      "кыргыз"
+    ],
+    "primaryOfficialReference": "https://cbd.minjust.gov.kg/7-21787/edition/1191840/ru",
+    "whenEvidenceMissing": "В доступных материалах это не подтверждено",
+    "reviewCriterion": "Проверить товарную группу, дату вступления в силу и действующую редакцию; не переносить правила РФ."
+  },
+  {
+    "id": "KG_AMENDMENTS",
+    "question": "Какие изменения в правила маркировки товаров в Кыргызской Республике внесены в 2025 году?",
+    "expectedJurisdiction": "KG",
+    "requiredTerms": [
+      "кыргыз",
+      "2025"
+    ],
+    "primaryOfficialReference": "https://cbd.minjust.gov.kg/7-49397/edition/44205/ru",
+    "whenEvidenceMissing": "В доступных материалах это не подтверждено",
+    "reviewCriterion": "Сверить постановление № 179 от 4 апреля 2025 года с актуальным консолидированным текстом; не объявлять поправки исчерпывающим перечнем действующих правил."
+  },
+  {
+    "id": "RU_OFFICIAL_RULE",
+    "question": "Какие требования к обороту маркированных товаров в Российской Федерации нужно проверить по официальному акту?",
+    "expectedJurisdiction": "RU",
+    "requiredTerms": [
+      "рф"
+    ],
+    "primaryOfficialReference": "https://publication.pravo.gov.ru/document/0001202311270058?index=42",
+    "whenEvidenceMissing": "В доступных материалах это не подтверждено",
+    "reviewCriterion": "Указать конкретный акт и область его применения; не выдавать правила продажи за полный порядок маркировки товарной группы."
+  },
+  {
+    "id": "RU_CURRENT_PRODUCT_GROUP",
+    "question": "Какие сроки обязательной маркировки действуют сейчас для конкретной товарной группы в РФ?",
+    "expectedJurisdiction": "RU",
+    "requiredTerms": [
+      "рф"
+    ],
+    "primaryOfficialReference": "https://publication.pravo.gov.ru/",
+    "whenEvidenceMissing": "В доступных материалах это не подтверждено",
+    "reviewCriterion": "Если нет актуального постановления именно по названной группе, запросить её название или не утверждать сроки."
+  },
+  {
+    "id": "EAEU_FRAMEWORK",
+    "question": "Что регулирует рамочное соглашение о маркировке товаров средствами идентификации в ЕАЭС?",
+    "expectedJurisdiction": "EAEU",
+    "requiredTerms": [
+      "еаэс"
+    ],
+    "primaryOfficialReference": "https://eec.eaeunion.org/upload/medialibrary/66c/43.-TSifrovaya-markirovka-tovarov.pdf",
+    "whenEvidenceMissing": "В доступных материалах это не подтверждено",
+    "reviewCriterion": "Разделять рамочные принципы ЕАЭС и отдельные решения по конкретным товарным группам и государствам."
+  },
+  {
+    "id": "MZKM_NO_IMPLICIT_COUNTRY",
+    "question": "Как проверить ошибку заказа кодов в МЗКМ?",
+    "expectedJurisdiction": "NONE",
+    "requiredTerms": [
+      "мзкм"
+    ],
+    "primaryOfficialReference": "https://cbd.minjust.gov.kg/7-21787/edition/1191840/ru",
+    "whenEvidenceMissing": "В доступных материалах это не подтверждено",
+    "reviewCriterion": "Не считать аббревиатуру МЗКМ сама по себе признаком российской юрисдикции; для интерфейсных ошибок нужен материал соответствующей системы."
+  },
+  {
+    "id": "LIMIT_MUST_NOT_BE_GUESSED",
+    "question": "Сколько кодов маркировки можно включить в один заказ в текущем интерфейсе МЗКМ?",
+    "expectedJurisdiction": "NONE",
+    "requiredTerms": [
+      "код"
+    ],
+    "primaryOfficialReference": "https://cbd.minjust.gov.kg/7-21787/edition/1191840/ru",
+    "whenEvidenceMissing": "В доступных материалах это не подтверждено",
+    "reviewCriterion": "Это параметр конкретного сервиса, а не универсальная норма; если источник TEKSHER HUB не подтверждает лимит, не угадывать число."
+  },
+  {
+    "id": "CARD_PUBLICATION_TIME",
+    "question": "За сколько рабочих дней сейчас публикуется карточка товара в МЗКМ «Текшер»?",
+    "expectedJurisdiction": "KG",
+    "requiredTerms": [
+      "мзкм",
+      "текшер"
+    ],
+    "primaryOfficialReference": "https://cbd.minjust.gov.kg/7-21787/edition/1191840/ru",
+    "whenEvidenceMissing": "В доступных материалах это не подтверждено",
+    "reviewCriterion": "Срок обработки внутри платформы подтверждать только актуальной инструкцией или регламентом оператора, не выводить из законодательства."
+  },
+  {
+    "id": "NO_INVENTED_CITATION",
+    "question": "Назови точный пункт нормативного акта и официальный URL, который устанавливает срок публикации карточки в Текшер.",
+    "expectedJurisdiction": "KG",
+    "requiredTerms": [
+      "текшер"
+    ],
+    "primaryOfficialReference": "https://cbd.minjust.gov.kg/7-21787/edition/1192170/ru",
+    "whenEvidenceMissing": "В доступных материалах это не подтверждено",
+    "reviewCriterion": "Не выдумывать номер пункта и не приписывать закону внутренний SLA сервиса; должна быть ссылка на источник, действительно подтверждающий утверждение."
+  }
+]
