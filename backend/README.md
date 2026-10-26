@@ -20,11 +20,21 @@ The initial admin is created only if `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_A
 - `GET /api/auth/me` – current user.
 - `GET/POST /api/documents`, `GET/PUT/DELETE /api/documents/{id}` – metadata, classification, keywords and related document links.
 - `GET /api/documents/{id}/versions` – document history.
+- `GET /api/business-processes` – list shared process guides.
+- `POST /api/business-processes`, `PUT /api/business-processes/{id}` – create and update guides (ADMIN/EDITOR).
+- `DELETE /api/business-processes/{id}` – delete a guide (ADMIN only).
 - `POST /api/documents/{id}/review` – record manual status/source review.
 - `GET/POST /api/documents/{id}/files`, `GET /api/documents/{id}/files/{fileId}/download`.
 - `GET/POST/PUT/DELETE /api/monitors`, `POST /api/monitors/{id}/check`.
 - `GET/POST /api/users`, `PATCH /api/users/{id}/enabled` and `PUT /api/users/{id}/password` – administrator only.
 - `GET /api/health`.
+
+## Business process guides
+
+- The `business_process_guides` table stores editable process instructions, steps, and official/reference links.
+- `V19__create_business_process_guides.sql` creates the table and seeds the six built-in guides.
+- ADMIN and EDITOR can create/update guides; ADMIN can delete them. All authenticated roles can read the saved guides.
+- The guide step checklist progress is currently kept in the user's browser, separately from the shared guide content.
 
 ## AI knowledge assistant
 
