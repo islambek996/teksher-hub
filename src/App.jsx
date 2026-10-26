@@ -1643,9 +1643,11 @@ const DEFAULT_INTERNAL_GROUPS = [
 function loadProductGroups() {
  try {
   const saved = JSON.parse(window.localStorage.getItem(PRODUCT_GROUPS_STORAGE_KEY) || 'null')
-  if (saved && Array.isArray(saved.mzkmGroups) && Array.isArray(saved.internalGroups)) return saved
+  if (saved && Array.isArray(saved.mzkmGroups) && Array.isArray(saved.internalGroups)) {
+   return { ...saved, mzkmDetails: saved.mzkmDetails && typeof saved.mzkmDetails === 'object' ? saved.mzkmDetails : {} }
+  }
  } catch { /* defaults */ }
- return { mzkmGroups: DEFAULT_MZKM_GROUPS, internalGroups: DEFAULT_INTERNAL_GROUPS }
+ return { mzkmGroups: DEFAULT_MZKM_GROUPS, internalGroups: DEFAULT_INTERNAL_GROUPS, mzkmDetails: {} }
 }
 function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
  const [groupData, setGroupData] = useState(loadProductGroups)
@@ -1656,8 +1658,11 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
  useEffect(() => { try { window.localStorage.setItem(PRODUCT_GROUPS_STORAGE_KEY, JSON.stringify(groupData)) } catch { /* storage unavailable */ } }, [groupData])
  const openGroupEditor = (scope, index = -1) => {
   const existing = scope === 'MZKM' ? mzkmGroups[index] : internalGroups[index]
+  const detail = scope === 'MZKM' && existing ? (groupData.mzkmDetails?.[existing] || {}) : {}
   setEditingGroup({ scope, index })
-  setGroupDraft(scope === 'MZKM' ? { name: existing || '', description: '', source: '' } : existing ? { ...existing } : { name: '', description: 'Национальная внутренняя маркировка Кыргызской Республики. Требования проверять по действующим нормативным актам.', source: 'https://main.teksher.kg/internal-marking.html' })
+  setGroupDraft(scope === 'MZKM'
+   ? { name: existing || '', description: detail.description || '', source: detail.source || '' }
+   : existing ? { ...existing } : { name: '', description: 'Национальная внутренняя маркировка Кыргызской Республики. Требования проверять по действующим нормативным актам.', source: 'https://main.teksher.kg/internal-marking.html' })
  }
  const saveGroup = event => {
   event.preventDefault()
@@ -1666,8 +1671,14 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
   setGroupData(previous => {
    if (editingGroup.scope === 'MZKM') {
     const next = [...previous.mzkmGroups]
+    const oldName = editingGroup.index < 0 ? '' : next[editingGroup.index]
     if (editingGroup.index < 0) next.push(name); else next[editingGroup.index] = name
-    return { ...previous, mzkmGroups: next }
+    const details = { ...(previous.mzkmDetails || {}) }
+    const item = { description: groupDraft.description.trim(), source: groupDraft.source.trim() }
+    if (oldName && oldName !== name) delete details[oldName]
+    if (item.description || item.source) details[name] = item
+    else delete details[name]
+    return { ...previous, mzkmGroups: next, mzkmDetails: details }
    }
    const next = [...previous.internalGroups]
    const item = { name, description: groupDraft.description.trim(), source: groupDraft.source.trim() }
@@ -1941,7 +1952,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
   const getCount = (group, scope) => tnvedGroupCounts.get(scope + '|' + group) || 0
 
   return <div className="product-groups-page">
-    {editingGroup && <div className="modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setEditingGroup(null) }}><section className="create-modal" role="dialog" aria-modal="true" aria-labelledby="product-group-editor-title"><div className="modal-header"><h2 id="product-group-editor-title">{editingGroup.index < 0 ? 'Добавить товарную группу' : 'Редактировать товарную группу'}</h2><button type="button" className="icon-button" onClick={() => setEditingGroup(null)} aria-label="Закрыть"><X size={18}/></button></div><form onSubmit={saveGroup}><label>Название группы<input required maxLength={240} value={groupDraft.name} onChange={event => setGroupDraft(draft => ({ ...draft, name: event.target.value }))}/></label>{editingGroup.scope === 'INTERNAL' && <><label>Описание<textarea rows={4} value={groupDraft.description} onChange={event => setGroupDraft(draft => ({ ...draft, description: event.target.value }))}/></label><label>Ссылка на источник<input type="url" value={groupDraft.source} onChange={event => setGroupDraft(draft => ({ ...draft, source: event.target.value }))}/></label></>}<div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setEditingGroup(null)}>Отмена</button><button type="submit" className="primary-button">Сохранить</button></div></form></section></div>}
+    {editingGroup && <div className="modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setEditingGroup(null) }}><section className="create-modal" role="dialog" aria-modal="true" aria-labelledby="product-group-editor-title"><div className="modal-header"><h2 id="product-group-editor-title">{editingGroup.index < 0 ? 'Добавить товарную группу' : 'Редактировать товарную группу'}</h2><button type="button" className="icon-button" onClick={() => setEditingGroup(null)} aria-label="Закрыть"><X size={18}/></button></div><form onSubmit={saveGroup}><label>Название группы<input required maxLength={240} value={groupDraft.name} onChange={event => setGroupDraft(draft => ({ ...draft, name: event.target.value }))}/></label><label>Описание<textarea rows={4} value={groupDraft.description} onChange={event => setGroupDraft(draft => ({ ...draft, description: event.target.value }))} placeholder="Добавьте описание товарной группы"/></label><label>Ссылка на источник<input type="url" value={groupDraft.source} onChange={event => setGroupDraft(draft => ({ ...draft, source: event.target.value }))} placeholder="https://..."/></label><div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setEditingGroup(null)}>Отмена</button><button type="submit" className="primary-button">Сохранить</button></div></form></section></div>}
     <div className="page-heading">
       <div>
         <div className="section-kicker">СПРАВОЧНИК / МАРКИРОВКА ТОВАРОВ</div>
@@ -2121,7 +2132,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
           <div className="mzkm-group-number">{String(index + 1).padStart(2, '0')}</div>
           <div className="mzkm-group-copy">
             <h3>{name}</h3>
-            <p>{getCount(name, 'MZKM')} кодов из Excel · МЗКМ v2.1</p>{canManage && <div className="tnved-group-actions"><button type="button" className="tnved-group-button" onClick={() => openGroupEditor('MZKM', index)}><Pencil size={13}/> Изменить</button><button type="button" className="tnved-group-button" onClick={() => deleteGroup('MZKM', index)}><Trash2 size={13}/> Удалить</button></div>}
+            <p>{getCount(name, 'MZKM')} кодов из Excel · МЗКМ v2.1</p>{groupData.mzkmDetails?.[name]?.description && <p>{groupData.mzkmDetails[name].description}</p>}{groupData.mzkmDetails?.[name]?.source && <a href={groupData.mzkmDetails[name].source} target="_blank" rel="noreferrer">Официальный источник <ExternalLink size={13}/></a>}{canManage && <div className="tnved-group-actions"><button type="button" className="tnved-group-button" onClick={() => openGroupEditor('MZKM', index)}><Pencil size={13}/> Изменить</button><button type="button" className="tnved-group-button" onClick={() => deleteGroup('MZKM', index)}><Trash2 size={13}/> Удалить</button></div>}
             <div className="tnved-group-actions">
               <button type="button" className="tnved-group-button primary" onClick={() => selectTnvedGroup(name, 'MZKM')}>Коды ТН ВЭД ({getCount(name, 'MZKM')})</button>
               <button type="button" className="tnved-group-button" onClick={() => onSearchGroup(name)}>Материалы</button>
