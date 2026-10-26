@@ -2796,7 +2796,7 @@ function ProcessGuideEditorModal({ guide, saving, error, onClose, onSave }) {
     searchTerm: guide?.searchTerm || '',
     orderIndex: guide?.orderIndex,
     sources: (guide?.sources || []).map(source => ({ ...source })),
-    steps: (guide?.steps || [{ title: '', detail: '' }]).map(step => ({ ...step })),
+    steps: (guide?.steps || [{ title: '', detail: '', responsible: '', documents: '', decision: '', yesOutcome: '', noOutcome: '' }]).map(step => ({ responsible: '', documents: '', decision: '', yesOutcome: '', noOutcome: '', ...step })),
   }))
   const [formError, setFormError] = useState('')
   const updateField = (field, value) => setForm(current => ({ ...current, [field]: value }))
@@ -2821,7 +2821,7 @@ function ProcessGuideEditorModal({ guide, saving, error, onClose, onSave }) {
   })
   const addStep = () => setForm(current => current.steps.length >= 30
     ? current
-    : ({ ...current, steps: [...current.steps, { title: '', detail: '' }] }))
+    : ({ ...current, steps: [...current.steps, { title: '', detail: '', responsible: '', documents: '', decision: '', yesOutcome: '', noOutcome: '' }] }))
   const addSource = () => setForm(current => current.sources.length >= 10
     ? current
     : ({ ...current, sources: [...current.sources, { label: '', url: '' }] }))
@@ -2879,6 +2879,13 @@ function ProcessGuideEditorModal({ guide, saving, error, onClose, onSave }) {
               </div>
               <label className="form-field"><span>Название шага *</span><input required maxLength={200} value={step.title} onChange={event => updateStep(index, 'title', event.target.value)} placeholder="Например, Проверь код ТН ВЭД"/></label>
               <label className="form-field"><span>Описание *</span><textarea required maxLength={4000} rows={3} value={step.detail} onChange={event => updateStep(index, 'detail', event.target.value)} placeholder="Что именно нужно проверить или выполнить"/></label>
+              <label className="form-field"><span>Ответственный</span><input maxLength={160} value={step.responsible || ''} onChange={event => updateStep(index, 'responsible', event.target.value)} placeholder="Например, участник маркировки или оператор"/></label>
+              <label className="form-field"><span>Документы и условия выполнения</span><textarea maxLength={2000} rows={2} value={step.documents || ''} onChange={event => updateStep(index, 'documents', event.target.value)} placeholder="Какие документы нужны и что должно быть выполнено перед началом шага"/></label>
+              <div className="process-editor-decision-fields">
+                <label className="form-field"><span>Контрольный вопрос (для ветвления)</span><input maxLength={500} value={step.decision || ''} onChange={event => updateStep(index, 'decision', event.target.value)} placeholder="Например, Карточка товара опубликована?"/></label>
+                <label className="form-field"><span>Если «Да»</span><input maxLength={500} value={step.yesOutcome || ''} onChange={event => updateStep(index, 'yesOutcome', event.target.value)} placeholder="Следующее действие при положительном ответе"/></label>
+                <label className="form-field"><span>Если «Нет»</span><input maxLength={500} value={step.noOutcome || ''} onChange={event => updateStep(index, 'noOutcome', event.target.value)} placeholder="Что исправить или куда вернуться"/></label>
+              </div>
             </article>)}
           </div>
         </section>
