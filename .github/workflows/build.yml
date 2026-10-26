@@ -131,6 +131,8 @@ jobs:
           EDITOR_LOGIN=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/auth/login -H 'Content-Type: application/json' -d '{"username":"ci-editor","password":"ci-password-strong-enough-456"}')
           EDITOR_TOKEN=$(echo "$EDITOR_LOGIN" | jq -r '.token')
           test -n "$EDITOR_TOKEN" && test "$EDITOR_TOKEN" != "null"
+          EDITOR_USERS_STATUS=$(curl --silent --output /tmp/ci-editor-users.json --write-out '%{http_code}' "http://localhost:8080/api/users" -H "Authorization: Bearer $EDITOR_TOKEN")
+          test "$EDITOR_USERS_STATUS" = "403"
 
           ASSIGNED_TASK=$(curl --silent --show-error --fail -X POST "http://localhost:8080/api/tasks" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"title":"CI task with comments","description":"Validate assignment notifications and task comments","status":"TODO","priority":"NORMAL","dueDate":"2026-12-05","assignedTo":"ci-editor"}')
           ASSIGNED_TASK_ID=$(echo "$ASSIGNED_TASK" | jq -r '.id')
@@ -161,6 +163,9 @@ jobs:
           CREATED=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/documents -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"title":"CI smoke test document","jurisdiction":"KG","kind":"Нормативный акт","area":"CI","documentNumber":"CI-001","documentDate":"2026-01-01","effectiveFrom":"2026-01-01","effectiveUntil":"2027-01-01","sourceUrl":"https://minjust.gov.kg/","description":"Temporary record to validate database migration and REST API","status":"","changeNote":"CI smoke test"}')
           DOC_ID=$(echo "$CREATED" | jq -r '.id')
           test -n "$DOC_ID" && test "$DOC_ID" != "null"
+          EDITOR_DELETE_STATUS=$(curl --silent --output /tmp/ci-editor-delete.json --write-out '%{http_code}' -X DELETE "http://localhost:8080/api/documents/$DOC_ID" -H "Authorization: Bearer $EDITOR_TOKEN")
+          test "$EDITOR_DELETE_STATUS" = "403"
+          curl --silent --show-error --fail "http://localhost:8080/api/documents/$DOC_ID" -H "Authorization: Bearer $TOKEN" | jq -e --arg id "$DOC_ID" '.id == $id'
           curl --silent --show-error --fail -X PUT "http://localhost:8080/api/favorites/$DOC_ID" -H "Authorization: Bearer $TOKEN"
           curl --silent --show-error --fail "http://localhost:8080/api/favorites" -H "Authorization: Bearer $TOKEN" | jq -e --arg id "$DOC_ID" 'index($id) != null'
           curl --silent --show-error --fail -X DELETE "http://localhost:8080/api/favorites/$DOC_ID" -H "Authorization: Bearer $TOKEN"
