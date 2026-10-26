@@ -14,6 +14,7 @@ public final class DocumentReadAccessPolicy {
     public static boolean canRead(String role, String status, String kind) {
         String normalizedRole = role == null ? "" : role.trim().toUpperCase(Locale.ROOT);
         if (PRIVILEGED_ROLES.contains(normalizedRole)) return true;
+        if (!"READER".equals(normalizedRole)) return false;
 
         String normalizedStatus = status == null ? "" : status.trim().toUpperCase(Locale.ROOT);
         if (!"ACTIVE".equals(normalizedStatus)) return false;
