@@ -51,10 +51,6 @@ class AiAssistantGoldenSetTest {
                 assertTrue(!question.isBlank(), "Question is required for " + id);
                 assertTrue(JURISDICTIONS.contains(expectedJurisdiction) || "NONE".equals(expectedJurisdiction),
                         "Unexpected jurisdiction in " + id);
-                assertTrue(reference.startsWith("https://"),
-                        "Reference must use HTTPS for " + id);
-                assertTrue(URI.create(reference).getHost() != null,
-                        "Reference must contain a host for " + id);
                 assertTrue(!item.path("reviewCriterion").asText("").isBlank(),
                         "Each case needs a reviewer criterion: " + id);
                 assertTrue(item.path("expectedFacts").isArray() && item.path("expectedFacts").size() > 0,
@@ -62,12 +58,22 @@ class AiAssistantGoldenSetTest {
                 assertTrue(item.path("forbiddenClaims").isArray() && item.path("forbiddenClaims").size() > 0,
                         "Each case needs a hallucination/overgeneralization checklist: " + id);
 
-                String host = URI.create(reference).getHost().toLowerCase(Locale.ROOT);
-                Set<String> officialHosts = Set.of("cbd.minjust.gov.kg", "minjust.gov.kg", "gov.kg",
-                        "publication.pravo.gov.ru", "eec.eaeunion.org", "docs.eaeunion.org");
-                assertTrue(officialHosts.stream().anyMatch(allowed ->
-                                host.equals(allowed) || host.endsWith("." + allowed)),
-                        "Golden reference must use a recognised official domain, not a third-party summary: " + id);
+                if (!reference.isBlank()) {
+                    assertTrue(reference.startsWith("https://"),
+                            "Reference must use HTTPS for " + id);
+                    URI officialReference = URI.create(reference);
+                    assertTrue(officialReference.getHost() != null,
+                            "Reference must contain a host for " + id);
+                    String host = officialReference.getHost().toLowerCase(Locale.ROOT);
+                    Set<String> officialHosts = Set.of("cbd.minjust.gov.kg", "minjust.gov.kg", "gov.kg",
+                            "publication.pravo.gov.ru", "eec.eaeunion.org", "docs.eaeunion.org");
+                    assertTrue(officialHosts.stream().anyMatch(allowed ->
+                                    host.equals(allowed) || host.endsWith("." + allowed)),
+                            "Golden reference must use a recognised official domain, not a third-party summary: " + id);
+                } else {
+                    assertTrue(item.hasNonNull("operationalReference"),
+                            "When no legal source directly supports the claim, provide the relevant operational source or abstain: " + id);
+                }
 
                 if (item.hasNonNull("operationalReference")) {
                     URI operationalReference = URI.create(item.path("operationalReference").asText(""));
