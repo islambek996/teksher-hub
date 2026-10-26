@@ -5,7 +5,7 @@ import {
   ArrowDownRight, ArrowUpRight, BookOpen, Boxes, CalendarDays, ChevronDown,
   CircleHelp, ExternalLink, FileCheck2, FilePlus2, FileText, Globe2, Home,
   Landmark, Layers3, LibraryBig, Link2, Search, ShieldCheck, SlidersHorizontal,
-  Sparkles, Bot, Send, Workflow, X, Pencil, Trash2, RefreshCw, UsersRound, LogOut, Paperclip, Download, History, CheckCircle2, UserPlus, Moon, Sun, Copy, ListTree, Clock3, Printer
+  Sparkles, Bot, Send, Workflow, X, Pencil, Trash2, RefreshCw, UsersRound, LogOut, Paperclip, Download, History, CheckCircle2, UserPlus, Moon, Sun, Copy, ListTree, Clock3, Printer, ThumbsUp, ThumbsDown
 } from 'lucide-react'
 
 const demoDocuments = [
@@ -3138,7 +3138,7 @@ function AiAssistantSection({ apiEnabled, onOpenDocument }) {
     setMessages(previous => [...previous, { role: 'user', answer: text }])
     setLoading(true)
     try {
-      const result = await apiRequest('/api/ai/ask', { method: 'POST', body: { question: text } })
+      const result = await apiRequest('/api/ai/ask', { method: 'POST', body: { question: text, history: messages.slice(-8).map(message => ({ role: message.role, content: message.answer })) } })
       setMessages(previous => [...previous, {
         role: 'assistant',
         answer: result.answer || 'Не удалось получить ответ.',
@@ -3203,6 +3203,8 @@ function AiAssistantSection({ apiEnabled, onOpenDocument }) {
                 <div className="assistant-answer-text">{message.answer}</div>
                 {message.role === 'assistant' && message.insufficientEvidence && <div className="assistant-evidence-warning"><CircleHelp size={15}/> Ответ не удалось полностью подтвердить материалами базы.</div>}
               </div>
+              {message.role === 'assistant' && !message.feedbackSent && <div className="assistant-feedback-actions"><span>Полезен ли ответ?</span><button type="button" title="Полезный ответ" onClick={async () => { try { await apiRequest('/api/ai/feedback', { method: 'POST', body: { rating: 'positive', category: 'answer' } }); setMessages(previous => previous.map((item, i) => i === index ? { ...item, feedbackSent: 'positive' } : item)) } catch (e) { setError(e.message || 'Не удалось отправить оценку') } }}><ThumbsUp size={14}/> Да</button><button type="button" title="Неполезный ответ" onClick={async () => { try { await apiRequest('/api/ai/feedback', { method: 'POST', body: { rating: 'negative', category: 'answer' } }); setMessages(previous => previous.map((item, i) => i === index ? { ...item, feedbackSent: 'negative' } : item)) } catch (e) { setError(e.message || 'Не удалось отправить оценку') } }}><ThumbsDown size={14}/> Нет</button></div>}
+              {message.role === 'assistant' && message.feedbackSent && <div className="assistant-feedback-actions">Спасибо за оценку!</div>}
               {message.role === 'assistant' && message.sources?.length > 0 && <div className="assistant-sources">
                 <div className="assistant-sources-heading"><BookOpen size={15}/> Использованные источники ({message.sources.length})</div>
                 {message.sources.map(source => <article className="assistant-source-card" key={source.id}>
