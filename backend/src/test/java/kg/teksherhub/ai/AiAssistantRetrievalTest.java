@@ -89,6 +89,21 @@ class AiAssistantRetrievalTest {
     }
 
     @Test
+    void doesNotPreferOneCountryWhenQuestionComparesJurisdictions() {
+        DocumentRecord kyrgyz = document(DocumentStatus.ACTIVE);
+        kyrgyz.setJurisdiction("KG");
+        DocumentRecord russian = document(DocumentStatus.ACTIVE);
+        russian.setJurisdiction("RU");
+        DocumentRecord eaeu = document(DocumentStatus.ACTIVE);
+        eaeu.setJurisdiction("EAEU");
+
+        String comparison = "Сравни требования к маркировке в КР, РФ и ЕАЭС";
+        assertEquals(0, AiAssistantService.jurisdictionRankingBoost(kyrgyz, comparison));
+        assertEquals(0, AiAssistantService.jurisdictionRankingBoost(russian, comparison));
+        assertEquals(0, AiAssistantService.jurisdictionRankingBoost(eaeu, comparison));
+    }
+
+    @Test
     void assistantReturnsPersonalizedCreatorReply() {
         String answer = AiAssistantService.assistantIdentityReply("кто тебя создал");
 
@@ -102,6 +117,8 @@ class AiAssistantRetrievalTest {
     void missingEvidencePhrasesAreFlaggedAsInsufficient() {
         assertTrue(AiAssistantService.looksInsufficient(
                 "В доступных материалах это не подтверждено."));
+        assertTrue(AiAssistantService.looksInsufficient(
+                "В базе знаний и доступных официальных источниках не нашлось материалов, которые подтверждают ответ."));
         assertTrue(AiAssistantService.looksInsufficient(
                 "В материалах не указано, действует ли это требование."));
         assertTrue(AiAssistantService.looksInsufficient(
