@@ -69,6 +69,19 @@ class AiAssistantGoldenSetTest {
                                 host.equals(allowed) || host.endsWith("." + allowed)),
                         "Golden reference must use a recognised official domain, not a third-party summary: " + id);
 
+                if (item.hasNonNull("operationalReference")) {
+                    URI operationalReference = URI.create(item.path("operationalReference").asText(""));
+                    assertTrue("https".equalsIgnoreCase(operationalReference.getScheme()),
+                            "Operator reference must use HTTPS for " + id);
+                    assertTrue(Set.of("main.teksher.kg", "label.teksher.kg")
+                                    .contains(operationalReference.getHost().toLowerCase(Locale.ROOT)),
+                            "Operator reference must point to a recognised TEKSHER host for " + id);
+                    assertEquals("UNDER_REVIEW", item.path("operationalReferenceStatus").asText(""),
+                            "Unverified operational manuals must remain explicitly marked for review: " + id);
+                    assertTrue(!item.path("operationalReferenceNote").asText("").isBlank(),
+                            "Operator manual needs an explicit version/currentness caveat: " + id);
+                }
+
                 List<String> terms = AiAssistantService.searchTerms(question);
                 for (JsonNode requiredTerm : item.path("requiredTerms")) {
                     String term = requiredTerm.asText();
