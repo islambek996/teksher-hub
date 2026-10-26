@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -27,6 +28,6 @@ class TokenServiceTest {
         String token = service.create(user);
 
         assertTrue(service.isValid(token, user));
-        assertTrue(service.username(token).equals("test-user"));
+        assertEquals("test-user", service.username(token));
     }
 }
