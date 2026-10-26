@@ -62,10 +62,10 @@ public class BusinessProcessGuideService {
     }
 
     @Transactional
-    public void delete(String id) {
+    public void delete(String id, String username) {
         BusinessProcessGuide guide = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Бизнес-процесс не найден: " + id));
-        recordAudit("system", "DELETE", guide.getId(), guide.getTitle(), "Бизнес-процесс удалён");
+        recordAudit(username, "DELETE", guide.getId(), guide.getTitle(), "Бизнес-процесс удалён");
         repository.delete(guide);
     }
 
