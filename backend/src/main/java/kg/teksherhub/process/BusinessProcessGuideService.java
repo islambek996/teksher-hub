@@ -65,6 +65,7 @@ public class BusinessProcessGuideService {
     public void delete(String id, String username) {
         BusinessProcessGuide guide = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Бизнес-процесс не найден: " + id));
+        jdbc.update("DELETE FROM business_process_progress WHERE process_id = ?", guide.getId());
         recordAudit(username, "DELETE", guide.getId(), guide.getTitle(), "Бизнес-процесс удалён");
         repository.delete(guide);
     }
