@@ -82,7 +82,7 @@ jobs:
           FEEDBACK=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/ai/feedback -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"rating":"negative","category":"incorrect","question":"CI feedback question","answer":"CI feedback answer","sourceTitles":["CI source"]}')
           echo "$FEEDBACK" | jq -e '.received == true and .id != null'
           FEEDBACK_SUMMARY=$(curl --silent --show-error --fail http://localhost:8080/api/ai/feedback/summary -H "Authorization: Bearer $TOKEN")
-          echo "$FEEDBACK_SUMMARY" | jq -e '.total >= 1 and .negative >= 1 and any(.recentNegative[]; .question == "CI feedback question" and .answer == "CI feedback answer" and .category == "incorrect" and (.sourceTitles | contains("CI source")))'
+          echo "$FEEDBACK_SUMMARY" | jq -e '.total >= 1 and .negative >= 1 and .positiveRate >= 0 and any(.negativeCategories[]; .category == "incorrect" and .count >= 1) and any(.recentNegative[]; .question == "CI feedback question" and .answer == "CI feedback answer" and .category == "incorrect" and (.sourceTitles | contains("CI source")))'
 
           PROCESS_GUIDES=$(curl --silent --show-error --fail "http://localhost:8080/api/business-processes" -H "Authorization: Bearer $TOKEN")
           echo "$PROCESS_GUIDES" | jq -e 'length == 6 and any(.[]; .id == "registration" and (.steps | length) == 5)'
