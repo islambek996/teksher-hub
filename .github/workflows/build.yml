@@ -20,6 +20,8 @@ jobs:
         run: npm install
       - name: Build frontend
         run: npm run build
+      - name: Validate TN VED spreadsheet catalogue
+        run: node scripts/check-tnved-catalog.mjs
 
   backend:
     runs-on: ubuntu-latest
