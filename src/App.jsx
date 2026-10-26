@@ -1422,7 +1422,7 @@ const TNVED_SEARCH_SYNONYMS = [
   { group: 'Молочная продукция', scope: 'MZKM', terms: ['молоко', 'сыр', 'йогурт', 'кефир', 'сливки', 'творог', 'молочка', 'молочная продукция'] },
   { group: 'Продукты, используемые для кормления животных', scope: 'MZKM', terms: ['корм', 'корма', 'корм для кошек', 'корм для собак', 'корм для животных', 'зоокорм', 'питание животных'] },
   { group: COSMETICS_TNVED_GROUP, scope: 'MZKM', terms: ['косметика', 'шампунь', 'шампуни', 'бальзам', 'мыло', 'зубная паста', 'дезодорант', 'крем для лица', 'средство гигиены', 'бытовая химия', 'моющее средство', 'средство для мытья'] },
-  { group: COSMETICS_TNVED_GROUP, scope: 'MZKM', matchGroup: false, terms: ['бритва', 'бритвы', 'бритье', 'бритья', 'лезвие для бритья', 'бритвенный станок'] },
+  { group: COSMETICS_TNVED_GROUP, scope: 'MZKM', matchGroup: false, sourceGroup: 'Бритвы', terms: ['бритва', 'бритвы', 'бритье', 'бритья', 'лезвие', 'лезвия', 'лезвие для бритья', 'бритвенный станок', 'станок для бритья'] },
   { group: 'Моторные масла, смазочные материалы, тормозные жидкости и антифризы', scope: 'MZKM', terms: ['моторное масло', 'масло моторное', 'антифриз', 'смазка', 'тормозная жидкость', 'техническая жидкость'] },
   { group: 'Игры и игрушки для детей', scope: 'MZKM', terms: ['игрушка', 'игрушки', 'кукла', 'конструктор', 'пазл', 'настольная игра', 'детская игрушка'] },
   { group: 'Алкоголь', scope: 'INTERNAL', terms: ['алкоголь', 'водка', 'вино', 'пиво', 'спиртные напитки'] },
@@ -1687,12 +1687,8 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
       const rowScopeMatches = item => !item.scope || (item.scope === 'INTERNAL' ? row.t === 'INTERNAL' : row.t === 'MZKM')
       const synonymSpecificRowMatch = synonymMatches.some(item =>
         item.matchGroup === false
-        && item.terms.some(term => {
-          const normalizedTerm = normalizeTnvedSearchText(term)
-          const normalizedRawGroup = normalizeTnvedSearchText(row.g)
-          return (normalizedRawGroup === normalizedTerm || normalizedRawGroup.includes(normalizedTerm))
-            && rowScopeMatches(item)
-        })
+        && normalizeTnvedSearchText(item.sourceGroup || '') === normalizeTnvedSearchText(row.g)
+        && rowScopeMatches(item)
       )
       if (synonymSpecificRowMatch) return 1
 
