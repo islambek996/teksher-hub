@@ -1879,3 +1879,45 @@ html[data-theme="dark"] .assistant-feedback-toggle:hover{background:#203b58;bord
 .process-flow-connector svg{transform:rotate(45deg)}
 @media(min-width:900px){.process-flow-track{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:14px}.process-flow-item{min-width:0}.process-flow-connector{height:24px}.process-flow-node{min-height:66px;align-items:flex-start}.process-flow-copy strong{font-size:11px}.process-flow-connector svg{transform:none}}
 @media(max-width:560px){.process-flow-preview{padding:12px}.process-flow-node{padding:10px}.process-flow-preview-heading>div strong{font-size:12px}}
+
+
+/* Business-process decision metadata */
+.process-editor-decision-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--border-color, #dbe2ea);
+  border-radius: 12px;
+  background: var(--surface-muted, #f8fafc);
+}
+.process-step-meta {
+  display: block;
+  margin-top: 7px;
+  color: var(--text-secondary, #64748b);
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+.process-step-branch {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent-color, #64748b);
+  border-radius: 0 8px 8px 0;
+  background: var(--surface-muted, #f8fafc);
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+.process-step-branch > span {
+  display: block;
+}
+@media (min-width: 760px) {
+  .process-editor-decision-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .process-editor-decision-fields .form-field:first-child {
+    grid-column: 1 / -1;
+  }
+}
