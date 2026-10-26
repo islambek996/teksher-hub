@@ -12,6 +12,8 @@ At the repository root:
 4. Check `http://localhost:8080/api/health`.
 5. Log in using the bootstrap admin credentials from `.env`.
 
+The backend deliberately has no default database password or JWT signing secret. Set both explicitly in the environment; the application will not start with a missing/weak JWT secret. Error responses do not expose Spring's internal exception messages by default.
+
 The initial admin is created only if `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_ADMIN_PASSWORD` are provided and the username does not already exist. The bootstrap password must be at least 12 characters. Changing those variables later does not reset an existing account password.
 
 ## APIs
@@ -53,6 +55,7 @@ The initial admin is created only if `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_A
 - Requests use Groq's Responses API at `https://api.groq.com/openai/v1/responses`. The key remains on the backend and must never be put in frontend variables or committed to Git.
 - Extracted document text is sent to Groq for summarization. Do not submit tax secrets, personal or other restricted data without organizational approval.
 - Free-tier availability is subject to Groq's published model limits and may be throttled. Check current quotas in Groq Console. If no key is configured, the endpoint returns a configuration error.
+- On HTTP 429, the assistant and summary generator report the limit type when Groq provides it, request/token remaining counters, and the retry delay from `Retry-After` or the relevant `x-ratelimit-reset-*` header. If Groq provides no recovery time, the UI is told that no timing was supplied rather than showing a guessed wait.
 - The endpoint does not verify laws or official sources. A generated description is a draft and must be checked by an employee.
 
 ## Roles

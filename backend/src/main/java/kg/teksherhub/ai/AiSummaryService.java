@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import kg.teksherhub.document.DocumentTextExtractionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -42,18 +43,24 @@ public class AiSummaryService {
     private final ObjectMapper objectMapper;
     private final DocumentTextExtractionService textExtraction;
 
+    @Autowired
     public AiSummaryService(
             @Value("${app.ai.groq-api-key:}") String apiKey,
             @Value("${app.ai.groq-model:openai/gpt-oss-20b}") String model,
             ObjectMapper objectMapper,
             DocumentTextExtractionService textExtraction) {
+        this(apiKey, model, objectMapper, textExtraction, HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .build());
+    }
+
+    AiSummaryService(String apiKey, String model, ObjectMapper objectMapper,
+                     DocumentTextExtractionService textExtraction, HttpClient httpClient) {
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.model = model == null || model.isBlank() ? "openai/gpt-oss-20b" : model.trim();
         this.objectMapper = objectMapper;
         this.textExtraction = textExtraction;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
-                .build();
+        this.httpClient = httpClient;
     }
 
     public SummaryResponse summarize(SummaryRequest request, MultipartFile file) {
@@ -156,7 +163,9 @@ public class AiSummaryService {
                     httpRequest, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 log.warn("Groq Responses API returned HTTP {}", response.statusCode());
-                throw providerFailure(response.statusCode());
+                String rateLimitDetails = response.statusCode() == 429
+                        ? GroqRateLimitDetails.describe(response.headers(), response.body()) : null;
+                throw providerFailure(response.statusCode(), rateLimitDetails);
             }
 
             JsonNode root = objectMapper.readTree(response.body());
@@ -181,14 +190,16 @@ public class AiSummaryService {
         }
     }
 
-    private static ResponseStatusException providerFailure(int status) {
+    private static ResponseStatusException providerFailure(int status, String rateLimitDetails) {
         if (status == 401 || status == 403) {
             return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                     "Сервис ИИ отклонил ключ или у него нет доступа. Проверьте GROQ_API_KEY и доступность выбранной модели.");
         }
         if (status == 429) {
             return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "Сервис ИИ временно ограничил запросы. Проверьте лимиты и биллинг API.");
+                    rateLimitDetails == null || rateLimitDetails.isBlank()
+                            ? "Сервис ИИ временно ограничил запросы. Проверьте лимиты и биллинг API."
+                            : rateLimitDetails);
         }
         if (status == 400) {
             return new ResponseStatusException(HttpStatus.BAD_GATEWAY,
