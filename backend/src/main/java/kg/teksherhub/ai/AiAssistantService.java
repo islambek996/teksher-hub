@@ -85,7 +85,11 @@ public class AiAssistantService {
         this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     }
 
-    public AssistantResponse ask(String rawQuestion) {\n        return ask(rawQuestion, List.of());\n    }\n\n    public AssistantResponse ask(String rawQuestion, List<ChatTurn> rawHistory) {
+    public AssistantResponse ask(String rawQuestion) {
+        return ask(rawQuestion, List.of());
+    }
+
+    public AssistantResponse ask(String rawQuestion, List<ChatTurn> rawHistory) {
         String question = rawQuestion == null ? "" : rawQuestion.trim();
         if (question.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Напишите вопрос.");
