@@ -107,11 +107,11 @@ public class AiAssistantService {
         // Reserve room for business-process guides so procedural questions can use them too.
         List<Evidence> evidence = new ArrayList<>();
         if (!ranked.isEmpty()) {
-            evidence.addAll(buildEvidence(ranked.subList(0, Math.min(4, ranked.size())), terms));
+            evidence.addAll(buildEvidence(ranked.subList(0, Math.min(3, ranked.size())), terms));
         }
         if (evidence.size() < MAX_SOURCES) {
             evidence.addAll(buildBusinessProcessEvidence(question, terms, evidence.size() + 1,
-                    Math.min(2, MAX_SOURCES - evidence.size())));
+                    Math.min(2, Math.max(0, 4 - evidence.size()))));
         }
 
         // Use official public sources as a second layer after searching the hub's own knowledge.
