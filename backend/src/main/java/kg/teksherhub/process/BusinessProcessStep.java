@@ -10,5 +10,7 @@ public record BusinessProcessStep(
         @Size(max = 2000) String documents,
         @Size(max = 500) String decision,
         @Size(max = 500) String yesOutcome,
-        @Size(max = 500) String noOutcome
+        @Size(max = 500) String noOutcome,
+        Integer yesStepIndex,
+        Integer noStepIndex
 ) {}
