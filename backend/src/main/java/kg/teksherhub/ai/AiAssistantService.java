@@ -543,5 +543,6 @@ public class AiAssistantService {
     public record SourceReference(String id, int number, String sourceType, String title, String jurisdiction, String kind, String status,
                                   String statusLabel, String sourceUrl, String effectiveFrom, String effectiveUntil,
                                   String checkedAt, String excerpt) {}
-    public record ChatTurn(String role, String content) {}\n    public record AssistantResponse(String answer, List<SourceReference> sources, boolean insufficientEvidence) {}
+    public record ChatTurn(String role, String content) {}
+    public record AssistantResponse(String answer, List<SourceReference> sources, boolean insufficientEvidence) {}
 }
