@@ -2542,10 +2542,17 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
         + '/versions/' + version.versionNumber + '/restore', { method: 'POST' })
       setGuides(current => current.map(item => item.id === saved.id ? saved : item))
       setProgress(current => ({ ...current, [saved.id]: [] }))
-      await apiRequest('/api/business-process-progress/' + encodeURIComponent(saved.id), { method: 'DELETE' }).catch(() => {})
+      let progressResetFailed = false
+      try {
+        await apiRequest('/api/business-process-progress/' + encodeURIComponent(saved.id), { method: 'DELETE' })
+      } catch {
+        progressResetFailed = true
+      }
       const rows = await apiRequest('/api/business-processes/' + encodeURIComponent(saved.id) + '/versions')
       setVersionHistory(Array.isArray(rows) ? rows : [])
-      setGuideMessage('Восстановлена версия ' + version.versionNumber + '. Предыдущая редакция сохранена в истории.')
+      setGuideMessage(progressResetFailed
+        ? 'Версия восстановлена, но сервер не подтвердил сброс прогресса. Обнови страницу и проверь отмеченные шаги.'
+        : 'Восстановлена версия ' + version.versionNumber + '. Предыдущая редакция сохранена в истории.')
       setVersionHistoryOpen(false)
     } catch (error) {
       setGuideMessage(error.message || 'Не удалось восстановить версию инструкции.')
