@@ -2739,7 +2739,11 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
                 return <label className={'process-step' + (isDone ? ' completed' : '')} key={step.title + '-' + index}>
                   <input type="checkbox" checked={isDone} onChange={() => toggleStep(index)} />
                   <span className="process-step-number">{String(index + 1).padStart(2, '0')}</span>
-                  <span className="process-step-content"><strong>{step.title}</strong><span>{step.detail}</span></span>
+                  <span className="process-step-content"><strong>{step.title}</strong><span>{step.detail}</span>
+                    {step.responsible && <span className="process-step-meta"><b>Ответственный:</b> {step.responsible}</span>}
+                    {step.documents && <span className="process-step-meta"><b>Документы и условия:</b> {step.documents}</span>}
+                    {step.decision && <span className="process-step-branch"><b>Контрольный вопрос:</b> {step.decision}<span><b>Да:</b> {step.yesOutcome || 'Продолжить по инструкции'}</span><span><b>Нет:</b> {step.noOutcome || 'Устранить причину и повторить проверку'}</span></span>}
+                  </span>
                   {isDone && <CheckCircle2 className="process-step-check" size={18}/>}
                 </label>
               })}
