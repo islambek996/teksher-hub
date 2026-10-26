@@ -1257,3 +1257,20 @@ html[data-theme="dark"] .ai-summary-privacy{background:#3a321f;border-color:#5e4
 
 .review-modal-error{display:flex;align-items:flex-start;gap:8px;margin-top:13px;padding:10px 11px;font-size:10px;line-height:1.55}
 .review-modal-error svg{flex:0 0 auto;margin-top:1px}
+
+
+/* Product group cards navigate directly to filtered knowledge materials */
+.mzkm-group-card-button{position:relative;width:100%;font:inherit;text-align:left;cursor:pointer;transition:border-color .16s,box-shadow .16s,transform .16s}
+.mzkm-group-card-button:hover{border-color:#a9c3e0;box-shadow:0 8px 22px rgba(35,75,119,.09);transform:translateY(-1px)}
+.mzkm-group-card-button:focus-visible,.internal-group-find:focus-visible{outline:3px solid rgba(68,129,194,.35);outline-offset:2px}
+.mzkm-group-search-icon{flex-shrink:0;margin:3px 0 0 auto;color:#7990aa}
+.internal-group-actions,.internal-ukm-actions{display:flex;align-items:center;flex-wrap:wrap;gap:9px 13px}
+.internal-group-find{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:6px 9px;border:1px solid #cbded2;border-radius:7px;background:#f1f8f3;color:#2f7252;font:inherit;font-size:10px;font-weight:750;cursor:pointer}
+.internal-group-find:hover{background:#e5f2e9;border-color:#a9cbb6}
+.internal-ukm-actions{margin-top:8px}
+.internal-ukm-actions a{margin-top:0}
+html[data-theme="dark"] .mzkm-group-card-button:hover{border-color:#5379a0;box-shadow:0 8px 22px rgba(0,0,0,.18)}
+html[data-theme="dark"] .mzkm-group-search-icon{color:#a4bdd8}
+html[data-theme="dark"] .internal-group-find{background:#1c3d30;border-color:#3b6652;color:#a7dfbe}
+html[data-theme="dark"] .internal-group-find:hover{background:#244c3a;border-color:#568568}
+@media(max-width:760px){.mzkm-group-search-icon{width:15px;flex:0 0 15px}.internal-group-actions{align-items:flex-start;flex-direction:column}.internal-ukm-actions{align-items:flex-start;flex-direction:column}}
