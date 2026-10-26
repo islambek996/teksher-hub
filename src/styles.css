@@ -1817,3 +1817,13 @@ html[data-theme="dark"] .assistant-feedback-toggle:hover{background:#203b58;bord
   .home-task-actions { justify-content:space-between; }
   .home-task-actions select { max-width:none; flex:1; }
 }
+
+/* Personal document favorites */
+.home-favorites-panel{margin-top:14px;min-width:0}
+.favorite-document-row{display:flex;align-items:center;gap:7px;border-top:1px solid #edf1f6;min-width:0}
+.favorite-document-row .recent-document{flex:1;min-width:0;border-top:0;margin:0;padding:10px 0}
+.favorite-document-open{text-decoration:none}
+.favorite-remove-button{flex:0 0 30px;width:30px;height:30px;display:grid;place-items:center;color:#b38a35;border:1px solid #eadfbf;background:#fffaf0;border-radius:8px}
+.favorite-remove-button:hover{color:#8c681c;background:#fff3d6}
+.wiki-favorite-button{display:inline-flex;align-items:center;gap:6px}
+@media (max-width:760px){.favorite-document-row .recent-document{gap:7px}.favorite-document-row .recent-jurisdiction{width:33px;flex-basis:33px}.favorite-remove-button{flex-basis:28px;width:28px;height:28px}}
