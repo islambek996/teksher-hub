@@ -6,8 +6,10 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AiAssistantRetrievalTest {
@@ -59,6 +61,49 @@ class AiAssistantRetrievalTest {
         assertTrue(AiAssistantService.jurisdictionRankingBoost(kyrgyz, "Порядок ГАИС МТ в КР") > 0);
         assertTrue(AiAssistantService.jurisdictionRankingBoost(russian, "Правила Честного ЗНАКА РФ") > 0);
         assertEquals(0, AiAssistantService.jurisdictionRankingBoost(kyrgyz, "МЗКМ: заказ кодов"));
+    }
+
+    @Test
+    void assistantDoesNotInventADeveloperBiography() {
+        String answer = AiAssistantService.assistantIdentityReply("кто тебя создал");
+
+        assertTrue(answer != null);
+        assertTrue(answer.contains("TEKSHER HUB"));
+        assertTrue(answer.contains("Groq API"));
+        assertFalse(answer.contains("Жакыпбеков"));
+        assertFalse(answer.contains("самый красивый сотрудник"));
+    }
+
+    @Test
+    void missingEvidencePhrasesAreFlaggedAsInsufficient() {
+        assertTrue(AiAssistantService.looksInsufficient(
+                "В доступных материалах это не подтверждено."));
+        assertTrue(AiAssistantService.looksInsufficient(
+                "В материалах не указано, действует ли это требование."));
+        assertTrue(AiAssistantService.looksInsufficient(
+                "Маалымат жетишсиз."));
+        assertFalse(AiAssistantService.looksInsufficient(
+                "Порядок подтверждён пунктом 4 найденной инструкции [1]."));
+    }
+
+    @Test
+    void acceptsOnlyCitationsToAvailableSources() {
+        AiAssistantService.CitationCheck valid =
+                AiAssistantService.validateCitations("Порядок указан в инструкции [1].", Set.of(1, 2));
+        assertEquals("Порядок указан в инструкции [1].", valid.answer());
+        assertFalse(valid.invalidFound());
+        assertFalse(valid.missingFound());
+
+        AiAssistantService.CitationCheck invalid =
+                AiAssistantService.validateCitations("Порядок указан [7].", Set.of(1, 2));
+        assertEquals("Порядок указан.", invalid.answer());
+        assertTrue(invalid.invalidFound());
+        assertTrue(invalid.missingFound());
+
+        AiAssistantService.CitationCheck missing =
+                AiAssistantService.validateCitations("Порядок указан в инструкции.", Set.of(1, 2));
+        assertTrue(missing.missingFound());
+        assertFalse(missing.invalidFound());
     }
 
     private static DocumentRecord document(DocumentStatus status) {
