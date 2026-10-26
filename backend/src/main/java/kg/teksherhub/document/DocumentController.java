@@ -100,7 +100,9 @@ public class DocumentController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public void delete(@PathVariable UUID id) { service.delete(id); }
+    public void delete(@PathVariable UUID id, @AuthenticationPrincipal UserAccount user) {
+        service.delete(id, user.getUsername());
+    }
 
     public record BulkImportRequest(
             @NotEmpty @Size(max = 100) List<DocumentRequest> documents
