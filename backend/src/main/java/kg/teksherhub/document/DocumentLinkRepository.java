@@ -11,4 +11,5 @@ public interface DocumentLinkRepository extends JpaRepository<DocumentLink, Docu
     @Query("select l.relatedDocument.id from DocumentLink l where l.document.id = :documentId")
     List<UUID> findRelatedIdsByDocumentId(@Param("documentId") UUID documentId);
     void deleteAllByDocumentId(UUID documentId);
+    void deleteAllByRelatedDocumentId(UUID relatedDocumentId);
 }
