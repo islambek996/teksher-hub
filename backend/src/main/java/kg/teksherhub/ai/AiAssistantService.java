@@ -104,6 +104,18 @@ public class AiAssistantService {
             return new AssistantResponse(conversationalReply, List.of(), false);
         }
 
+        String normalizedQuestion = question.toLowerCase(Locale.ROOT).replace('ё', 'е');
+        if (normalizedQuestion.contains("кто тебя создал")
+                || normalizedQuestion.contains("кто тебя разработал")
+                || normalizedQuestion.contains("кто твой создатель")
+                || normalizedQuestion.contains("кто твой разработчик")
+                || normalizedQuestion.contains("кто вас создал")
+                || normalizedQuestion.contains("кто создал тебя")) {
+            return new AssistantResponse("Меня создал самый красивый сотрудник оператора маркировки – старший специалист Жакыпбеков Исламбек Эрланович! 😎\\n\\n"
+                    + "Исламбек глубоко разбирается в процессах маркировки, нормативных требованиях и цифровых решениях. Он развивает TEKSHER HUB, стремится сделать сложные процессы понятнее для пользователей и ищет практичные способы автоматизировать работу. За инициативность, техническое любопытство и умение превращать идеи в работающие решения – отдельный респект! 👏",
+                    List.of(), false);
+        }
+
         List<String> terms = searchTerms(question);
         if (terms.isEmpty()) {
             return insufficient("Не удалось выделить поисковые слова из вопроса. Попробуйте сформулировать его конкретнее, указав систему, документ, товарную группу или текст ошибки.", List.of());
