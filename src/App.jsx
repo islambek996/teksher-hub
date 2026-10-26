@@ -591,21 +591,39 @@ function App() {
   }
 
   useEffect(() => {
+    const knownSections = new Set([
+      'home', 'RU', 'KG', 'EAEU', 'assistant', 'documents', 'groups',
+      'processes', 'knowledge', 'monitoring', 'users'
+    ])
+
     const restoreRoute = () => {
-      const route = window.history.state
-      if (route?.app === 'teksher-hub') {
-        setActive(route.section || 'home')
-        const doc = route.docId ? documents.find(item => String(item.id) === String(route.docId)) : null
+      // history.state is not reliably preserved by browsers on refresh; the URL hash is.
+      const hash = window.location.hash.replace(/^#/, '')
+      const match = hash.match(/^([^/]+)(?:/document/(.*))?$/)
+      const hashSection = match?.[1] || ''
+      const section = knownSections.has(hashSection) ? hashSection : ''
+      const docId = match?.[2] ? decodeURIComponent(match[2]) : null
+
+      if (section) {
+        setActive(section)
+        const doc = docId ? documents.find(item => String(item.id) === String(docId)) : null
         setSelectedDoc(doc || null)
       } else {
         setActive('home')
         setSelectedDoc(null)
+        if (!hash) syncRoute('home', null, true)
       }
-      setActionError(''); setSuccessMessage('')
+      setActionError('')
+      setSuccessMessage('')
     }
-    if (!window.history.state?.app) syncRoute('home', null, true)
+
+    restoreRoute()
     window.addEventListener('popstate', restoreRoute)
-    return () => window.removeEventListener('popstate', restoreRoute)
+    window.addEventListener('hashchange', restoreRoute)
+    return () => {
+      window.removeEventListener('popstate', restoreRoute)
+      window.removeEventListener('hashchange', restoreRoute)
+    }
   }, [documents])
 
   const refreshDocuments = async () => {
