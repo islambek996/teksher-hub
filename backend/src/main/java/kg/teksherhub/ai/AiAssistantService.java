@@ -65,6 +65,7 @@ public class AiAssistantService {
     private final DocumentRepository documents;
     private final DocumentFileRepository files;
     private final BusinessProcessGuideRepository businessProcesses;
+    private final OfficialWebSearchService officialWebSearch;
 
     public AiAssistantService(
             @Value("${app.ai.groq-api-key:}") String apiKey,
@@ -72,13 +73,15 @@ public class AiAssistantService {
             ObjectMapper objectMapper,
             DocumentRepository documents,
             DocumentFileRepository files,
-            BusinessProcessGuideRepository businessProcesses) {
+            BusinessProcessGuideRepository businessProcesses,
+            OfficialWebSearchService officialWebSearch) {
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.model = model == null || model.isBlank() ? "openai/gpt-oss-20b" : model.trim();
         this.objectMapper = objectMapper;
         this.documents = documents;
         this.files = files;
         this.businessProcesses = businessProcesses;
+        this.officialWebSearch = officialWebSearch;
         this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     }
 
@@ -108,10 +111,35 @@ public class AiAssistantService {
         }
         if (evidence.size() < MAX_SOURCES) {
             evidence.addAll(buildBusinessProcessEvidence(question, terms, evidence.size() + 1,
-                    MAX_SOURCES - evidence.size()));
+                    Math.min(2, MAX_SOURCES - evidence.size())));
+        }
+
+        // Use official public sources as a second layer after searching the hub's own knowledge.
+        // External search failures are non-fatal: the assistant can still answer from hub materials.
+        if (evidence.size() < MAX_SOURCES) {
+            try {
+                List<OfficialWebSearchService.WebSource> webSources = officialWebSearch.search(question, terms);
+                for (OfficialWebSearchService.WebSource web : webSources) {
+                    if (evidence.size() >= MAX_SOURCES) break;
+                    int number = evidence.size() + 1;
+                    String context = "ID источника: " + number + "\\n"
+                            + "Тип материала: Официальный интернет-источник\\n"
+                            + "Название: " + web.title() + "\\n"
+                            + "URL: " + web.url() + "\\n"
+                            + "Фрагмент поисковой выдачи: " + web.snippet() + "\\n"
+                            + (web.content().isBlank() ? "" : "Извлечённый текст страницы (может быть сокращён): "
+                            + truncate(web.content(), 4_000) + "\\n");
+                    String excerpt = !web.snippet().isBlank() ? web.snippet() : truncate(web.content(), 360);
+                    evidence.add(new Evidence(number, web.url(), "WEB", web.title(), "Официальный интернет-источник",
+                            "Внешний источник", "EXTERNAL", "Внешний источник – требует проверки актуальности",
+                            web.url(), "", "", "", excerpt, truncate(context, 4_800), 1));
+                }
+            } catch (RuntimeException ex) {
+                log.info("Official web search failed; continuing with internal knowledge only");
+            }
         }
         if (evidence.isEmpty()) {
-            return insufficient("В базе знаний не нашлось материалов, которые подтверждают ответ на этот вопрос. Попробуйте другие ключевые слова или обратитесь к ответственному специалисту.", List.of());
+            return insufficient("В базе знаний и доступных официальных интернет-источниках не нашлось материалов, которые подтверждают ответ на этот вопрос. Попробуйте другие ключевые слова или обратитесь к ответственному специалисту.", List.of());
         }
 
         String answer = generateAnswer(question, evidence);
