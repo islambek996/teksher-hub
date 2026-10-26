@@ -1356,7 +1356,7 @@ function App() {
               files={API_ENABLED ? apiFiles : localAttachmentFiles} versions={documentVersions} documents={documents} onOpenRelated={docId => { const related = documents.find(item => item.id === docId); if (related) openDocument(related) }} onDownload={handleDownloadFile} onUploadFile={handleUploadAttachment} uploadingFile={isUploadingAttachment} canUploadFiles={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} onReview={handleReviewDocument} canReindex={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)} onReindexFile={handleReindexFile} reindexingFileId={reindexingFileId} />
             : active === 'assistant' ? <AiAssistantSection apiEnabled={API_ENABLED} isAdmin={currentUser?.role === 'ADMIN'} onOpenDocument={docId => { const target = documents.find(item => String(item.id) === String(docId)); if (target) { setActive('documents'); setSelectedDoc(target); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы'); syncRoute('documents', target.id) } }} />
             : active === 'knowledge' ? <KnowledgeCenterSection documents={documents} onSelectKind={(kind) => { setActive('documents'); setSelectedDoc(null); setQuery(''); setFilter(kind); setStatusFilter('Все статусы'); syncRoute('documents') }} onOpenAll={() => openSection('documents')} onAdd={openNewDocumentModal} canAdd={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} />
-            : active === 'groups' ? <ProductGroupsSection onOpen={openSection} onSearchGroup={searchProductGroupMaterials} />
+            : active === 'groups' ? <ProductGroupsSection onOpen={openSection} onSearchGroup={searchProductGroupMaterials} canManage={!API_ENABLED || ["ADMIN", "EDITOR"].includes(currentUser?.role)} />
             : active === 'processes' ? <ProcessGuidesSection key={currentUser?.username || 'local'} progressStorageKey={API_ENABLED ? PROCESS_PROGRESS_KEY + ':' + (currentUser?.username || 'anonymous') : PROCESS_PROGRESS_KEY} onSearchMaterials={searchProductGroupMaterials} canEdit={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'} />
             : active === 'monitoring' ? <MonitorSection monitors={monitors} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
                 onAdd={() => { setActionError(''); setMonitorModalOpen(true) }} onCheck={handleCheckMonitor} onDelete={handleDeleteMonitor} />
@@ -1634,31 +1634,52 @@ const TNVED_SEARCH_SYNONYMS = [
   { group: 'Табак', scope: 'INTERNAL', terms: ['табак', 'сигареты', 'табачная продукция', 'табачные изделия'] },
 ]
 
-function ProductGroupsSection({ onOpen, onSearchGroup }) {
-  const mzkmGroups = [
-    'Обувные товары',
-    'Белье постельное, столовое, туалетное и кухонное',
-    'Предметы одежды',
-    'Духи и туалетная вода',
-    'Фотокамеры (кроме кинокамер), фотовспышки и лампы-вспышки',
-    'Молочная продукция',
-    'Продукты, используемые для кормления животных',
-    'Косметика, бытовая химия и товары личной гигиены',
-    'Моторные масла, смазочные материалы, тормозные жидкости и антифризы',
-    'Игры и игрушки для детей',
-  ]
-  const internalGroups = [
-    {
-      name: 'Алкоголь',
-      description: 'Национальная внутренняя маркировка Кыргызской Республики. Применимость и способ маркировки проверять по действующим актам КР и официальным методическим правилам.',
-      source: 'https://main.teksher.kg/internal-marking.html',
-    },
-    {
-      name: 'Табак',
-      description: 'Национальная внутренняя маркировка Кыргызской Республики. Для конкретного вида продукции проверять действующие требования и методические правила.',
-      source: 'https://main.teksher.kg/internal-marking.html',
-    },
-  ]
+const PRODUCT_GROUPS_STORAGE_KEY = 'teksher-hub-product-groups-v1'
+const DEFAULT_MZKM_GROUPS = ['Обувные товары', 'Белье постельное, столовое, туалетное и кухонное', 'Предметы одежды', 'Духи и туалетная вода', 'Фотокамеры (кроме кинокамер), фотовспышки и лампы-вспышки', 'Молочная продукция', 'Продукты, используемые для кормления животных', 'Косметика, бытовая химия и товары личной гигиены', 'Моторные масла, смазочные материалы, тормозные жидкости и антифризы', 'Игры и игрушки для детей']
+const DEFAULT_INTERNAL_GROUPS = [
+ { name: 'Алкоголь', description: 'Национальная внутренняя маркировка Кыргызской Республики. Применимость и способ маркировки проверять по действующим актам КР и официальным методическим правилам.', source: 'https://main.teksher.kg/internal-marking.html' },
+ { name: 'Табак', description: 'Национальная внутренняя маркировка Кыргызской Республики. Для конкретного вида продукции проверять действующие требования и методические правила.', source: 'https://main.teksher.kg/internal-marking.html' }
+]
+function loadProductGroups() {
+ try {
+  const saved = JSON.parse(window.localStorage.getItem(PRODUCT_GROUPS_STORAGE_KEY) || 'null')
+  if (saved && Array.isArray(saved.mzkmGroups) && Array.isArray(saved.internalGroups)) return saved
+ } catch { /* defaults */ }
+ return { mzkmGroups: DEFAULT_MZKM_GROUPS, internalGroups: DEFAULT_INTERNAL_GROUPS }
+}
+function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
+ const [groupData, setGroupData] = useState(loadProductGroups)
+ const [editingGroup, setEditingGroup] = useState(null)
+ const [groupDraft, setGroupDraft] = useState({ name: '', description: '', source: '' })
+ const mzkmGroups = groupData.mzkmGroups
+ const internalGroups = groupData.internalGroups
+ useEffect(() => { try { window.localStorage.setItem(PRODUCT_GROUPS_STORAGE_KEY, JSON.stringify(groupData)) } catch { /* storage unavailable */ } }, [groupData])
+ const openGroupEditor = (scope, index = -1) => {
+  const existing = scope === 'MZKM' ? mzkmGroups[index] : internalGroups[index]
+  setEditingGroup({ scope, index })
+  setGroupDraft(scope === 'MZKM' ? { name: existing || '', description: '', source: '' } : existing ? { ...existing } : { name: '', description: 'Национальная внутренняя маркировка Кыргызской Республики. Требования проверять по действующим нормативным актам.', source: 'https://main.teksher.kg/internal-marking.html' })
+ }
+ const saveGroup = event => {
+  event.preventDefault()
+  const name = groupDraft.name.trim()
+  if (!name || !editingGroup) return
+  setGroupData(previous => {
+   if (editingGroup.scope === 'MZKM') {
+    const next = [...previous.mzkmGroups]
+    if (editingGroup.index < 0) next.push(name); else next[editingGroup.index] = name
+    return { ...previous, mzkmGroups: next }
+   }
+   const next = [...previous.internalGroups]
+   const item = { name, description: groupDraft.description.trim(), source: groupDraft.source.trim() }
+   if (editingGroup.index < 0) next.push(item); else next[editingGroup.index] = item
+   return { ...previous, internalGroups: next }
+  })
+  setEditingGroup(null)
+ }
+ const deleteGroup = (scope, index) => {
+  if (!window.confirm('Удалить эту товарную группу?')) return
+  setGroupData(previous => scope === 'MZKM' ? { ...previous, mzkmGroups: previous.mzkmGroups.filter((_, i) => i !== index) } : { ...previous, internalGroups: previous.internalGroups.filter((_, i) => i !== index) })
+ }
 
   const [tnvedCatalog, setTnvedCatalog] = useState([])
   const [tnvedLoading, setTnvedLoading] = useState(true)
@@ -1920,13 +1941,14 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
   const getCount = (group, scope) => tnvedGroupCounts.get(scope + '|' + group) || 0
 
   return <div className="product-groups-page">
+    {editingGroup && <div className="modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setEditingGroup(null) }}><section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="product-group-editor-title"><div className="modal-header"><h2 id="product-group-editor-title">{editingGroup.index < 0 ? 'Добавить товарную группу' : 'Редактировать товарную группу'}</h2><button type="button" className="icon-button" onClick={() => setEditingGroup(null)} aria-label="Закрыть"><X size={18}/></button></div><form className="form-stack" onSubmit={saveGroup}><label>Название группы<input required maxLength={240} value={groupDraft.name} onChange={event => setGroupDraft(draft => ({ ...draft, name: event.target.value }))}/></label>{editingGroup.scope === 'INTERNAL' && <><label>Описание<textarea rows={4} value={groupDraft.description} onChange={event => setGroupDraft(draft => ({ ...draft, description: event.target.value }))}/></label><label>Ссылка на источник<input type="url" value={groupDraft.source} onChange={event => setGroupDraft(draft => ({ ...draft, source: event.target.value }))}/></label></>}<div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setEditingGroup(null)}>Отмена</button><button type="submit" className="primary-button">Сохранить</button></div></form></section></div>}
     <div className="page-heading">
       <div>
         <div className="section-kicker">СПРАВОЧНИК / МАРКИРОВКА ТОВАРОВ</div>
         <h1>Товарные группы</h1>
         <p>Единые группы МЗКМ, национальные товарные группы КР и поиск кодов ТН ВЭД по предоставленному перечню.</p>
       </div>
-      <div className="record-count">10 групп МЗКМ · 2 внутренние</div>
+      <div className="record-count">{mzkmGroups.length} групп МЗКМ · {internalGroups.length} внутренних</div>
     </div>
 
     <section className="tnved-checker" id="tnved-checker" aria-labelledby="tnved-checker-title">
@@ -2092,14 +2114,14 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
           <h2>Товарные группы МЗКМ</h2>
           <p>Единый список с титульной страницы руководства. Нажмите «Коды ТН ВЭД», чтобы открыть соответствующие строки из Excel.</p>
         </div>
-        <span className="record-count">10 групп</span>
+        <span className="record-count">{mzkmGroups.length} групп</span>{canManage && <button type="button" className="secondary-button" onClick={() => openGroupEditor("MZKM")}>＋ Добавить группу</button>}
       </div>
       <section className="mzkm-groups-grid" aria-label="Единый список товарных групп МЗКМ v2.1">
-        {mzkmGroups.map((name, index) => <article className="mzkm-group-card mzkm-group-card-interactive" key={name}>
+        {mzkmGroups.map((name, index) => <article className="mzkm-group-card mzkm-group-card-interactive" key={name + index}>
           <div className="mzkm-group-number">{String(index + 1).padStart(2, '0')}</div>
           <div className="mzkm-group-copy">
             <h3>{name}</h3>
-            <p>{getCount(name, 'MZKM')} кодов из Excel · МЗКМ v2.1</p>
+            <p>{getCount(name, 'MZKM')} кодов из Excel · МЗКМ v2.1</p>{canManage && <div className="tnved-group-actions"><button type="button" className="tnved-group-button" onClick={() => openGroupEditor('MZKM', index)}><Pencil size={13}/> Изменить</button><button type="button" className="tnved-group-button" onClick={() => deleteGroup('MZKM', index)}><Trash2 size={13}/> Удалить</button></div>}
             <div className="tnved-group-actions">
               <button type="button" className="tnved-group-button primary" onClick={() => selectTnvedGroup(name, 'MZKM')}>Коды ТН ВЭД ({getCount(name, 'MZKM')})</button>
               <button type="button" className="tnved-group-button" onClick={() => onSearchGroup(name)}>Материалы</button>
@@ -2117,14 +2139,14 @@ function ProductGroupsSection({ onOpen, onSearchGroup }) {
           <h2>Товарные группы внутренней маркировки</h2>
           <p>По официальному перечню и приложенному Excel внутренние коды представлены для алкоголя и табака.</p>
         </div>
-        <span className="record-count">2 группы</span>
+        <span className="record-count">{internalGroups.length} групп</span>{canManage && <button type="button" className="secondary-button" onClick={() => openGroupEditor("INTERNAL")}>＋ Добавить группу</button>
       </div>
       <section className="internal-groups-grid" aria-label="Товарные группы внутренней маркировки Кыргызстана">
         {internalGroups.map((group, index) => <article className="internal-group-card" key={group.name}>
           <div className="internal-group-badge">{String(index + 1).padStart(2, '0')}</div>
           <div className="internal-group-copy">
             <h3>{group.name}</h3>
-            <p>{group.description}</p>
+            <p>{group.description}</p>{canManage && <div className="internal-group-actions"><button type="button" className="internal-group-find" onClick={() => openGroupEditor("INTERNAL", index)}><Pencil size={13}/> Изменить</button><button type="button" className="internal-group-find" onClick={() => deleteGroup("INTERNAL", index)}><Trash2 size={13}/> Удалить</button></div>
             <div className="internal-group-actions">
               <button type="button" className="internal-group-find" onClick={() => onSearchGroup(group.name)}><Search size={13}/> Найти материалы</button>
               <button type="button" className="internal-group-find" onClick={() => selectTnvedGroup(group.name, 'INTERNAL')}>Коды ТН ВЭД ({getCount(group.name, 'INTERNAL')})</button>
