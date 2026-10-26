@@ -2282,18 +2282,51 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
     try { window.localStorage.setItem(PROCESS_PROGRESS_KEY, JSON.stringify(progress)) } catch { /* storage unavailable */ }
   }, [progress])
 
+  useEffect(() => {
+    if (!API_ENABLED) return undefined
+    let cancelled = false
+    apiRequest('/api/business-process-progress')
+      .then(rows => {
+        if (cancelled || !rows || typeof rows !== 'object') return
+        const serverProgress = {}
+        Object.entries(rows).forEach(([processId, values]) => {
+          serverProgress[processId] = Array.isArray(values)
+            ? values.map(value => Number(value)).filter(value => Number.isInteger(value) && value >= 0)
+            : []
+        })
+        setProgress(current => ({ ...current, ...serverProgress }))
+      })
+      .catch(error => {
+        if (!cancelled) setGuideMessage('Не удалось загрузить прогресс с сервера. Локальная копия сохранена.')
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  const persistProgress = (processId, steps) => {
+    if (!API_ENABLED || !processId || processId.startsWith('local-')) return
+    apiRequest('/api/business-process-progress/' + encodeURIComponent(processId), {
+      method: 'PUT',
+      body: steps.map(String),
+    }).catch(() => setGuideMessage('Изменения сохранены в браузере, но не удалось синхронизировать прогресс с сервером.'))
+  }
+
   const toggleStep = index => {
     setProgress(current => {
       const currentSteps = Array.isArray(current[guide.id]) ? current[guide.id] : []
       const next = currentSteps.includes(index)
         ? currentSteps.filter(step => step !== index)
         : [...currentSteps.filter(step => Number.isInteger(step) && step >= 0 && step < guide.steps.length), index]
+      persistProgress(guide.id, next)
       return { ...current, [guide.id]: next }
     })
   }
 
   const resetGuide = () => {
     setProgress(current => ({ ...current, [guide.id]: [] }))
+    if (API_ENABLED && !guide.id.startsWith('local-')) {
+      apiRequest('/api/business-process-progress/' + encodeURIComponent(guide.id), { method: 'DELETE' })
+        .catch(() => setGuideMessage('Прогресс сброшен локально, но сервер не подтвердил сброс.'))
+    }
   }
 
   const openNewGuideEditor = () => {
