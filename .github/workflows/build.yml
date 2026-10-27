@@ -10,6 +10,8 @@ on:
 jobs:
   frontend:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -19,6 +21,16 @@ jobs:
           node-version: 22
       - name: Install frontend dependencies
         run: npm install
+      - name: Commit generated lockfile once when bootstrapping the repository
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          if ! git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "Add reproducible frontend dependency lockfile"
+            git push origin HEAD:main
+          fi
       - name: Build frontend
         run: npm run build
       - name: Validate TN VED spreadsheet catalogue
