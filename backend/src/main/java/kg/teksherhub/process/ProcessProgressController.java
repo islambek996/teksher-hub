@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kg.teksherhub.user.UserAccount;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -72,14 +74,11 @@ public class ProcessProgressController {
         int updated = jdbc.update("""
                 UPDATE business_process_progress
                 SET execution_status = 'COMPLETED', completed_at = NOW(), updated_at = NOW()
-                WHERE username = ? AND process_id = ?
+                WHERE username = ? AND process_id = ? AND execution_status = 'IN_PROGRESS'
                 """, user.getUsername(), processId);
         if (updated == 0) {
-            jdbc.update("""
-                    INSERT INTO business_process_progress
-                        (username, process_id, completed_steps_json, updated_at, execution_status, started_at, completed_at)
-                    VALUES (?, ?, '[]', NOW(), 'COMPLETED', NOW(), NOW())
-                    """, user.getUsername(), processId);
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Сначала начните выполнение бизнес-процесса. Уже завершённое выполнение нельзя завершить повторно.");
         }
         jdbc.update("""
                 INSERT INTO audit_log(username, action, entity_type, entity_id, entity_label, details, created_at)

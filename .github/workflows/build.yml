@@ -180,6 +180,8 @@ jobs:
           curl --silent --show-error --fail "http://localhost:8080/api/business-processes/$PROCESS_ID/versions" -H "Authorization: Bearer $READER_TOKEN" | jq -e 'length == 1 and .[0].workflowStatus == "PUBLISHED"'
           READER_OLD_VERSION_STATUS=$(curl --silent --output /tmp/ci-reader-old-version.json --write-out '%{http_code}' "http://localhost:8080/api/business-processes/$PROCESS_ID/versions/1" -H "Authorization: Bearer $READER_TOKEN")
           test "$READER_OLD_VERSION_STATUS" = "403"
+          UNSTARTED_COMPLETE_STATUS=$(curl --silent --output /tmp/ci-unstarted-process-complete.json --write-out '%{http_code}' -X POST "http://localhost:8080/api/business-process-progress/$PROCESS_ID/complete" -H "Authorization: Bearer $READER_TOKEN")
+          test "$UNSTARTED_COMPLETE_STATUS" = "409"
           curl --silent --show-error --fail -X POST "http://localhost:8080/api/business-process-progress/$PROCESS_ID/start" -H "Authorization: Bearer $READER_TOKEN" | jq -e '.started == true'
           curl --silent --show-error --fail -X PUT "http://localhost:8080/api/business-process-progress/$PROCESS_ID" -H "Authorization: Bearer $READER_TOKEN" -H 'Content-Type: application/json' -d '["0"]' | jq -e '.saved == true and .completedSteps == ["0"]'
           curl --silent --show-error --fail -X POST "http://localhost:8080/api/business-process-progress/$PROCESS_ID/complete" -H "Authorization: Bearer $READER_TOKEN" | jq -e '.completed == true'
