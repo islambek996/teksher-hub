@@ -528,7 +528,8 @@ public class BusinessProcessGuideService {
                 String scheme = parsed.getScheme();
                 if (scheme == null
                         || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))
-                        || parsed.getHost() == null || parsed.getHost().isBlank()) {
+                        || parsed.getHost() == null || parsed.getHost().isBlank()
+                        || parsed.getUserInfo() != null) {
                     throw new IllegalArgumentException();
                 }
             } catch (IllegalArgumentException ex) {

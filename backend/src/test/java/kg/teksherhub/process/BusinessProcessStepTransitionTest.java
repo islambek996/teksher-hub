@@ -63,6 +63,18 @@ class BusinessProcessStepTransitionTest {
     }
 
     @Test
+    void rejectsUrlsContainingUserInfo() {
+        assertThrows(IllegalArgumentException.class, () ->
+                BusinessProcessGuideService.validateSources(List.of(
+                        new BusinessProcessSource("Документация", "https://example.org@evil.example/path")
+                )));
+        assertThrows(IllegalArgumentException.class, () ->
+                BusinessProcessGuideService.validateSources(List.of(
+                        new BusinessProcessSource("Документация", "https://user:password@example.org/path")
+                )));
+    }
+
+    @Test
     void rejectsNullSourceEntries() {
         assertThrows(IllegalArgumentException.class, () ->
                 BusinessProcessGuideService.validateSources(java.util.Arrays.asList((BusinessProcessSource) null)));
