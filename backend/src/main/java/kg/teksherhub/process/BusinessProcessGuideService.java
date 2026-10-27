@@ -59,6 +59,15 @@ public class BusinessProcessGuideService {
         List<WorkflowStatusCount> counts = jdbc.query(
                 "SELECT workflow_status, COUNT(*) AS total FROM business_process_guides GROUP BY workflow_status ORDER BY workflow_status",
                 (rs, rowNum) -> new WorkflowStatusCount(rs.getString("workflow_status"), rs.getLong("total")));
+        ExecutionMetrics metrics = jdbc.queryForObject("""
+                SELECT COUNT(*) AS total_executions,
+                       COUNT(*) FILTER (WHERE execution_status = 'IN_PROGRESS') AS in_progress,
+                       COUNT(*) FILTER (WHERE execution_status = 'COMPLETED') AS completed,
+                       COUNT(DISTINCT username) AS unique_employees
+                FROM business_process_progress
+                """, (rs, rowNum) -> new ExecutionMetrics(
+                rs.getLong("total_executions"), rs.getLong("in_progress"),
+                rs.getLong("completed"), rs.getLong("unique_employees")));
         List<ProcessExecutionSummary> executions = jdbc.query("""
                 SELECT p.process_id, g.title, g.workflow_status, p.username,
                        COALESCE(u.display_name, p.username) AS display_name,
@@ -103,15 +112,16 @@ public class BusinessProcessGuideService {
                     completedAt == null ? null : completedAt.toInstant(),
                     updatedAt == null ? null : updatedAt.toInstant());
         });
-        return new WorkflowOverview(counts, executions);
+        return new WorkflowOverview(counts, metrics, executions);
     }
 
     public record WorkflowStatusCount(String status, long total) {}
+    public record ExecutionMetrics(long totalExecutions, long inProgress, long completed, long uniqueEmployees) {}
     public record ProcessExecutionSummary(String processId, String title, String workflowStatus,
             String username, String displayName, int completedSteps, int totalSteps,
             int progressPercent, String executionStatus, Instant startedAt, Instant completedAt, Instant updatedAt) {}
     public record WorkflowOverview(List<WorkflowStatusCount> statusCounts,
-            List<ProcessExecutionSummary> executions) {}
+            ExecutionMetrics metrics, List<ProcessExecutionSummary> executions) {}
 
     @Transactional
     public BusinessProcessGuideResponse submitForReview(String id, String username) {

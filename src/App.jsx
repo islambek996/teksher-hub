@@ -2525,6 +2525,8 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
   const [workflowOverviewLoading, setWorkflowOverviewLoading] = useState(false)
   const [workflowOverview, setWorkflowOverview] = useState(null)
   const [workflowOverviewError, setWorkflowOverviewError] = useState('')
+  const [workflowOverviewSearch, setWorkflowOverviewSearch] = useState('')
+  const [workflowOverviewStatus, setWorkflowOverviewStatus] = useState('ALL')
 
   useEffect(() => {
     if (!API_ENABLED) {
@@ -2791,6 +2793,8 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
   const openWorkflowOverview = async () => {
     if (!canViewDashboard || !API_ENABLED) return
     setWorkflowOverviewOpen(true)
+    setWorkflowOverviewSearch('')
+    setWorkflowOverviewStatus('ALL')
     setWorkflowOverviewLoading(true)
     setWorkflowOverviewError('')
     try {
@@ -2803,10 +2807,18 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
     }
   }
 
+  const filteredWorkflowExecutions = (workflowOverview?.executions || []).filter(item => {
+    const query = workflowOverviewSearch.trim().toLocaleLowerCase('ru-RU')
+    const searchable = [item.title, item.displayName, item.username, item.processId]
+      .filter(Boolean).join(' ').toLocaleLowerCase('ru-RU')
+    return (!query || searchable.includes(query))
+      && (workflowOverviewStatus === 'ALL' || item.executionStatus === workflowOverviewStatus)
+  })
+
   const downloadWorkflowOverviewCsv = () => {
     const rows = [
       ['Процесс', 'Статус процесса', 'Сотрудник', 'Логин', 'Статус прохождения', 'Выполнено шагов', 'Всего шагов', 'Прогресс, %', 'Начато', 'Завершено', 'Последнее действие'],
-      ...((workflowOverview?.executions || []).map(item => [
+      ...(filteredWorkflowExecutions.map(item => [
         item.title, PROCESS_WORKFLOW_LABELS[item.workflowStatus] || item.workflowStatus, item.displayName,
         item.username, PROCESS_EXECUTION_LABELS[item.executionStatus] || item.executionStatus,
         item.completedSteps, item.totalSteps, item.progressPercent,
@@ -3288,11 +3300,23 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
         {workflowOverviewLoading ? <div className="empty-state"><RefreshCw size={20} className="spin"/><span>Загружаем выполнение процессов…</span></div>
           : workflowOverviewError ? <div className="feedback feedback-error" role="alert">{workflowOverviewError}</div>
           : <>
+            <div className="process-overview-metrics-grid">
+              <div className="process-overview-metric"><span>Всего прохождений</span><strong>{workflowOverview?.metrics?.totalExecutions ?? (workflowOverview?.executions || []).length}</strong><small>Все записи в системе</small></div>
+              <div className="process-overview-metric"><span>В процессе</span><strong>{workflowOverview?.metrics?.inProgress ?? (workflowOverview?.executions || []).filter(item => item.executionStatus === 'IN_PROGRESS').length}</strong><small>Требуют завершения</small></div>
+              <div className="process-overview-metric"><span>Завершено</span><strong>{workflowOverview?.metrics?.completed ?? (workflowOverview?.executions || []).filter(item => item.executionStatus === 'COMPLETED').length}</strong><small>Успешно закрытые прохождения</small></div>
+              <div className="process-overview-metric"><span>Сотрудников</span><strong>{workflowOverview?.metrics?.uniqueEmployees ?? new Set((workflowOverview?.executions || []).map(item => item.username)).size}</strong><small>С уникальными записями</small></div>
+            </div>
+            <div className="process-overview-section-title"><div><b>Статусы бизнес-процессов</b><span>Количество инструкций по текущему статусу</span></div></div>
             <div className="process-overview-status-grid">
               {['DRAFT','IN_REVIEW','PUBLISHED','ARCHIVED'].map(status => <div className="process-overview-stat" key={status}><span className={'process-workflow-status-pill status-' + status.toLowerCase()}>{PROCESS_WORKFLOW_LABELS[status]}</span><strong>{(workflowOverview?.statusCounts || []).find(item => item.status === status)?.total || 0}</strong></div>)}
             </div>
-            <div className="process-overview-table-heading"><div><b>Прохождение сотрудниками</b><span>Последние 1000 записей прогресса</span></div><button type="button" className="secondary-button" onClick={downloadWorkflowOverviewCsv} disabled={!workflowOverview?.executions?.length}><Download size={14}/> Экспорт CSV</button></div>
-            {(workflowOverview?.executions || []).length ? <div className="process-overview-table-wrap"><table className="process-overview-table"><thead><tr><th>Процесс / сотрудник</th><th>Статус</th><th>Прогресс</th><th>Начат</th><th>Завершён</th><th>Последнее действие</th></tr></thead><tbody>{workflowOverview.executions.map((item, index) => <tr key={item.processId + ':' + item.username + ':' + index}><td><strong>{item.title}</strong><span>Статус инструкции: {PROCESS_WORKFLOW_LABELS[item.workflowStatus] || item.workflowStatus}</span><span>{item.displayName} ({item.username})</span></td><td><span className={'process-execution-status status-' + String(item.executionStatus || '').toLowerCase()}>{PROCESS_EXECUTION_LABELS[item.executionStatus] || item.executionStatus}</span></td><td><strong>{item.completedSteps}/{item.totalSteps} · {item.progressPercent}%</strong><i className="process-overview-progress"><em style={{ width: item.progressPercent + '%' }}/></i></td><td>{item.startedAt ? new Date(item.startedAt).toLocaleString('ru-RU') : '–'}</td><td>{item.completedAt ? new Date(item.completedAt).toLocaleString('ru-RU') : '–'}</td><td>{item.updatedAt ? new Date(item.updatedAt).toLocaleString('ru-RU') : '–'}</td></tr>)}</tbody></table></div> : <div className="empty-state"><UsersRound size={22}/><b>Данные о прохождении пока отсутствуют</b><span>Когда сотрудник начнёт процесс и сохранит прогресс, запись появится здесь.</span></div>}
+            <div className="process-overview-table-heading"><div><b>Прохождение сотрудниками</b><span>Показаны последние 1000 записей; поиск и фильтр применяются к этой выборке</span></div><button type="button" className="secondary-button" onClick={downloadWorkflowOverviewCsv} disabled={!filteredWorkflowExecutions.length}><Download size={14}/> Экспорт CSV</button></div>
+            <div className="process-overview-filters">
+              <label className="process-overview-search"><Search size={16}/><input type="search" value={workflowOverviewSearch} onChange={event => setWorkflowOverviewSearch(event.target.value)} placeholder="Поиск по процессу или сотруднику" aria-label="Поиск по процессу или сотруднику"/></label>
+              <label className="process-overview-status-filter"><span>Статус прохождения</span><select value={workflowOverviewStatus} onChange={event => setWorkflowOverviewStatus(event.target.value)}><option value="ALL">Все статусы</option><option value="IN_PROGRESS">В процессе</option><option value="COMPLETED">Завершён</option></select></label>
+              <span className="process-overview-result-count">Показано: {filteredWorkflowExecutions.length} из {(workflowOverview?.executions || []).length}</span>
+            </div>
+            {filteredWorkflowExecutions.length ? <div className="process-overview-table-wrap"><table className="process-overview-table"><thead><tr><th>Процесс / сотрудник</th><th>Статус</th><th>Прогресс</th><th>Начат</th><th>Завершён</th><th>Последнее действие</th></tr></thead><tbody>{filteredWorkflowExecutions.map((item, index) => <tr key={item.processId + ':' + item.username + ':' + index}><td><strong>{item.title}</strong><span>Статус инструкции: {PROCESS_WORKFLOW_LABELS[item.workflowStatus] || item.workflowStatus}</span><span>{item.displayName} ({item.username})</span></td><td><span className={'process-execution-status status-' + String(item.executionStatus || '').toLowerCase()}>{PROCESS_EXECUTION_LABELS[item.executionStatus] || item.executionStatus}</span></td><td><strong>{item.completedSteps}/{item.totalSteps} · {item.progressPercent}%</strong><i className="process-overview-progress"><em style={{ width: item.progressPercent + '%' }}/></i></td><td>{item.startedAt ? new Date(item.startedAt).toLocaleString('ru-RU') : '–'}</td><td>{item.completedAt ? new Date(item.completedAt).toLocaleString('ru-RU') : '–'}</td><td>{item.updatedAt ? new Date(item.updatedAt).toLocaleString('ru-RU') : '–'}</td></tr>)}</tbody></table></div> : <div className="empty-state"><UsersRound size={22}/><b>{(workflowOverview?.executions || []).length ? 'По заданным условиям ничего не найдено' : 'Данные о прохождении пока отсутствуют'}</b><span>{(workflowOverview?.executions || []).length ? 'Измените поисковый запрос или выберите другой статус.' : 'Когда сотрудник начнёт процесс и сохранит прогресс, запись появится здесь.'}</span></div>}
           </>}
       </section>
     </div>}
