@@ -27,6 +27,7 @@ class ProcessProgressControllerTest {
         controller = new ProcessProgressController(jdbc, new ObjectMapper());
         user = new UserAccount();
         user.setUsername("tester");
+        user.setRole("ADMIN");
     }
 
     @Test
