@@ -2316,3 +2316,9 @@ html[data-theme="dark"] .process-version-group li{background:#17263a;border-colo
   .process-overview-stat > strong { font-size: 22px; }
   .process-workflow-actions > button { flex: 1 1 auto; }
 }
+
+
+.process-guide-choice-status { display: inline-flex; width: fit-content; align-self: flex-start; border-radius: 999px; padding: 3px 7px; font-size: 10px; line-height: 1.35; font-style: normal; font-weight: 700; margin-top: 2px; background: rgba(100,116,139,.12); color: #64748b; }
+.process-guide-choice-status.status-in_review { background: rgba(217,119,6,.13); color: #b45309; }
+.process-guide-choice-status.status-published { background: rgba(22,163,74,.13); color: #15803d; }
+.process-guide-choice-status.status-archived { background: rgba(148,163,184,.2); color: #475569; }
