@@ -46,6 +46,7 @@ public class ProductGroupCatalogController {
     @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
     public CatalogResponse save(@Valid @RequestBody CatalogPayload payload,
                                 @AuthenticationPrincipal UserAccount user) {
+        validateSourceUrls(payload);
         try {
             String json = mapper.writeValueAsString(payload);
             jdbc.update("""
@@ -58,6 +59,50 @@ public class ProductGroupCatalogController {
         } catch (JsonProcessingException ex) {
             throw new IllegalArgumentException("Не удалось сохранить каталог товарных групп", ex);
         }
+    }
+
+    static void validateSourceUrls(CatalogPayload payload) {
+        if (payload == null) {
+            throw new IllegalArgumentException("Не передан каталог товарных групп.");
+        }
+        if (payload.internalGroups() != null) {
+            for (int i = 0; i < payload.internalGroups().size(); i++) {
+                InternalGroup group = payload.internalGroups().get(i);
+                if (group != null) validateOptionalSourceUrl(group.source(), "Внутренняя группа " + (i + 1));
+            }
+        }
+        if (payload.mzkmDetails() != null) {
+            for (Map.Entry<String, GroupDetail> entry : payload.mzkmDetails().entrySet()) {
+                GroupDetail detail = entry.getValue();
+                if (detail != null) {
+                    String label = "Группа «" + safeLabel(entry.getKey()) + "»";
+                    validateOptionalSourceUrl(detail.source(), label);
+                }
+            }
+        }
+    }
+
+    private static void validateOptionalSourceUrl(String value, String label) {
+        if (value == null || value.isBlank()) return;
+        try {
+            java.net.URI uri = java.net.URI.create(value.trim());
+            String scheme = uri.getScheme();
+            if (scheme == null
+                    || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))
+                    || uri.getHost() == null || uri.getHost().isBlank()
+                    || uri.getUserInfo() != null) {
+                throw new IllegalArgumentException();
+            }
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException(label
+                    + ": источник должен быть полноценной ссылкой HTTP или HTTPS.");
+        }
+    }
+
+    private static String safeLabel(String value) {
+        if (value == null || value.isBlank()) return "без названия";
+        String clean = value.trim();
+        return clean.length() <= 120 ? clean : clean.substring(0, 120);
     }
 
     public record CatalogPayload(
