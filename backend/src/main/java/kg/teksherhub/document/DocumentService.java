@@ -133,7 +133,16 @@ public class DocumentService {
     public DocumentResponse update(UUID id, DocumentRequest request, String username) {
         validate(request);
         DocumentRecord d = findEntity(id);
+        boolean reviewedContentChanged = d.getStatus() == DocumentStatus.ACTIVE
+                && hasReviewRelevantChanges(d, request);
         apply(d, request, false);
+        if (reviewedContentChanged) {
+            // Editing a publicly visible material invalidates the previous source review.
+            // Return it to review instead of keeping stale approval metadata on changed content.
+            d.setStatus(DocumentStatus.UNDER_REVIEW);
+            d.setOfficialSourceCheckedAt(null);
+            d.setSourceCheckNote("Материал изменён. Требуется повторная проверка актуальности.");
+        }
         d.setUpdatedBy(username);
         d.setUpdatedAt(Instant.now());
         d.setVersionNumber(d.getVersionNumber() + 1);
@@ -293,6 +302,33 @@ public class DocumentService {
                 + d.getJurisdiction() + " " + value(d.getProductGroup()) + " " + value(d.getKeywords()) + " "
                 + value(d.getDocumentNumber()) + " " + value(d.getSourceUrl()) + " " + value(d.getContent()))
                 .toLowerCase(java.util.Locale.ROOT);
+    }
+
+    private boolean hasReviewRelevantChanges(DocumentRecord document, DocumentRequest request) {
+        boolean metadataChanged =
+                !java.util.Objects.equals(document.getTitle(), request.title().trim())
+                || !java.util.Objects.equals(document.getJurisdiction(), request.jurisdiction())
+                || !java.util.Objects.equals(document.getKind(), request.kind().trim())
+                || !java.util.Objects.equals(document.getArea(), request.area().trim())
+                || !java.util.Objects.equals(document.getProductGroup(), clean(request.productGroup()))
+                || !java.util.Objects.equals(document.getKeywords(), clean(request.keywords()))
+                || !java.util.Objects.equals(document.getDocumentNumber(), clean(request.documentNumber()))
+                || !java.util.Objects.equals(document.getDocumentDate(), request.documentDate())
+                || !java.util.Objects.equals(document.getEffectiveFrom(), request.effectiveFrom())
+                || !java.util.Objects.equals(document.getEffectiveUntil(), request.effectiveUntil())
+                || !java.util.Objects.equals(document.getSourceUrl(), normalizeUrl(request.sourceUrl()))
+                || !java.util.Objects.equals(document.getDescription(), request.description().trim())
+                || !java.util.Objects.equals(document.getContent(), request.content() == null ? "" : request.content().trim());
+        if (metadataChanged) return true;
+
+        java.util.Set<UUID> existingRelated = new java.util.HashSet<>(
+                links.findRelatedIdsByDocumentId(document.getId()));
+        java.util.Set<UUID> requestedRelated = request.relatedDocumentIds() == null
+                ? java.util.Set.of()
+                : request.relatedDocumentIds().stream()
+                    .filter(java.util.Objects::nonNull)
+                    .collect(java.util.stream.Collectors.toSet());
+        return !existingRelated.equals(requestedRelated);
     }
 
     private static void apply(DocumentRecord d, DocumentRequest r, boolean creating) {

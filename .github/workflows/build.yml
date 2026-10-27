@@ -232,7 +232,10 @@ jobs:
           test -n "$RELATED_ID" && test "$RELATED_ID" != "null"
 
           LINKED_BODY=$(curl --silent --show-error --fail "http://localhost:8080/api/documents/$DOC_ID" -H "Authorization: Bearer $TOKEN" | jq --arg related "$RELATED_ID" '{title,jurisdiction,kind,area,productGroup,keywords,relatedDocumentIds:[$related],documentNumber,documentDate,effectiveFrom,effectiveUntil,sourceUrl,description,content,status,changeNote:"CI deletion linked-doc regression test"}')
-          curl --silent --show-error --fail -X PUT "http://localhost:8080/api/documents/$DOC_ID" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d "$LINKED_BODY" | jq -e --arg related "$RELATED_ID" '(.relatedDocumentIds | index($related)) != null'
+          curl --silent --show-error --fail -X PUT "http://localhost:8080/api/documents/$DOC_ID" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d "$LINKED_BODY" | jq -e --arg related "$RELATED_ID" '(.relatedDocumentIds | index($related)) != null and .status == "UNDER_REVIEW"'
+          READER_AFTER_EDIT_STATUS=$(curl --silent --output /tmp/ci-reader-edited-document.json --write-out '%{http_code}' "http://localhost:8080/api/documents/$DOC_ID" -H "Authorization: Bearer $READER_TOKEN")
+          test "$READER_AFTER_EDIT_STATUS" = "404"
+          curl --silent --show-error --fail -X POST "http://localhost:8080/api/documents/$DOC_ID/review" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"status":"ACTIVE","note":"CI rechecks document after content/link edits"}' | jq -e '.status == "ACTIVE"'
           curl --silent --show-error --fail "http://localhost:8080/api/documents/$DOC_ID" -H "Authorization: Bearer $READER_TOKEN" | jq -e '.relatedDocumentIds == []'
 
           RELATED_BODY=$(curl --silent --show-error --fail "http://localhost:8080/api/documents/$RELATED_ID" -H "Authorization: Bearer $TOKEN" | jq --arg target "$DOC_ID" '{title,jurisdiction,kind,area,productGroup,keywords,relatedDocumentIds:[$target],documentNumber,documentDate,effectiveFrom,effectiveUntil,sourceUrl,description,content,status,changeNote:"CI deletion inbound-link regression test"}')

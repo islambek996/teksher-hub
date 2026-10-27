@@ -58,11 +58,26 @@ class DocumentServiceWorkflowTest {
     }
 
     @Test
-    void updateMayKeepTheExistingStatusWhileEditingMetadata() {
+    void updateOfActiveDocumentRequiresReviewAgainWhenContentChanges() {
         DocumentRecord existing = existingDocument(DocumentStatus.ACTIVE);
         when(documents.findById(existing.getId())).thenReturn(Optional.of(existing));
 
         DocumentResponse updated = service.update(existing.getId(), request("ACTIVE"), "editor");
+
+        assertEquals("UNDER_REVIEW", updated.status());
+        assertNull(updated.officialSourceCheckedAt());
+        assertTrue(updated.sourceCheckNote().contains("Требуется повторная проверка"));
+    }
+
+    @Test
+    void updateWithoutReviewRelevantChangesMayKeepActiveStatus() {
+        DocumentRecord existing = existingDocument(DocumentStatus.ACTIVE);
+        when(documents.findById(existing.getId())).thenReturn(Optional.of(existing));
+        DocumentRequest unchanged = new DocumentRequest("Существующая карточка", "KG", "Нормативный акт",
+                "Проверка", null, null, List.of(), null, null, null, null,
+                "https://minjust.gov.kg/", "Описание", "Текст", "ACTIVE", "Не менялось");
+
+        DocumentResponse updated = service.update(existing.getId(), unchanged, "editor");
 
         assertEquals("ACTIVE", updated.status());
         assertNotNull(updated.officialSourceCheckedAt());
@@ -85,6 +100,7 @@ class DocumentServiceWorkflowTest {
         document.setDescription("Описание");
         document.setContent("Текст");
         document.setStatus(status);
+        if (status == DocumentStatus.ACTIVE) document.setOfficialSourceCheckedAt(java.time.Instant.now());
         document.setCreatedBy("editor");
         document.setUpdatedBy("editor");
         document.setCreatedAt(java.time.Instant.now());
