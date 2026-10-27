@@ -54,6 +54,7 @@ public class UserAdminController {
                                   @AuthenticationPrincipal UserAccount actingUser) {
         UserAccount user = users.findById(id).orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
         user.setPasswordHash(encoder.encode(request.password()));
+        user.setTokenVersion(user.getTokenVersion() + 1);
         UserAccount saved = users.save(user);
         audit(actingUser.getUsername(), "RESET_PASSWORD", saved.getId(), saved.getUsername(), "Администратор сбросил пароль пользователя");
         return UserView.from(saved);
@@ -66,7 +67,10 @@ public class UserAdminController {
         if (user.getId().equals(actingUser.getId()) && !request.enabled()) {
             throw new IllegalArgumentException("Нельзя отключить собственную учётную запись администратора");
         }
-        user.setEnabled(request.enabled());
+        if (user.isEnabled() != request.enabled()) {
+            user.setEnabled(request.enabled());
+            user.setTokenVersion(user.getTokenVersion() + 1);
+        }
         UserAccount saved = users.save(user);
         audit(actingUser.getUsername(), request.enabled() ? "ENABLE_USER" : "DISABLE_USER",
                 saved.getId(), saved.getUsername(), request.enabled() ? "Учётная запись включена" : "Учётная запись отключена");

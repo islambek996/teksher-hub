@@ -3,6 +3,7 @@ package kg.teksherhub.config;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import kg.teksherhub.user.UserAccount;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public class TokenService {
         Instant now = Instant.now();
         return Jwts.builder()
                 .subject(user.getUsername())
+                .claim("tokenVersion", user instanceof UserAccount account ? account.getTokenVersion() : 0L)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusSeconds(expirationMinutes * 60)))
                 .signWith(key)
@@ -40,8 +42,12 @@ public class TokenService {
 
     public boolean isValid(String token, UserDetails user) {
         Claims claims = claims(token);
+        Number tokenVersion = claims.get("tokenVersion", Number.class);
+        boolean versionMatches = !(user instanceof UserAccount account)
+                || (tokenVersion != null && tokenVersion.longValue() == account.getTokenVersion());
         return user.getUsername().equals(claims.getSubject())
-                && claims.getExpiration().after(new Date());
+                && claims.getExpiration().after(new Date())
+                && versionMatches;
     }
 
     private Claims claims(String token) {

@@ -28,6 +28,8 @@ public class UserAccount implements UserDetails {
     private String role = "READER";
     @Column(nullable = false)
     private boolean enabled = true;
+    @Column(name = "token_version", nullable = false)
+    private long tokenVersion = 0L;
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 

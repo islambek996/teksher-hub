@@ -30,4 +30,20 @@ class TokenServiceTest {
         assertTrue(service.isValid(token, user));
         assertEquals("test-user", service.username(token));
     }
+
+    @Test
+    void passwordResetOrAccountToggleInvalidatesPreviouslyIssuedTokens() {
+        TokenService service = new TokenService(TEST_SECRET, 60);
+        kg.teksherhub.user.UserAccount user = new kg.teksherhub.user.UserAccount();
+        user.setUsername("test-user");
+        user.setPasswordHash("bcrypt-hash-is-not-embedded-in-token");
+        user.setRole("READER");
+        user.setTokenVersion(4L);
+
+        String token = service.create(user);
+        assertTrue(service.isValid(token, user));
+
+        user.setTokenVersion(5L);
+        assertEquals(false, service.isValid(token, user));
+    }
 }
