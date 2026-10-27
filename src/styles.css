@@ -2234,3 +2234,30 @@ html[data-theme="dark"] .process-version-change-mark.removed{background:#5a3038;
 html[data-theme="dark"] .process-version-change-mark.changed{background:#594a2a;color:#ffe4a0}
 html[data-theme="dark"] .process-version-group li{background:#17263a;border-color:#354a63;color:#d9e5f3}
 @media(max-width:560px){.process-version-comparison{padding:12px}.process-version-comparison-summary{gap:6px}.process-version-comparison-summary>span{padding:5px 6px}.process-version-group li{padding:8px 9px}}
+
+
+/* Business-process schema diagnostics and visual editor preview */
+.process-editor-diagnostics { border: 1px solid var(--border, #dbe3ee); border-radius: 14px; padding: 16px; background: var(--surface-soft, rgba(127, 144, 166, .05)); }
+.process-diagnostic-count { display: inline-flex; align-items: center; border-radius: 999px; padding: 5px 9px; font-size: 12px; font-weight: 700; background: rgba(217, 119, 6, .12); color: #b45309; white-space: nowrap; }
+.process-diagnostic-count.has-errors { background: rgba(220, 38, 38, .12); color: #b91c1c; }
+.process-diagnostic-count.is-clean { background: rgba(22, 163, 74, .12); color: #15803d; }
+.process-diagnostic-list { display: grid; gap: 7px; margin: 12px 0; padding: 0; list-style: none; }
+.process-diagnostic-list li { display: flex; align-items: baseline; gap: 8px; border-radius: 9px; padding: 9px 11px; font-size: 13px; background: rgba(217, 119, 6, .08); }
+.process-diagnostic-list li.error { background: rgba(220, 38, 38, .08); }
+.process-diagnostic-list li b { flex: 0 0 auto; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.process-diagnostic-list li.error b { color: #b91c1c; }
+.process-diagnostic-success { margin: 12px 0; color: #15803d; font-size: 13px; }
+.process-editor-mini-flow { display: flex; align-items: stretch; gap: 10px; overflow-x: auto; padding: 4px 2px 10px; }
+.process-editor-mini-node { flex: 0 0 210px; min-width: 0; display: flex; flex-direction: column; gap: 7px; border: 1px solid var(--border, #dbe3ee); border-radius: 12px; background: var(--surface, #fff); padding: 12px; position: relative; }
+.process-editor-mini-node:not(:last-child)::after { content: '→'; position: absolute; right: -10px; top: 45%; transform: translateX(50%); z-index: 1; color: var(--muted, #64748b); font-weight: 700; }
+.process-editor-mini-node > span { color: var(--muted, #64748b); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.process-editor-mini-node strong { font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
+.process-editor-mini-node small { color: var(--muted, #64748b); font-size: 12px; }
+.process-editor-mini-branches { display: grid; gap: 5px; border-top: 1px solid var(--border, #dbe3ee); padding-top: 8px; }
+.process-editor-mini-branches span { font-size: 11px; color: var(--text-secondary, #475569); overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .process-editor-diagnostics { padding: 12px; }
+  .process-editor-mini-node { flex-basis: 180px; }
+  .process-diagnostic-list li { display: block; }
+  .process-diagnostic-list li b { margin-right: 6px; }
+}

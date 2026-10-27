@@ -3205,11 +3205,42 @@ function ProcessGuideEditorModal({ guide, saving, error, onClose, onSave }) {
     ? current
     : ({ ...current, sources: [...current.sources, { label: '', url: '' }] }))
 
+  const processDiagnostics = useMemo(() => {
+    const warnings = []
+    const count = form.steps.length
+    const reachable = new Set()
+    const visit = index => {
+      if (!Number.isInteger(index) || index < 0 || index >= count || reachable.has(index)) return
+      reachable.add(index)
+      const step = form.steps[index]
+      if (step.decision) {
+        const yes = step.yesStepIndex === '' || step.yesStepIndex == null ? index + 1 : Number(step.yesStepIndex)
+        const no = step.noStepIndex === '' || step.noStepIndex == null ? index + 1 : Number(step.noStepIndex)
+        if (yes < count) visit(yes)
+        if (no < count) visit(no)
+      } else if (index + 1 < count) visit(index + 1)
+    }
+    if (count) visit(0)
+    form.steps.forEach((step, index) => {
+      if (step.decision && !step.yesOutcome.trim() && (step.yesStepIndex === '' || step.yesStepIndex == null)) warnings.push({ type: 'warning', text: 'Шаг ' + (index + 1) + ': не описано действие при ответе «Да».' })
+      if (step.decision && !step.noOutcome.trim() && (step.noStepIndex === '' || step.noStepIndex == null)) warnings.push({ type: 'warning', text: 'Шаг ' + (index + 1) + ': не описано действие при ответе «Нет».' })
+      for (const [label, target] of [['Да', step.yesStepIndex], ['Нет', step.noStepIndex]]) {
+        if (target !== '' && target != null && (!Number.isInteger(Number(target)) || Number(target) < 0 || Number(target) >= count || Number(target) === index)) warnings.push({ type: 'error', text: 'Шаг ' + (index + 1) + ': некорректный переход «' + label + '».' })
+      }
+      if (!reachable.has(index)) warnings.push({ type: 'warning', text: 'Шаг ' + (index + 1) + ' недостижим из начала процесса.' })
+    })
+    return warnings
+  }, [form.steps])
   const handleSubmit = event => {
     event.preventDefault()
     setFormError('')
     if (!form.steps.length) {
       setFormError('В инструкции должен оставаться хотя бы один шаг.')
+      return
+    }
+    const blockingDiagnostics = processDiagnostics.filter(item => item.type === 'error')
+    if (blockingDiagnostics.length) {
+      setFormError('Исправьте ошибки схемы перед сохранением: ' + blockingDiagnostics.map(item => item.text).join(' '))
       return
     }
     if (form.steps.some(step => !step.title.trim() || !step.detail.trim())) {
@@ -3243,6 +3274,12 @@ function ProcessGuideEditorModal({ guide, saving, error, onClose, onSave }) {
           <label className="form-field"><span>Оценка времени *</span><input required maxLength={120} value={form.time} onChange={event => updateField('time', event.target.value)} placeholder="Например, 5 контрольных шагов"/></label>
           <label className="form-field"><span>Поисковый запрос *</span><input required maxLength={200} value={form.searchTerm} onChange={event => updateField('searchTerm', event.target.value)} placeholder="Ключевое слово для поиска материалов"/></label>
         </div>
+
+        <section className="process-editor-section process-editor-diagnostics">
+          <div className="process-editor-section-heading"><div><b>Проверка схемы</b><span>Связность шагов и полнота ветвей</span></div><span className={processDiagnostics.some(item => item.type === 'error') ? 'process-diagnostic-count has-errors' : processDiagnostics.length ? 'process-diagnostic-count' : 'process-diagnostic-count is-clean'}>{processDiagnostics.length ? processDiagnostics.length + ' замеч.' : 'Ошибок нет'}</span></div>
+          {processDiagnostics.length ? <ul className="process-diagnostic-list">{processDiagnostics.map((item, index) => <li className={item.type} key={index}><b>{item.type === 'error' ? 'Ошибка' : 'Проверьте'}</b>{item.text}</li>)}</ul> : <p className="process-diagnostic-success">Схема не содержит выявленных проблем.</p>}
+          <div className="process-editor-mini-flow">{form.steps.map((step, index) => <div className="process-editor-mini-node" key={'mini-' + index}><span>Шаг {index + 1}</span><strong>{step.title.trim() || 'Без названия'}</strong>{step.decision && <small>{step.decision}</small>}{step.decision && <div className="process-editor-mini-branches"><span>Да → {step.yesStepIndex === '' || step.yesStepIndex == null ? (index + 2 <= form.steps.length ? 'шаг ' + (index + 2) : 'завершение') : 'шаг ' + (Number(step.yesStepIndex) + 1)}</span><span>Нет → {step.noStepIndex === '' || step.noStepIndex == null ? (index + 2 <= form.steps.length ? 'шаг ' + (index + 2) : 'завершение') : 'шаг ' + (Number(step.noStepIndex) + 1)}</span></div>}</div>)}</div>
+        </section>
 
         <section className="process-editor-section">
           <div className="process-editor-section-heading"><div><b>Шаги инструкции</b><span>Название и подробное описание для каждого действия</span></div><button type="button" className="secondary-button" onClick={addStep} disabled={form.steps.length >= 30}><FilePlus2 size={14}/> Добавить шаг</button></div>
