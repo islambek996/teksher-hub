@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+umask 077
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
@@ -13,6 +14,7 @@ DB_USERNAME="${DB_USERNAME:-}"
 command -v docker >/dev/null 2>&1 || { echo "Ошибка: Docker не найден." >&2; exit 1; }
 docker compose version >/dev/null 2>&1 || { echo "Ошибка: Docker Compose недоступен." >&2; exit 1; }
 mkdir -p "$BACKUP_DIR"
+chmod 700 "$BACKUP_DIR"
 
 is_running() {
   docker compose ps --status running --services | grep -Fx "$1" >/dev/null
