@@ -182,9 +182,13 @@ jobs:
           curl --silent --show-error --fail -X DELETE "http://localhost:8080/api/tasks/$TASK_ID" -H "Authorization: Bearer $TOKEN"
           curl --silent --show-error --fail -X DELETE "http://localhost:8080/api/business-processes/$PROCESS_ID" -H "Authorization: Bearer $TOKEN"
           curl --silent --show-error --fail "http://localhost:8080/api/business-processes" -H "Authorization: Bearer $TOKEN" | jq -e 'length == 6'
-          CREATED=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/documents -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"title":"CI smoke test document","jurisdiction":"KG","kind":"Нормативный акт","area":"CI","documentNumber":"CI-001","documentDate":"2026-01-01","effectiveFrom":"2026-01-01","effectiveUntil":"2027-01-01","sourceUrl":"https://minjust.gov.kg/","description":"Temporary record to validate database migration and REST API","status":"","changeNote":"CI smoke test"}')
+          CREATED=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/documents -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"title":"CI smoke test document","jurisdiction":"KG","kind":"Нормативный акт","area":"CI","documentNumber":"CI-001","documentDate":"2026-01-01","effectiveFrom":"2026-01-01","effectiveUntil":"2027-01-01","sourceUrl":"https://minjust.gov.kg/","description":"Temporary record to validate database migration and REST API","status":"ACTIVE","changeNote":"CI smoke test"}')
           DOC_ID=$(echo "$CREATED" | jq -r '.id')
           test -n "$DOC_ID" && test "$DOC_ID" != "null"
+          echo "$CREATED" | jq -e '.status == "UNDER_REVIEW"'
+          DIRECT_ACTIVATION_BODY=$(curl --silent --show-error --fail "http://localhost:8080/api/documents/$DOC_ID" -H "Authorization: Bearer $TOKEN" | jq '.status = "ACTIVE" | {title,jurisdiction,kind,area,productGroup,keywords,relatedDocumentIds,documentNumber,documentDate,effectiveFrom,effectiveUntil,sourceUrl,description,content,status,changeNote:"CI must reject direct status changes"}')
+          DIRECT_ACTIVATION_STATUS=$(curl --silent --output /tmp/ci-direct-document-activation.json --write-out '%{http_code}' -X PUT "http://localhost:8080/api/documents/$DOC_ID" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d "$DIRECT_ACTIVATION_BODY")
+          test "$DIRECT_ACTIVATION_STATUS" = "400"
           EDITOR_DELETE_STATUS=$(curl --silent --output /tmp/ci-editor-delete.json --write-out '%{http_code}' -X DELETE "http://localhost:8080/api/documents/$DOC_ID" -H "Authorization: Bearer $EDITOR_TOKEN")
           test "$EDITOR_DELETE_STATUS" = "403"
           curl --silent --show-error --fail "http://localhost:8080/api/documents/$DOC_ID" -H "Authorization: Bearer $TOKEN" | jq -e --arg id "$DOC_ID" '.id == $id'

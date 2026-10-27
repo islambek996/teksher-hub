@@ -312,11 +312,21 @@ public class DocumentService {
         if (r.effectiveFrom() != null && r.effectiveUntil() != null && r.effectiveUntil().isBefore(r.effectiveFrom())) {
             throw new IllegalArgumentException("Дата окончания действия не может быть раньше даты начала");
         }
-        if (r.status() != null && !r.status().isBlank()) {
-            try { d.setStatus(DocumentStatus.valueOf(r.status())); }
-            catch (IllegalArgumentException ex) { throw new IllegalArgumentException("Недопустимый статус документа"); }
-        } else if (creating) {
+        if (creating) {
+            // New records must never become public just because a client supplied status=ACTIVE.
+            // A publication status is granted only by the explicit review endpoint.
             d.setStatus(d.getSourceUrl() == null ? DocumentStatus.DRAFT : DocumentStatus.UNDER_REVIEW);
+        } else if (r.status() != null && !r.status().isBlank()) {
+            final DocumentStatus requestedStatus;
+            try {
+                requestedStatus = DocumentStatus.valueOf(r.status());
+            } catch (IllegalArgumentException ex) {
+                throw new IllegalArgumentException("Недопустимый статус документа");
+            }
+            if (requestedStatus != d.getStatus()) {
+                throw new IllegalArgumentException(
+                        "Статус документа меняется только через действие проверки актуальности.");
+            }
         }
         if (d.getStatus() == DocumentStatus.ACTIVE && d.getSourceUrl() == null) {
             throw new IllegalArgumentException("У действующего документа должен быть указан источник");
