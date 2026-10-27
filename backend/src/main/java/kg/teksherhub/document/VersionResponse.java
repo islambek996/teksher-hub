@@ -22,4 +22,10 @@ public record VersionResponse(
                 v.getEffectiveFrom(), v.getEffectiveUntil(), v.getSourceUrl(), v.getDescription(), v.getContent(),
                 v.getStatus().name(), v.getStatus().label(), v.getChangeNote(), v.getChangedBy(), v.getCreatedAt());
     }
+
+    public VersionResponse withRelatedDocumentIds(List<UUID> visibleIds) {
+        return new VersionResponse(id, versionNumber, title, jurisdiction, kind, area, productGroup, keywords,
+                List.copyOf(visibleIds), documentNumber, documentDate, effectiveFrom, effectiveUntil,
+                sourceUrl, description, content, status, statusLabel, changeNote, changedBy, createdAt);
+    }
 }

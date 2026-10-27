@@ -12,7 +12,9 @@ import java.net.URI;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class DocumentService {
@@ -94,6 +96,15 @@ public class DocumentService {
 
     @Transactional(readOnly = true)
     public DocumentResponse get(UUID id) { return toResponse(findEntity(id)); }
+
+    @Transactional(readOnly = true)
+    public Set<UUID> readableDocumentIdsFor(String role) {
+        return documents.findAllByOrderByUpdatedAtDesc().stream()
+                .filter(document -> document.getStatus() != null
+                        && DocumentReadAccessPolicy.canRead(role, document.getStatus().name(), document.getKind()))
+                .map(DocumentRecord::getId)
+                .collect(Collectors.toUnmodifiableSet());
+    }
 
     @Transactional
     public DocumentResponse create(DocumentRequest request, String username) {

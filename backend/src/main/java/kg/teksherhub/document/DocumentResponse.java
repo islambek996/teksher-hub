@@ -27,4 +27,12 @@ public record DocumentResponse(
                 d.getOfficialSourceCheckedAt(), d.getSourceCheckNote(), d.getCreatedBy(), d.getUpdatedBy(),
                 d.getCreatedAt(), d.getUpdatedAt(), d.getVersionNumber(), fileCount, matchedInAttachment);
     }
+
+    public DocumentResponse withRelatedDocumentIds(List<UUID> visibleIds) {
+        return new DocumentResponse(id, title, jurisdiction, kind, area, productGroup, keywords,
+                List.copyOf(visibleIds), documentNumber, documentDate, effectiveFrom, effectiveUntil,
+                sourceUrl, description, content, status, statusLabel, officialSourceCheckedAt,
+                sourceCheckNote, createdBy, updatedBy, createdAt, updatedAt, versionNumber,
+                fileCount, matchedInAttachment);
+    }
 }

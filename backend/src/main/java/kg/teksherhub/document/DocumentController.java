@@ -37,9 +37,12 @@ public class DocumentController {
                                        @RequestParam(required = false) String kind,
                                        @RequestParam(required = false) String status,
                                        @AuthenticationPrincipal UserAccount user) {
-        return service.list(q, jurisdiction, kind, status).stream()
+        List<DocumentResponse> visible = service.list(q, jurisdiction, kind, status).stream()
                 .filter(document -> DocumentReadAccessPolicy.canRead(user.getRole(), document.status(), document.kind()))
                 .toList();
+        if (!"READER".equals(user.getRole())) return visible;
+        java.util.Set<UUID> visibleDocumentIds = service.readableDocumentIdsFor(user.getRole());
+        return visible.stream().map(document -> sanitizeRelatedDocumentIds(document, visibleDocumentIds)).toList();
     }
 
     @GetMapping(value = "/export.csv", produces = "text/csv")
@@ -57,7 +60,8 @@ public class DocumentController {
     public DocumentResponse get(@PathVariable UUID id, @AuthenticationPrincipal UserAccount user) {
         DocumentResponse document = service.get(id);
         DocumentReadAccessPolicy.requireReadable(user.getRole(), document);
-        return document;
+        if (!"READER".equals(user.getRole())) return document;
+        return sanitizeRelatedDocumentIds(document, service.readableDocumentIdsFor(user.getRole()));
     }
 
     @PostMapping
@@ -113,10 +117,29 @@ public class DocumentController {
         DocumentReadAccessPolicy.requireReadable(user.getRole(), service.get(id));
         // A readable current document can still have old internal or draft snapshots.
         // Apply the same access policy to every historical version before returning content.
-        return service.history(id).stream()
+        List<VersionResponse> visible = service.history(id).stream()
                 .filter(version -> DocumentReadAccessPolicy.canRead(
                         user.getRole(), version.status(), version.kind()))
                 .toList();
+        if (!"READER".equals(user.getRole())) return visible;
+        java.util.Set<UUID> visibleDocumentIds = service.readableDocumentIdsFor(user.getRole());
+        return visible.stream().map(version -> sanitizeRelatedDocumentIds(version, visibleDocumentIds)).toList();
+    }
+
+    private DocumentResponse sanitizeRelatedDocumentIds(
+            DocumentResponse document, java.util.Set<UUID> visibleDocumentIds) {
+        List<UUID> visibleRelatedIds = document.relatedDocumentIds() == null
+                ? List.of()
+                : document.relatedDocumentIds().stream().filter(visibleDocumentIds::contains).toList();
+        return document.withRelatedDocumentIds(visibleRelatedIds);
+    }
+
+    private VersionResponse sanitizeRelatedDocumentIds(
+            VersionResponse version, java.util.Set<UUID> visibleDocumentIds) {
+        List<UUID> visibleRelatedIds = version.relatedDocumentIds() == null
+                ? List.of()
+                : version.relatedDocumentIds().stream().filter(visibleDocumentIds::contains).toList();
+        return version.withRelatedDocumentIds(visibleRelatedIds);
     }
 
     @DeleteMapping("/{id}")
