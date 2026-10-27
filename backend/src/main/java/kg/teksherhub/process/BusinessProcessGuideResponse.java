@@ -16,5 +16,11 @@ public record BusinessProcessGuideResponse(
         int orderIndex,
         String createdBy,
         String updatedBy,
-        Instant updatedAt
+        Instant updatedAt,
+        String workflowStatus,
+        String reviewComment,
+        Instant submittedAt,
+        String approvedBy,
+        Instant approvedAt,
+        Instant archivedAt
 ) {}

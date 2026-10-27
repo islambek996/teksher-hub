@@ -49,14 +49,21 @@ public class ProcessProgressController {
         if (processId == null || processId.isBlank() || processId.length() > 80) {
             throw new IllegalArgumentException("Некорректный идентификатор бизнес-процесса.");
         }
-        final String stepsJson;
+        final String workflowStatus;
         try {
-            stepsJson = jdbc.queryForObject(
-                    "SELECT steps_json FROM business_process_guides WHERE id = ?",
+            workflowStatus = jdbc.queryForObject(
+                    "SELECT workflow_status FROM business_process_guides WHERE id = ?",
                     String.class, processId);
         } catch (org.springframework.dao.EmptyResultDataAccessException ex) {
             throw new IllegalArgumentException("Бизнес-процесс не найден.");
         }
+        if (!"ADMIN".equals(user.getRole()) && !"EDITOR".equals(user.getRole())
+                && !"PUBLISHED".equals(workflowStatus)) {
+            throw new IllegalArgumentException("Этот процесс ещё не опубликован.");
+        }
+        final String stepsJson = jdbc.queryForObject(
+                "SELECT steps_json FROM business_process_guides WHERE id = ?",
+                String.class, processId);
         if (stepsJson == null || stepsJson.isBlank()) {
             throw new IllegalArgumentException("У бизнес-процесса нет доступных шагов.");
         }

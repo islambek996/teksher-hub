@@ -19,9 +19,57 @@ public class BusinessProcessGuideController {
     }
 
     @GetMapping
-    public List<BusinessProcessGuideResponse> list() {
-        return service.list();
+    public List<BusinessProcessGuideResponse> list(@AuthenticationPrincipal UserAccount user) {
+        if (user != null && ("ADMIN".equals(user.getRole()) || "EDITOR".equals(user.getRole()))) {
+            return service.list();
+        }
+        return service.publishedList();
     }
+
+    @GetMapping("/overview")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    public BusinessProcessGuideService.WorkflowOverview overview() {
+        return service.overview();
+    }
+
+    @PostMapping("/{id}/submit-for-review")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    public BusinessProcessGuideResponse submitForReview(@PathVariable String id,
+            @AuthenticationPrincipal UserAccount user) {
+        return service.submitForReview(id, user.getUsername());
+    }
+
+    @PostMapping("/{id}/publish")
+    @PreAuthorize("hasRole('ADMIN')")
+    public BusinessProcessGuideResponse publish(@PathVariable String id,
+            @AuthenticationPrincipal UserAccount user) {
+        return service.publish(id, user.getUsername());
+    }
+
+    @PostMapping("/{id}/return-for-revision")
+    @PreAuthorize("hasRole('ADMIN')")
+    public BusinessProcessGuideResponse returnForRevision(@PathVariable String id,
+            @RequestBody(required = false) WorkflowCommentRequest request,
+            @AuthenticationPrincipal UserAccount user) {
+        return service.returnForRevision(id, request == null ? null : request.comment(), user.getUsername());
+    }
+
+    @PostMapping("/{id}/archive")
+    @PreAuthorize("hasRole('ADMIN')")
+    public BusinessProcessGuideResponse archive(@PathVariable String id,
+            @AuthenticationPrincipal UserAccount user) {
+        return service.archive(id, user.getUsername());
+    }
+
+    @PostMapping("/{id}/restore-archived")
+    @PreAuthorize("hasRole('ADMIN')")
+    public BusinessProcessGuideResponse restoreArchived(@PathVariable String id,
+            @AuthenticationPrincipal UserAccount user) {
+        return service.restoreArchived(id, user.getUsername());
+    }
+
+    public record WorkflowCommentRequest(String comment) {}
+
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")

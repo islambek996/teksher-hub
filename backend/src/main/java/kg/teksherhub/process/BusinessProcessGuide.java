@@ -47,6 +47,24 @@ public class BusinessProcessGuide {
     @Column(name = "order_index", nullable = false)
     private int orderIndex;
 
+    @Column(name = "workflow_status", nullable = false, length = 24)
+    private String workflowStatus = "PUBLISHED";
+
+    @Column(name = "review_comment", length = 1000)
+    private String reviewComment;
+
+    @Column(name = "submitted_at")
+    private Instant submittedAt;
+
+    @Column(name = "approved_by", length = 120)
+    private String approvedBy;
+
+    @Column(name = "approved_at")
+    private Instant approvedAt;
+
+    @Column(name = "archived_at")
+    private Instant archivedAt;
+
     @Column(name = "created_by", nullable = false, length = 120)
     private String createdBy;
 
