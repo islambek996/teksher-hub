@@ -40,6 +40,13 @@ public class BusinessProcessGuideService {
     }
 
     @Transactional(readOnly = true)
+    public boolean isPublished(String processId) {
+        return repository.findById(processId)
+                .map(guide -> "PUBLISHED".equals(guide.getWorkflowStatus()))
+                .orElse(false);
+    }
+
+    @Transactional(readOnly = true)
     public List<BusinessProcessGuideResponse> publishedList() {
         return repository.findAllByOrderByOrderIndexAscTitleAsc().stream()
                 .map(this::toResponse)

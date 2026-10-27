@@ -94,14 +94,30 @@ public class BusinessProcessGuideController {
 
     @GetMapping("/{id}/versions")
     @PreAuthorize("hasAnyRole('ADMIN','EDITOR','READER')")
-    public List<BusinessProcessGuideService.GuideVersion> versions(@PathVariable String id) {
+    public List<BusinessProcessGuideService.GuideVersion> versions(@PathVariable String id,
+            @AuthenticationPrincipal UserAccount user) {
+        ensurePublishedVisibility(id, user);
         return service.versions(id);
     }
 
     @GetMapping("/{id}/versions/{versionNumber}")
     @PreAuthorize("hasAnyRole('ADMIN','EDITOR','READER')")
-    public BusinessProcessGuideResponse versionDetail(@PathVariable String id, @PathVariable int versionNumber) {
-        return service.versionDetail(id, versionNumber);
+    public BusinessProcessGuideResponse versionDetail(@PathVariable String id, @PathVariable int versionNumber,
+            @AuthenticationPrincipal UserAccount user) {
+        ensurePublishedVisibility(id, user);
+        BusinessProcessGuideResponse version = service.versionDetail(id, versionNumber);
+        if (user != null && "READER".equals(user.getRole())
+                && version.workflowStatus() != null && !"PUBLISHED".equals(version.workflowStatus())) {
+            throw new org.springframework.security.access.AccessDeniedException("Эта версия не опубликована.");
+        }
+        return version;
+    }
+
+    private void ensurePublishedVisibility(String processId, UserAccount user) {
+        if (user != null && ("ADMIN".equals(user.getRole()) || "EDITOR".equals(user.getRole()))) return;
+        if (!service.isPublished(processId)) {
+            throw new org.springframework.security.access.AccessDeniedException("Бизнес-процесс не опубликован или недоступен.");
+        }
     }
 
     @PostMapping("/{id}/versions/{versionNumber}/restore")
