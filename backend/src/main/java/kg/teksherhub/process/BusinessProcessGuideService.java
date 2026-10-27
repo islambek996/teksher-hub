@@ -55,7 +55,8 @@ public class BusinessProcessGuideService {
         List<ProcessExecutionSummary> executions = jdbc.query("""
                 SELECT p.process_id, g.title, g.workflow_status, p.username,
                        COALESCE(u.display_name, p.username) AS display_name,
-                       p.completed_steps_json, p.updated_at, g.steps_json
+                       p.completed_steps_json, p.updated_at, p.started_at, p.completed_at,
+                       p.execution_status, g.steps_json
                 FROM business_process_progress p
                 JOIN business_process_guides g ON g.id = p.process_id
                 LEFT JOIN users u ON u.username = p.username
@@ -84,10 +85,12 @@ public class BusinessProcessGuideService {
                 // One damaged progress row must not make the entire overview unavailable.
             }
             int percent = totalSteps == 0 ? 0 : Math.round(completedSteps * 100f / totalSteps);
+            java.sql.Timestamp completedAt = rs.getTimestamp("completed_at");
             return new ProcessExecutionSummary(
                     rs.getString("process_id"), rs.getString("title"), rs.getString("workflow_status"),
                     rs.getString("username"), rs.getString("display_name"), completedSteps, totalSteps,
-                    percent, rs.getTimestamp("updated_at").toInstant());
+                    percent, rs.getString("execution_status"), rs.getTimestamp("started_at").toInstant(),
+                    completedAt == null ? null : completedAt.toInstant(), rs.getTimestamp("updated_at").toInstant());
         });
         return new WorkflowOverview(counts, executions);
     }
@@ -95,7 +98,7 @@ public class BusinessProcessGuideService {
     public record WorkflowStatusCount(String status, long total) {}
     public record ProcessExecutionSummary(String processId, String title, String workflowStatus,
             String username, String displayName, int completedSteps, int totalSteps,
-            int progressPercent, Instant updatedAt) {}
+            int progressPercent, String executionStatus, Instant startedAt, Instant completedAt, Instant updatedAt) {}
     public record WorkflowOverview(List<WorkflowStatusCount> statusCounts,
             List<ProcessExecutionSummary> executions) {}
 
