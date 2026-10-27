@@ -45,6 +45,7 @@ public class MarkingIssueController {
     public IssueView create(@Valid @RequestBody IssueRequest request, @AuthenticationPrincipal UserAccount user) {
         String title = request.title().trim();
         String description = request.description() == null ? "" : request.description().trim();
+        String resolution = request.resolution() == null ? "" : request.resolution().trim();
         String category = normalize(request.category(), List.of("TECHNICAL","REGULATORY","PRODUCT_CARD","CODE_ORDER","APPLICATION","CODE_MOVEMENT","OTHER"), "TECHNICAL", "категория");
         String system = normalize(request.system(), List.of("MZKM","GAIS_MT","TRANSGRAN","CROSS_BORDER","OTHER"), "MZKM", "система");
         String jurisdiction = normalize(request.jurisdiction(), List.of("KG","RU","EAEU"), "KG", "юрисдикция");
@@ -58,10 +59,10 @@ public class MarkingIssueController {
             assignee = users.get(0);
         }
         Long id = jdbc.queryForObject("""
-            INSERT INTO marking_issues(title, description, category, system_name, jurisdiction, product_group, priority, status, assigned_to, created_by, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'NEW', ?, ?, NOW(), NOW()) RETURNING id
+            INSERT INTO marking_issues(title, description, category, system_name, jurisdiction, product_group, priority, status, assigned_to, resolution, created_by, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'NEW', ?, ?, ?, NOW(), NOW()) RETURNING id
             """, Long.class, title, description, category, system, jurisdiction,
-                blankToNull(request.productGroup()), priority, assignee, user.getUsername());
+                blankToNull(request.productGroup()), priority, assignee, resolution, user.getUsername());
         audit(user, "CREATE", id, title, "Зарегистрирована проблема маркировки");
         return getOne(id);
     }
@@ -154,7 +155,7 @@ public class MarkingIssueController {
             @Pattern(regexp="KG|RU|EAEU|kg|ru|eaeu") String jurisdiction,
             @Size(max=240) String productGroup,
             @Pattern(regexp="LOW|NORMAL|HIGH|CRITICAL|low|normal|high|critical") String priority,
-            @Size(max=120) String assignedTo) {}
+            @Size(max=120) String assignedTo, @Size(max=3000) String resolution) {}
     public record IssueUpdateRequest(@Size(max=240) String title, @Size(max=4000) String description,
             @Pattern(regexp="TECHNICAL|REGULATORY|PRODUCT_CARD|CODE_ORDER|APPLICATION|CODE_MOVEMENT|OTHER|technical|regulatory|product_card|code_order|application|code_movement|other") String category,
             @Pattern(regexp="MZKM|GAIS_MT|TRANSGRAN|CROSS_BORDER|OTHER|mzkm|gais_mt|transgran|cross_border|other") String system,
