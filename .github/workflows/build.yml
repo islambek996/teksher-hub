@@ -27,6 +27,14 @@ jobs:
         run: node --check scripts/evaluate-ai-golden-set.mjs
       - name: Validate backup and restore scripts
         run: bash -n scripts/backup-teksher-hub.sh scripts/restore-teksher-hub.sh
+      - name: Export generated npm lockfile for dependency pinning
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-npm-lockfile
+          path: package-lock.json
+          if-no-files-found: error
+          retention-days: 1
 
   backend:
     runs-on: ubuntu-latest
