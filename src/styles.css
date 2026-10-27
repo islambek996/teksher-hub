@@ -2796,3 +2796,159 @@ html[data-theme="dark"] .process-version-group li{background:#17263a;border-colo
   .issue-registry .issue-comment-form { flex-direction: column; }
   .issue-registry .issue-comment-form .secondary-button { align-self: flex-start; }
 }
+
+
+/* Dark theme overrides for marking forum: keep all forum surfaces in the dark palette */
+html[data-theme="dark"] .issue-registry .page-heading {
+  border-color: #2b415a;
+  background: radial-gradient(circle at 92% 10%, rgba(76, 124, 177, .18), transparent 34%), linear-gradient(120deg, #14263b 0%, #172d46 100%);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .12);
+}
+html[data-theme="dark"] .issue-registry .page-heading .section-kicker { color: #8fb9e7; }
+html[data-theme="dark"] .issue-registry .page-heading h1 { color: #e7eff9; }
+html[data-theme="dark"] .issue-registry .page-heading p { color: #a9bbd0; }
+html[data-theme="dark"] .issue-registry .page-heading .primary-button {
+  color: #f4f8ff;
+  border-color: #39699b;
+  background: linear-gradient(135deg, #2d659d, #214b78);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, .2);
+}
+html[data-theme="dark"] .issue-registry .issue-metric,
+html[data-theme="dark"] .issue-registry .issue-create-form,
+html[data-theme="dark"] .issue-registry .issue-search-panel,
+html[data-theme="dark"] .issue-registry .issue-card {
+  color: #dce7f4;
+  border-color: #2b4058;
+  background: #172638;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, .12);
+}
+html[data-theme="dark"] .issue-registry .issue-metric::after { border-color: #2b4058; }
+html[data-theme="dark"] .issue-registry .issue-metric > span { color: #a7bbd1; }
+html[data-theme="dark"] .issue-registry .issue-metric > strong { color: #e3efff; }
+html[data-theme="dark"] .issue-registry .issue-metric small { color: #91a6bf; }
+html[data-theme="dark"] .issue-registry .issue-metric-critical {
+  border-color: #653c49;
+  background: linear-gradient(135deg, #241f2b 0%, #2a202b 100%);
+}
+html[data-theme="dark"] .issue-registry .issue-metric-critical > strong { color: #ff9a9a; }
+html[data-theme="dark"] .issue-registry .issue-form-heading { border-bottom-color: #2b4058; }
+html[data-theme="dark"] .issue-registry .issue-form-heading b { color: #e3edf8; }
+html[data-theme="dark"] .issue-registry .issue-form-heading span,
+html[data-theme="dark"] .issue-registry .issue-form-grid .form-field > span { color: #a6bad0; }
+html[data-theme="dark"] .issue-registry .issue-form-grid input,
+html[data-theme="dark"] .issue-registry .issue-form-grid select,
+html[data-theme="dark"] .issue-registry .issue-form-grid textarea {
+  color: #e2ebf7;
+  border-color: #354b63;
+  background: #101d2c;
+}
+html[data-theme="dark"] .issue-registry .issue-form-grid input::placeholder,
+html[data-theme="dark"] .issue-registry .issue-form-grid textarea::placeholder,
+html[data-theme="dark"] .issue-registry .issue-comment-form input::placeholder { color: #748ba5; }
+html[data-theme="dark"] .issue-registry .issue-form-grid input:focus,
+html[data-theme="dark"] .issue-registry .issue-form-grid select:focus,
+html[data-theme="dark"] .issue-registry .issue-form-grid textarea:focus {
+  border-color: #6595c8;
+  box-shadow: 0 0 0 3px rgba(84, 140, 199, .16);
+}
+html[data-theme="dark"] .issue-registry .issue-search-panel .search-input-wrap,
+html[data-theme="dark"] .issue-registry .issue-search-panel .filter-wrap {
+  color: #a7bbd1;
+  border-color: #334960;
+  background: #101d2c;
+}
+html[data-theme="dark"] .issue-registry .issue-search-panel .search-input-wrap input,
+html[data-theme="dark"] .issue-registry .issue-search-panel .filter-wrap select { color: #dce7f4; }
+html[data-theme="dark"] .issue-registry .issue-search-panel .search-input-wrap:focus-within {
+  border-color: #6595c8;
+  background: #142438;
+  box-shadow: 0 0 0 3px rgba(84, 140, 199, .13);
+}
+html[data-theme="dark"] .issue-registry .issue-search-panel .record-count {
+  color: #b7d1ef !important;
+  background: #233b56 !important;
+}
+html[data-theme="dark"] .issue-registry .issue-card:hover {
+  border-color: #466482;
+  background: #1a2c41;
+  box-shadow: 0 10px 27px rgba(0, 0, 0, .2);
+}
+html[data-theme="dark"] .issue-registry .issue-card h2 { color: #e6effa; }
+html[data-theme="dark"] .issue-registry .issue-topic-kicker { color: #849bb5; }
+html[data-theme="dark"] .issue-registry .issue-card-meta { color: #9db1c8; }
+html[data-theme="dark"] .issue-registry .issue-category-pill {
+  color: #c3d2e4;
+  border: 1px solid #354a61;
+  background: #223449;
+}
+html[data-theme="dark"] .issue-registry .issue-status-new { color: #b9d9ff; background: #1b3a5d; }
+html[data-theme="dark"] .issue-registry .issue-status-in_progress { color: #f6d28b; background: #48391f; }
+html[data-theme="dark"] .issue-registry .issue-status-waiting { color: #d2c3ff; background: #352b52; }
+html[data-theme="dark"] .issue-registry .issue-status-resolved,
+html[data-theme="dark"] .issue-registry .issue-status-closed { color: #a8e5c0; background: #1b4234; }
+html[data-theme="dark"] .issue-registry .issue-priority-pill-low { color: #c0cede; background: #29384a; }
+html[data-theme="dark"] .issue-registry .issue-priority-pill-normal { color: #a9ddf5; background: #1c3e50; }
+html[data-theme="dark"] .issue-registry .issue-priority-pill-high { color: #ffd29a; background: #4b3320; }
+html[data-theme="dark"] .issue-registry .issue-priority-pill-critical { color: #ffb7b7; background: #4b252d; }
+html[data-theme="dark"] .issue-registry .issue-forum-body {
+  border-color: #2c4158;
+  background: #122033;
+}
+html[data-theme="dark"] .issue-registry .issue-forum-body h3 { color: #a9bdd3; }
+html[data-theme="dark"] .issue-registry .issue-forum-body .issue-card-description { color: #d1deec; }
+html[data-theme="dark"] .issue-registry .issue-forum-solution {
+  border-color: #285b49;
+  background: linear-gradient(135deg, #142f2b 0%, #17372f 100%);
+}
+html[data-theme="dark"] .issue-registry .issue-forum-section-title,
+html[data-theme="dark"] .issue-registry .issue-forum-section-title h3 { color: #9ce0b6; }
+html[data-theme="dark"] .issue-registry .issue-forum-solution p { color: #c0ead0; }
+html[data-theme="dark"] .issue-registry .issue-forum-unsolved {
+  border-color: #35495f;
+  background: #142236;
+  color: #a2b4c8;
+}
+html[data-theme="dark"] .issue-registry .issue-card-controls { border-top-color: #2b4057; }
+html[data-theme="dark"] .issue-registry .issue-card-controls .form-field > span { color: #a0b4ca; }
+html[data-theme="dark"] .issue-registry .issue-card-controls .form-field input,
+html[data-theme="dark"] .issue-registry .issue-card-controls .form-field select {
+  color: #dce7f4;
+  border-color: #354b63;
+  background: #101d2c;
+}
+html[data-theme="dark"] .issue-registry .issue-replies-trigger,
+html[data-theme="dark"] .issue-registry .issue-comment-form .secondary-button {
+  color: #c5dcf5;
+  border-color: #354d67;
+  background: #1c3046;
+}
+html[data-theme="dark"] .issue-registry .issue-replies-trigger:hover,
+html[data-theme="dark"] .issue-registry .issue-comment-form .secondary-button:hover {
+  border-color: #50749a;
+  background: #253d57;
+}
+html[data-theme="dark"] .issue-registry .issue-comments { border-top-color: #2b4057; }
+html[data-theme="dark"] .issue-registry .issue-comments-heading { color: #dce7f4; }
+html[data-theme="dark"] .issue-registry .issue-comments-heading b { color: #dce7f4; }
+html[data-theme="dark"] .issue-registry .issue-comments-heading span { color: #b5c8de; background: #24374c; }
+html[data-theme="dark"] .issue-registry .issue-comment {
+  border-color: #2b4057;
+  background: #132235;
+}
+html[data-theme="dark"] .issue-registry .issue-comment > div b { color: #dce7f4; }
+html[data-theme="dark"] .issue-registry .issue-comment time { color: #8fa5bd; }
+html[data-theme="dark"] .issue-registry .issue-comment p { color: #c5d3e3; }
+html[data-theme="dark"] .issue-registry .issue-comment-form input {
+  color: #e0eaf6;
+  border-color: #354b63;
+  background: #101d2c;
+}
+html[data-theme="dark"] .issue-registry .issue-comment-form input:focus {
+  border-color: #6595c8;
+  box-shadow: 0 0 0 3px rgba(84, 140, 199, .13);
+}
+html[data-theme="dark"] .issue-registry .issue-registry-note {
+  color: #9db2c9;
+  border-color: #2b4057;
+  background: #142236;
+}
