@@ -21,7 +21,7 @@ test('counts documents, jurisdiction and enabled source monitors', () => {
 
 test('treats absent and old review dates as follow-up signals', () => {
   const result = calculateManagerAnalytics([
-    { lastReviewedAt: '2026-04-29T12:00:00Z' },
+    { lastReviewedAt: '2026-05-01T12:00:00Z' },
     { lastReviewedAt: '2026-04-28T11:59:59Z' },
     { lastReviewedAt: 'not-a-date' },
   ], [], now)
