@@ -2359,6 +2359,20 @@ function loadProcessGuideProgress(storageKey = PROCESS_PROGRESS_KEY) {
   }
 }
 
+function loadProcessExecutionState(storageKey = PROCESS_PROGRESS_KEY) {
+  try {
+    const raw = window.localStorage.getItem(storageKey + ':execution')
+    const parsed = raw ? JSON.parse(raw) : null
+    if (!parsed || typeof parsed !== 'object') return { steps: {}, answers: {} }
+    return {
+      steps: parsed.steps && typeof parsed.steps === 'object' ? parsed.steps : {},
+      answers: parsed.answers && typeof parsed.answers === 'object' ? parsed.answers : {},
+    }
+  } catch {
+    return { steps: {}, answers: {} }
+  }
+}
+
 function loadLocalProcessGuides() {
   try {
     const raw = window.localStorage.getItem(PROCESS_GUIDES_STORAGE_KEY)
@@ -2373,8 +2387,8 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
   const [guides, setGuides] = useState(loadLocalProcessGuides)
   const [selectedGuideId, setSelectedGuideId] = useState(PROCESS_GUIDES[0].id)
   const [progress, setProgress] = useState(() => loadProcessGuideProgress(progressStorageKey))
-  const [executionStepByGuide, setExecutionStepByGuide] = useState({})
-  const [executionAnswersByGuide, setExecutionAnswersByGuide] = useState({})
+  const [executionStepByGuide, setExecutionStepByGuide] = useState(() => loadProcessExecutionState(progressStorageKey).steps)
+  const [executionAnswersByGuide, setExecutionAnswersByGuide] = useState(() => loadProcessExecutionState(progressStorageKey).answers)
   const [guidesLoading, setGuidesLoading] = useState(API_ENABLED)
   const [guideLoadError, setGuideLoadError] = useState('')
   const [guideMessage, setGuideMessage] = useState('')
@@ -2435,6 +2449,15 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
   useEffect(() => {
     try { window.localStorage.setItem(progressStorageKey, JSON.stringify(progress)) } catch { /* storage unavailable */ }
   }, [progress, progressStorageKey])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(progressStorageKey + ':execution', JSON.stringify({
+        steps: executionStepByGuide,
+        answers: executionAnswersByGuide,
+      }))
+    } catch { /* storage unavailable */ }
+  }, [executionStepByGuide, executionAnswersByGuide, progressStorageKey])
 
   useEffect(() => {
     if (!API_ENABLED) return undefined
