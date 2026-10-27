@@ -5,7 +5,7 @@ import {
   ArrowDownRight, ArrowUpRight, BookOpen, Boxes, CalendarDays, ChevronDown,
   CircleHelp, ExternalLink, FileCheck2, FilePlus2, FileText, Globe2, Home, Star,
   Landmark, Layers3, LibraryBig, Link2, Search, ShieldCheck, SlidersHorizontal,
-  Sparkles, Bot, Send, Workflow, X, Pencil, Trash2, RefreshCw, UsersRound, LogOut, Paperclip, Download, History, CheckCircle2, UserPlus, Moon, Sun, Copy, ListTree, Clock3, Printer, ThumbsUp, ThumbsDown, Bell, MessageCircle
+  Sparkles, Bot, Send, Workflow, X, Pencil, Trash2, RefreshCw, UsersRound, LogOut, Paperclip, Download, History, CheckCircle2, UserPlus, Moon, Sun, Copy, ListTree, Clock3, Printer, ThumbsUp, ThumbsDown, Bell, MessageCircle, ClipboardList
 } from 'lucide-react'
 
 const demoDocuments = [
@@ -36,6 +36,7 @@ const navGroups = [
     { id: 'documents', label: 'Все документы', icon: LibraryBig },
     { id: 'favorites', label: 'Избранное', icon: Star },
     { id: 'tasks', label: 'Задачи команды', icon: ListTree },
+    { id: 'issues', label: 'Проблемы маркировки', icon: ClipboardList },
     { id: 'notifications', label: 'Уведомления', icon: Bell },
   ]},
   { title: 'ЮРИСДИКЦИИ', items: [
@@ -709,7 +710,7 @@ function App() {
     : active === 'home' ? 'База знаний оператора маркировки'
     : active === 'RU' ? 'МЗКМ · материалы для маркировки в РФ'
     : active === 'KG' ? 'ГАИС МТ · национальные материалы КР'
-    : jurisdictions[active]?.label || ({ assistant: 'ИИ-помощник', documents: 'Все документы', favorites: 'Избранные материалы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний', monitoring: 'Мониторинг официальных источников', users: 'Управление пользователями', audit: 'Журнал действий', tasks: 'Задачи команды', notifications: 'Уведомления' }[active] || 'TEKSHER HUB')
+    : jurisdictions[active]?.label || ({ assistant: 'ИИ-помощник', documents: 'Все документы', favorites: 'Избранные материалы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний', monitoring: 'Мониторинг официальных источников', users: 'Управление пользователями', audit: 'Журнал действий', tasks: 'Задачи команды', issues: 'Реестр проблем маркировки', notifications: 'Уведомления' }[active] || 'TEKSHER HUB')
 
   const syncRoute = (section, docId = null, replace = false) => {
     const route = { app: 'teksher-hub', section, docId }
@@ -758,7 +759,7 @@ function App() {
   useEffect(() => {
     const knownSections = new Set([
       'home', 'RU', 'KG', 'EAEU', 'assistant', 'documents', 'favorites', 'groups',
-      'processes', 'knowledge', 'monitoring', 'users', 'audit', 'tasks', 'notifications', 'analytics'
+      'processes', 'knowledge', 'monitoring', 'users', 'audit', 'tasks', 'issues', 'notifications', 'analytics'
     ])
 
     const restoreRoute = () => {
@@ -1333,7 +1334,7 @@ function App() {
         <div className="sidebar-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
         {navGroups.map((group) => {
           const items = group.items.filter(item => {
-            if (!API_ENABLED && ['monitoring', 'users', 'tasks', 'notifications'].includes(item.id)) return false
+            if (!API_ENABLED && ['monitoring', 'users', 'tasks', 'issues', 'notifications'].includes(item.id)) return false
             if (item.id === 'users' && currentUser?.role !== 'ADMIN') return false
             if (item.id === 'audit' && (!API_ENABLED || currentUser?.role !== 'ADMIN')) return false
             return true
@@ -1505,6 +1506,7 @@ function App() {
             : active === 'users' && currentUser?.role === 'ADMIN' ? <UsersSection users={users} onAdd={() => { setActionError(''); setUserModalOpen(true) }} onToggle={handleToggleUser} onReset={user => { setActionError(''); setPasswordResetTarget(user) }} />
             : active === 'audit' && currentUser?.role === 'ADMIN' ? <AuditLogSection />
             : active === 'tasks' ? <MyTasksPanel currentUser={currentUser} canAssign={['ADMIN','EDITOR'].includes(currentUser?.role)} />
+            : active === 'issues' ? <MarkingIssueRegistry currentUser={currentUser} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)} />
             : active === 'notifications' ? <NotificationsSection onOpenTasks={() => openSection('tasks')} />
             : <>
             <div className="page-heading">
@@ -4708,6 +4710,164 @@ function UserPasswordModal({ user, onClose, onSubmit, saving, error }) {
       </form>
     </section>
   </div>
+}
+
+
+const ISSUE_CATEGORY_LABELS = {
+  TECHNICAL: 'Техническая ошибка',
+  REGULATORY: 'Вопрос по требованиям',
+  PRODUCT_CARD: 'Карточка товара',
+  CODE_ORDER: 'Заказ кодов',
+  APPLICATION: 'Нанесение / заявка',
+  CODE_MOVEMENT: 'Движение кодов',
+  OTHER: 'Другое',
+}
+const ISSUE_SYSTEM_LABELS = { MZKM: 'МЗКМ', GAIS_MT: 'ГАИС МТ', TRANSGRAN: 'Трансгран', CROSS_BORDER: 'Трансграничная маркировка', OTHER: 'Другая система' }
+const ISSUE_STATUS_LABELS = { NEW: 'Новая', IN_PROGRESS: 'В работе', WAITING: 'Ожидает ответа', RESOLVED: 'Решена', CLOSED: 'Закрыта' }
+const ISSUE_PRIORITY_LABELS = { LOW: 'Низкий', NORMAL: 'Обычный', HIGH: 'Высокий', CRITICAL: 'Критический' }
+
+function MarkingIssueRegistry({ currentUser, canManage }) {
+  const [issues, setIssues] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [categoryFilter, setCategoryFilter] = useState('ALL')
+  const [showForm, setShowForm] = useState(false)
+  const [expandedId, setExpandedId] = useState(null)
+  const [commentsByIssue, setCommentsByIssue] = useState({})
+  const [commentDrafts, setCommentDrafts] = useState({})
+  const [commentLoadingId, setCommentLoadingId] = useState(null)
+  const [commentSavingId, setCommentSavingId] = useState(null)
+  const [draft, setDraft] = useState({ title: '', description: '', category: 'TECHNICAL', system: 'MZKM', jurisdiction: 'KG', productGroup: '', priority: 'NORMAL', assignedTo: '' })
+
+  const loadIssues = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const rows = await apiRequest('/api/marking-issues')
+      setIssues(Array.isArray(rows) ? rows : [])
+    } catch (exception) {
+      setError(exception.message || 'Не удалось загрузить реестр проблем.')
+    } finally {
+      setLoading(false)
+    }
+  }
+  useEffect(() => { loadIssues() }, [])
+
+  const filtered = issues.filter(issue => {
+    const matchesStatus = statusFilter === 'ALL' || issue.status === statusFilter
+    const matchesCategory = categoryFilter === 'ALL' || issue.category === categoryFilter
+    const haystack = [issue.title, issue.description, issue.productGroup, issue.createdBy, issue.assignedTo, ISSUE_CATEGORY_LABELS[issue.category], ISSUE_SYSTEM_LABELS[issue.system]].join(' ').toLocaleLowerCase('ru-RU')
+    return matchesStatus && matchesCategory && haystack.includes(query.trim().toLocaleLowerCase('ru-RU'))
+  })
+  const activeCount = issues.filter(issue => !['RESOLVED', 'CLOSED'].includes(issue.status)).length
+  const criticalCount = issues.filter(issue => issue.priority === 'CRITICAL' && !['RESOLVED', 'CLOSED'].includes(issue.status)).length
+
+  const createIssue = async event => {
+    event.preventDefault()
+    if (!draft.title.trim() || saving) return
+    setSaving(true); setError(''); setNotice('')
+    try {
+      const created = await apiRequest('/api/marking-issues', { method: 'POST', body: {
+        title: draft.title.trim(), description: draft.description.trim(), category: draft.category,
+        system: draft.system, jurisdiction: draft.jurisdiction, productGroup: draft.productGroup.trim(),
+        priority: draft.priority, assignedTo: canManage ? draft.assignedTo.trim() : '',
+      } })
+      setIssues(rows => [created, ...rows.filter(row => row.id !== created.id)])
+      setDraft({ title: '', description: '', category: 'TECHNICAL', system: 'MZKM', jurisdiction: 'KG', productGroup: '', priority: 'NORMAL', assignedTo: '' })
+      setShowForm(false); setNotice('Проблема зарегистрирована.')
+    } catch (exception) {
+      setError(exception.message || 'Не удалось зарегистрировать проблему.')
+    } finally { setSaving(false) }
+  }
+
+  const updateIssue = async (issue, changes) => {
+    setError(''); setNotice('')
+    try {
+      const updated = await apiRequest('/api/marking-issues/' + issue.id, { method: 'PATCH', body: changes })
+      setIssues(rows => rows.map(row => row.id === updated.id ? updated : row))
+      setNotice('Изменения сохранены.')
+    } catch (exception) { setError(exception.message || 'Не удалось сохранить изменения.') }
+  }
+
+  const toggleComments = async issue => {
+    if (expandedId === issue.id) { setExpandedId(null); return }
+    setExpandedId(issue.id)
+    if (Array.isArray(commentsByIssue[issue.id])) return
+    setCommentLoadingId(issue.id); setError('')
+    try {
+      const rows = await apiRequest('/api/marking-issues/' + issue.id + '/comments')
+      setCommentsByIssue(current => ({ ...current, [issue.id]: Array.isArray(rows) ? rows : [] }))
+    } catch (exception) { setError(exception.message || 'Не удалось загрузить историю обсуждения.') }
+    finally { setCommentLoadingId(null) }
+  }
+
+  const addComment = async (event, issue) => {
+    event.preventDefault()
+    const body = String(commentDrafts[issue.id] || '').trim()
+    if (!body || commentSavingId) return
+    setCommentSavingId(issue.id); setError('')
+    try {
+      const comment = await apiRequest('/api/marking-issues/' + issue.id + '/comments', { method: 'POST', body: { body } })
+      setCommentsByIssue(current => ({ ...current, [issue.id]: [...(current[issue.id] || []), comment] }))
+      setCommentDrafts(current => ({ ...current, [issue.id]: '' }))
+      setNotice('Комментарий добавлен.')
+      await loadIssues()
+    } catch (exception) { setError(exception.message || 'Не удалось добавить комментарий.') }
+    finally { setCommentSavingId(null) }
+  }
+
+  return <section className="management-page issue-registry">
+    <div className="page-heading">
+      <div><div className="section-kicker">ОПЕРАЦИОННЫЙ КОНТРОЛЬ</div><h1>Реестр проблем маркировки</h1><p>Единый журнал ошибок и вопросов по МЗКМ, ГАИС МТ, Трансграну и трансграничной маркировке. Фиксируйте проблему, назначайте ответственного и отслеживайте решение.</p></div>
+      <div className="heading-actions"><button className="secondary-button" type="button" onClick={loadIssues} disabled={loading}><RefreshCw size={14} className={loading ? 'spin' : ''}/> Обновить</button><button className="primary-button" type="button" onClick={() => setShowForm(value => !value)}><FilePlus2 size={15}/>{showForm ? 'Скрыть форму' : 'Зарегистрировать проблему'}</button></div>
+    </div>
+    <div className="issue-metric-grid">
+      <div className="issue-metric"><span>Всего записей</span><strong>{issues.length}</strong><small>В общем реестре</small></div>
+      <div className="issue-metric"><span>В работе</span><strong>{activeCount}</strong><small>Новые, активные и ожидающие</small></div>
+      <div className={'issue-metric ' + (criticalCount ? 'issue-metric-critical' : '')}><span>Критические</span><strong>{criticalCount}</strong><small>Не закрытые критичные проблемы</small></div>
+    </div>
+    {showForm && <form className="issue-create-form" onSubmit={createIssue}>
+      <div className="issue-form-heading"><div><b>Новая проблема</b><span>Заполни основные сведения. Не включай пароли, персональные данные или секреты доступа.</span></div></div>
+      <div className="issue-form-grid">
+        <label className="form-field issue-field-wide"><span>Краткое название *</span><input value={draft.title} onChange={event => setDraft(current => ({ ...current, title: event.target.value }))} required maxLength={240} placeholder="Например, ошибка публикации карточки товара"/></label>
+        <label className="form-field"><span>Категория</span><select value={draft.category} onChange={event => setDraft(current => ({ ...current, category: event.target.value }))}>{Object.entries(ISSUE_CATEGORY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label className="form-field"><span>Система</span><select value={draft.system} onChange={event => setDraft(current => ({ ...current, system: event.target.value }))}>{Object.entries(ISSUE_SYSTEM_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label className="form-field"><span>Юрисдикция</span><select value={draft.jurisdiction} onChange={event => setDraft(current => ({ ...current, jurisdiction: event.target.value }))}><option value="KG">Кыргызская Республика</option><option value="RU">Российская Федерация</option><option value="EAEU">ЕАЭС</option></select></label>
+        <label className="form-field"><span>Приоритет</span><select value={draft.priority} onChange={event => setDraft(current => ({ ...current, priority: event.target.value }))}>{Object.entries(ISSUE_PRIORITY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label className="form-field"><span>Товарная группа</span><input value={draft.productGroup} onChange={event => setDraft(current => ({ ...current, productGroup: event.target.value }))} maxLength={240} placeholder="Если применимо"/></label>
+        {canManage && <label className="form-field"><span>Ответственный (логин)</span><input value={draft.assignedTo} onChange={event => setDraft(current => ({ ...current, assignedTo: event.target.value }))} maxLength={120} placeholder="Необязательно"/></label>}
+        <label className="form-field issue-field-wide"><span>Описание, шаги воспроизведения и ожидаемый результат</span><textarea value={draft.description} onChange={event => setDraft(current => ({ ...current, description: event.target.value }))} maxLength={4000} rows={3} placeholder="Что произошло, в какой системе, когда и какие действия предшествовали ошибке"/></label>
+      </div>
+      <div className="modal-actions"><button className="secondary-button" type="button" onClick={() => setShowForm(false)}>Отмена</button><button className="primary-button" type="submit" disabled={saving || !draft.title.trim()}>{saving ? <RefreshCw size={14} className="spin"/> : <FilePlus2 size={14}/>} Создать запись</button></div>
+    </form>}
+    <div className="search-panel issue-search-panel"><div className="search-input-wrap"><Search size={17}/><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Поиск по проблеме, описанию, системе, товарной группе…"/></div><div className="filter-wrap"><SlidersHorizontal size={15}/><select aria-label="Фильтр по статусу проблемы" value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="ALL">Все статусы</option>{Object.entries(ISSUE_STATUS_LABELS).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div><div className="filter-wrap"><select aria-label="Фильтр по категории проблемы" value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)}><option value="ALL">Все категории</option>{Object.entries(ISSUE_CATEGORY_LABELS).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div><span className="record-count">{filtered.length} из {issues.length}</span></div>
+    {error && <div className="feedback feedback-error" role="alert"><CircleHelp size={15}/><span>{error}</span></div>}
+    {notice && <div className="feedback feedback-success" role="status"><CheckCircle2 size={15}/><span>{notice}</span></div>}
+    {loading ? <div className="empty-state"><RefreshCw size={21} className="spin"/><b>Загружаем реестр…</b></div>
+      : filtered.length ? <div className="issue-list">{filtered.map(issue => <article className={'issue-card issue-priority-' + issue.priority.toLowerCase()} key={issue.id}>
+        <div className="issue-card-top"><div className="issue-card-copy"><div className="issue-card-tags"><span className={'issue-status-pill issue-status-' + issue.status.toLowerCase()}>{ISSUE_STATUS_LABELS[issue.status] || issue.status}</span><span className={'issue-priority-pill issue-priority-pill-' + issue.priority.toLowerCase()}>{ISSUE_PRIORITY_LABELS[issue.priority] || issue.priority}</span><span className="issue-category-pill">{ISSUE_CATEGORY_LABELS[issue.category] || issue.category}</span></div><h2>#{issue.id} · {issue.title}</h2><div className="issue-card-meta"><span>{ISSUE_SYSTEM_LABELS[issue.system] || issue.system}</span><span>{issue.jurisdiction === 'KG' ? 'КР' : issue.jurisdiction === 'RU' ? 'РФ' : 'ЕАЭС'}</span>{issue.productGroup && <span>{issue.productGroup}</span>}<span>Автор: {issue.createdBy}</span>{issue.assignedTo && <span>Ответственный: {issue.assignedTo}</span>}<span>Обновлено: {formatDateTime(issue.updatedAt)}</span></div></div>
+          <button className="icon-button" type="button" onClick={() => toggleComments(issue)} title="История и комментарии" aria-label={'История проблемы ' + issue.id}><MessageCircle size={16}/></button>
+        </div>
+        {issue.description && <p className="issue-card-description">{issue.description}</p>}
+        {issue.resolution && <div className="issue-resolution"><CheckCircle2 size={15}/><span><b>Решение:</b> {issue.resolution}</span></div>}
+        <div className="issue-card-controls"><label className="form-field"><span>Статус</span><select value={issue.status} onChange={event => updateIssue(issue, { status: event.target.value })}>{Object.entries(ISSUE_STATUS_LABELS).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <label className="form-field"><span>Приоритет</span><select value={issue.priority} onChange={event => updateIssue(issue, { priority: event.target.value })}>{Object.entries(ISSUE_PRIORITY_LABELS).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          {canManage && <label className="form-field"><span>Ответственный</span><input key={issue.id + '-' + (issue.assignedTo || '')} defaultValue={issue.assignedTo || ''} maxLength={120} placeholder="Логин сотрудника" onBlur={event => { const value = event.target.value.trim(); if (value !== (issue.assignedTo || '')) updateIssue(issue, { assignedTo: value }) }}/></label>}
+          {['RESOLVED','CLOSED'].includes(issue.status) && <label className="form-field issue-resolution-field"><span>Краткое решение</span><input key={issue.id + '-resolution-' + (issue.resolution || '')} defaultValue={issue.resolution || ''} maxLength={3000} placeholder="Как устранена проблема" onBlur={event => { const value = event.target.value.trim(); if (value !== (issue.resolution || '')) updateIssue(issue, { resolution: value }) }}/></label>}
+        </div>
+        {expandedId === issue.id && <div className="issue-comments">
+          <div className="issue-comments-heading"><b>История обсуждения</b><span>{(commentsByIssue[issue.id] || []).length} комментариев</span></div>
+          {commentLoadingId === issue.id ? <div className="issue-comments-empty">Загружаем историю…</div> : (commentsByIssue[issue.id] || []).length ? <div className="issue-comment-list">{commentsByIssue[issue.id].map(comment => <article className="issue-comment" key={comment.id}><div><b>{comment.username}</b><time>{formatDateTime(comment.createdAt)}</time></div><p>{comment.body}</p></article>)}</div> : <p className="issue-comments-empty">Комментариев пока нет. Зафиксируйте диагностику, ответ поддержки или результат проверки.</p>}
+          <form className="issue-comment-form" onSubmit={event => addComment(event, issue)}><input value={commentDrafts[issue.id] || ''} onChange={event => setCommentDrafts(current => ({ ...current, [issue.id]: event.target.value }))} maxLength={3000} placeholder="Добавить комментарий…" aria-label="Комментарий к проблеме"/><button className="secondary-button" type="submit" disabled={commentSavingId === issue.id || !(commentDrafts[issue.id] || '').trim()}>{commentSavingId === issue.id ? 'Отправка…' : 'Отправить'}</button></form>
+        </div>}
+      </article>)}</div>
+      : <div className="empty-state"><ClipboardList size={24}/><b>{query.trim() || statusFilter !== 'ALL' || categoryFilter !== 'ALL' ? 'Совпадений нет' : 'Реестр пока пуст'}</b><span>{query.trim() || statusFilter !== 'ALL' || categoryFilter !== 'ALL' ? 'Измени фильтры или поисковый запрос.' : 'Зарегистрируйте первую проблему, чтобы начать собирать историю ошибок и решений.'}</span></div>}
+    <p className="issue-registry-note">Реестр фиксирует рабочие обращения и результаты диагностики. Статус «Решена» не означает подтверждение юридической актуальности требований – нормативные вопросы нужно сверять с первоисточниками.</p>
+  </section>
 }
 
 export default App
