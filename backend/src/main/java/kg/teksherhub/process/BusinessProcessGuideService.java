@@ -73,17 +73,38 @@ public class BusinessProcessGuideService {
     @Transactional(readOnly = true)
     public List<GuideVersion> versions(String processId) {
         return jdbc.query("""
-                SELECT version_number, action, title, changed_by, changed_at
+                SELECT version_number, action, title, changed_by, changed_at, snapshot_json
                 FROM business_process_guide_versions
                 WHERE process_id = ?
                 ORDER BY version_number DESC
                 """,
-                (rs, rowNum) -> new GuideVersion(
-                        rs.getInt("version_number"),
-                        rs.getString("action"),
-                        rs.getString("title"),
-                        rs.getString("changed_by"),
-                        rs.getTimestamp("changed_at").toInstant()),
+                (rs, rowNum) -> {
+                    int stepCount = 0;
+                    int branchCount = 0;
+                    String snapshot = rs.getString("snapshot_json");
+                    if (snapshot != null && !snapshot.isBlank()) {
+                        try {
+                            BusinessProcessGuideResponse saved =
+                                    objectMapper.readValue(snapshot, BusinessProcessGuideResponse.class);
+                            if (saved.steps() != null) {
+                                stepCount = saved.steps().size();
+                                branchCount = (int) saved.steps().stream()
+                                        .filter(step -> step.yesStepIndex() != null || step.noStepIndex() != null)
+                                        .count();
+                            }
+                        } catch (JsonProcessingException ex) {
+                            throw new IllegalStateException("Не удалось прочитать сводку версии процесса.", ex);
+                        }
+                    }
+                    return new GuideVersion(
+                            rs.getInt("version_number"),
+                            rs.getString("action"),
+                            rs.getString("title"),
+                            rs.getString("changed_by"),
+                            rs.getTimestamp("changed_at").toInstant(),
+                            stepCount,
+                            branchCount);
+                },
                 processId);
     }
 
@@ -143,7 +164,7 @@ public class BusinessProcessGuideService {
                 """, username, action, processId, title, details);
     }
 
-    public record GuideVersion(int versionNumber, String action, String title, String changedBy, Instant changedAt) {}
+    public record GuideVersion(int versionNumber, String action, String title, String changedBy, Instant changedAt, int stepCount, int branchCount) {}
 
     private void apply(BusinessProcessGuide guide, BusinessProcessGuideRequest request, String username, int fallbackOrder) {
         if (request.steps() == null || request.steps().isEmpty()) {
