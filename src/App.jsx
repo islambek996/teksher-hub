@@ -2373,6 +2373,8 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
   const [guides, setGuides] = useState(loadLocalProcessGuides)
   const [selectedGuideId, setSelectedGuideId] = useState(PROCESS_GUIDES[0].id)
   const [progress, setProgress] = useState(() => loadProcessGuideProgress(progressStorageKey))
+  const [executionStepByGuide, setExecutionStepByGuide] = useState({})
+  const [executionAnswersByGuide, setExecutionAnswersByGuide] = useState({})
   const [guidesLoading, setGuidesLoading] = useState(API_ENABLED)
   const [guideLoadError, setGuideLoadError] = useState('')
   const [guideMessage, setGuideMessage] = useState('')
@@ -2418,6 +2420,8 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
   const completed = Array.isArray(progress[guide.id])
     ? progress[guide.id].filter(index => Number.isInteger(index) && index >= 0 && index < guide.steps.length)
     : []
+  const executionStep = Number.isInteger(executionStepByGuide[guide.id]) ? executionStepByGuide[guide.id] : null
+  const executionAnswers = executionAnswersByGuide[guide.id] || {}
   const guideDone = completed.length
   const totalCompleted = guides.reduce((total, item) => {
     const steps = Array.isArray(progress[item.id]) ? progress[item.id] : []
@@ -2469,7 +2473,37 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
     persistProgress(guide.id, next)
   }
 
+  const startExecution = () => {
+    setExecutionStepByGuide(current => ({ ...current, [guide.id]: 0 }))
+    setExecutionAnswersByGuide(current => ({ ...current, [guide.id]: {} }))
+    setGuideMessage('Прохождение процесса начато. Выполняй текущий шаг и выбирай результат контрольных вопросов.')
+  }
+
+  const chooseExecutionAnswer = (index, answer) => {
+    const step = guide.steps[index]
+    if (!step) return
+    const targetValue = answer === 'yes' ? step.yesStepIndex : step.noStepIndex
+    const target = Number.isInteger(targetValue) && targetValue >= 0 && targetValue < guide.steps.length
+      ? targetValue
+      : index + 1 < guide.steps.length ? index + 1 : null
+    const currentAnswers = executionAnswersByGuide[guide.id] || {}
+    setExecutionAnswersByGuide(current => ({ ...current, [guide.id]: { ...(current[guide.id] || {}), [index]: answer } }))
+    const currentSteps = Array.isArray(progress[guide.id]) ? progress[guide.id] : []
+    const nextProgress = currentSteps.includes(index) ? currentSteps : [...currentSteps, index]
+    setProgress(current => ({ ...current, [guide.id]: nextProgress }))
+    persistProgress(guide.id, nextProgress)
+    if (target === null) {
+      setExecutionStepByGuide(current => ({ ...current, [guide.id]: null }))
+      setGuideMessage('Процесс завершён. Проверь итог и при необходимости открой историю изменений.')
+    } else {
+      setExecutionStepByGuide(current => ({ ...current, [guide.id]: target }))
+      setGuideMessage('Ответ сохранён. Следующий шаг: ' + (target + 1) + '. ' + guide.steps[target].title)
+    }
+  }
+
   const resetGuide = () => {
+    setExecutionStepByGuide(current => ({ ...current, [guide.id]: null }))
+    setExecutionAnswersByGuide(current => ({ ...current, [guide.id]: {} }))
     setProgress(current => ({ ...current, [guide.id]: [] }))
     if (API_ENABLED && !guide.id.startsWith('local-')) {
       apiRequest('/api/business-process-progress/' + encodeURIComponent(guide.id), { method: 'DELETE' })
@@ -2508,7 +2542,17 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
       time: String(draft.time || '').trim(),
       searchTerm: String(draft.searchTerm || '').trim() || String(draft.title || '').trim(),
       sources: cleanedSources,
-      steps: (draft.steps || []).map(step => ({ title: String(step.title || '').trim(), detail: String(step.detail || '').trim() })),
+      steps: (draft.steps || []).map(step => ({
+        title: String(step.title || '').trim(),
+        detail: String(step.detail || '').trim(),
+        responsible: String(step.responsible || '').trim(),
+        documents: String(step.documents || '').trim(),
+        decision: String(step.decision || '').trim(),
+        yesOutcome: String(step.yesOutcome || '').trim(),
+        noOutcome: String(step.noOutcome || '').trim(),
+        yesStepIndex: step.yesStepIndex === '' || step.yesStepIndex == null ? null : Number(step.yesStepIndex),
+        noStepIndex: step.noStepIndex === '' || step.noStepIndex == null ? null : Number(step.noStepIndex),
+      })),
       orderIndex: Number.isInteger(draft.orderIndex) ? draft.orderIndex : (guides.length + 1),
     }
     if (!body.steps.length || body.steps.some(step => !step.title || !step.detail)) {
@@ -2713,6 +2757,18 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
               <span style={{ width: percent + '%' }}/>
             </div>
             <div className="process-progress-caption"><span>{percent === 100 ? 'Все шаги отмечены' : 'Выполнено ' + percent + '%'}</span><button type="button" className="tnved-clear-button" onClick={resetGuide}>Сбросить отметки</button></div>
+
+            <section className="process-execution-panel" aria-label="Прохождение бизнес-процесса">
+              <div className="process-execution-heading"><div><span className="section-kicker">РЕЖИМ ВЫПОЛНЕНИЯ</span><strong>Проведение по шагам</strong><p>Запускай процесс, отмечай результат проверки и переходи к следующему шагу по выбранной ветке.</p></div>
+                {executionStep === null ? <button type="button" className="primary-button" onClick={startExecution}><Workflow size={15}/> Начать процесс</button> : <button type="button" className="secondary-button" onClick={resetGuide}>Начать заново</button>}
+              </div>
+              {executionStep !== null && guide.steps[executionStep] && <div className="process-execution-current"><span className="process-execution-step-number">Шаг {executionStep + 1} из {guide.steps.length}</span><h3>{guide.steps[executionStep].title}</h3><p>{guide.steps[executionStep].detail}</p>
+                {guide.steps[executionStep].responsible && <p><b>Ответственный:</b> {guide.steps[executionStep].responsible}</p>}
+                {guide.steps[executionStep].documents && <p><b>Документы и условия:</b> {guide.steps[executionStep].documents}</p>}
+                {guide.steps[executionStep].decision ? <><div className="process-execution-question"><b>Контрольный вопрос:</b> {guide.steps[executionStep].decision}</div><div className="process-execution-choices"><button type="button" className="primary-button" onClick={() => chooseExecutionAnswer(executionStep, 'yes')}><CheckCircle2 size={15}/> Да{guide.steps[executionStep].yesOutcome ? ': ' + guide.steps[executionStep].yesOutcome : ''}</button><button type="button" className="secondary-button" onClick={() => chooseExecutionAnswer(executionStep, 'no')}><X size={15}/> Нет{guide.steps[executionStep].noOutcome ? ': ' + guide.steps[executionStep].noOutcome : ''}</button></div></> : <button type="button" className="primary-button" onClick={() => { const next = executionStep + 1; const currentSteps = Array.isArray(progress[guide.id]) ? progress[guide.id] : []; const nextProgress = currentSteps.includes(executionStep) ? currentSteps : [...currentSteps, executionStep]; setProgress(current => ({ ...current, [guide.id]: nextProgress })); persistProgress(guide.id, nextProgress); if (next < guide.steps.length) setExecutionStepByGuide(current => ({ ...current, [guide.id]: next })); else { setExecutionStepByGuide(current => ({ ...current, [guide.id]: null })); setGuideMessage('Процесс завершён. Все шаги пройдены.'); } }}><CheckCircle2 size={15}/> Шаг выполнен, далее</button>}
+              </div>}
+              {executionStep === null && executionAnswersByGuide[guide.id] && Object.keys(executionAnswersByGuide[guide.id]).length > 0 && <p className="process-execution-finished"><CheckCircle2 size={15}/> Прохождение завершено. Можно начать процесс заново.</p>}
+            </section>
 
             <section className="process-flow-preview" aria-label="Схема бизнес-процесса">
               <div className="process-flow-preview-heading">
