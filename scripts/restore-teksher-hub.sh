@@ -34,8 +34,17 @@ fi
 
 echo "Проверяю структуру резервных копий..."
 docker compose exec -T "$DB_SERVICE" pg_restore --list < "$DB_BACKUP" >/dev/null
-tar -tzf "$UPLOADS_BACKUP" | awk '$0 == "uploads/" || $0 == "uploads" { found = 1 } END { exit !found }' || {
-  echo "Ошибка: архив не содержит ожидаемый каталог uploads/." >&2
+tar -tzf "$UPLOADS_BACKUP" | awk '
+  $0 == "uploads/" || $0 == "uploads" { found = 1; next }
+  substr($0, 1, 8) != "uploads/" { unsafe = 1 }
+  /(^|\/)\.\.?($|\/)/ { unsafe = 1 }
+  END { exit !(found && !unsafe) }
+' || {
+  echo "Ошибка: архив содержит пути вне uploads/ или небезопасные пути." >&2
+  exit 1
+}
+tar -tvzf "$UPLOADS_BACKUP" | awk 'substr($0, 1, 1) ~ /[lh]/ { unsafe = 1 } END { exit unsafe }' || {
+  echo "Ошибка: архив содержит символические или жёсткие ссылки." >&2
   exit 1
 }
 
