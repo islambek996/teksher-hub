@@ -292,11 +292,13 @@ public class BusinessProcessGuideService {
                 (rs, rowNum) -> {
                     int stepCount = 0;
                     int branchCount = 0;
+                    String workflowStatus = null;
                     String snapshot = rs.getString("snapshot_json");
                     if (snapshot != null && !snapshot.isBlank()) {
                         try {
                             BusinessProcessGuideResponse saved =
                                     objectMapper.readValue(snapshot, BusinessProcessGuideResponse.class);
+                            workflowStatus = saved.workflowStatus();
                             if (saved.steps() != null) {
                                 stepCount = saved.steps().size();
                                 branchCount = (int) saved.steps().stream()
@@ -314,7 +316,8 @@ public class BusinessProcessGuideService {
                             rs.getString("changed_by"),
                             rs.getTimestamp("changed_at").toInstant(),
                             stepCount,
-                            branchCount);
+                            branchCount,
+                            workflowStatus);
                 },
                 processId);
     }
@@ -407,7 +410,8 @@ public class BusinessProcessGuideService {
 
     public record DeletedGuide(String processId, String title, String deletedBy, Instant deletedAt, int versionNumber) {}
 
-    public record GuideVersion(int versionNumber, String action, String title, String changedBy, Instant changedAt, int stepCount, int branchCount) {}
+    public record GuideVersion(int versionNumber, String action, String title, String changedBy,
+            Instant changedAt, int stepCount, int branchCount, String workflowStatus) {}
 
     private void apply(BusinessProcessGuide guide, BusinessProcessGuideRequest request, String username, int fallbackOrder) {
         if (request.steps() == null || request.steps().isEmpty()) {

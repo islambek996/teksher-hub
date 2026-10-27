@@ -97,7 +97,15 @@ public class BusinessProcessGuideController {
     public List<BusinessProcessGuideService.GuideVersion> versions(@PathVariable String id,
             @AuthenticationPrincipal UserAccount user) {
         ensurePublishedVisibility(id, user);
-        return service.versions(id);
+        List<BusinessProcessGuideService.GuideVersion> versions = service.versions(id);
+        if (user != null && "READER".equals(user.getRole())) {
+            // Historical snapshots created before workflow states existed are intentionally hidden:
+            // their publication status cannot be proven from the saved snapshot.
+            return versions.stream()
+                    .filter(version -> "PUBLISHED".equals(version.workflowStatus()))
+                    .toList();
+        }
+        return versions;
     }
 
     @GetMapping("/{id}/versions/{versionNumber}")
@@ -107,7 +115,7 @@ public class BusinessProcessGuideController {
         ensurePublishedVisibility(id, user);
         BusinessProcessGuideResponse version = service.versionDetail(id, versionNumber);
         if (user != null && "READER".equals(user.getRole())
-                && version.workflowStatus() != null && !"PUBLISHED".equals(version.workflowStatus())) {
+                && !"PUBLISHED".equals(version.workflowStatus())) {
             throw new org.springframework.security.access.AccessDeniedException("Эта версия не опубликована.");
         }
         return version;
