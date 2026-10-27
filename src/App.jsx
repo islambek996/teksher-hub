@@ -2445,6 +2445,30 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
   const percent = guide.steps.length ? Math.round(guideDone / guide.steps.length * 100) : 0
   const canManageGuides = canEdit && (!API_ENABLED || !guideLoadError)
   const localOnly = !API_ENABLED
+  const executionRoute = (() => {
+    const route = []
+    const seen = new Set()
+    let cursor = 0
+    while (Number.isInteger(cursor) && cursor >= 0 && cursor < guide.steps.length && !seen.has(cursor) && route.length <= guide.steps.length) {
+      route.push(cursor)
+      seen.add(cursor)
+      const step = guide.steps[cursor]
+      const answer = executionAnswers[cursor]
+      if (step?.decision && !answer) break
+      let target = null
+      if (step?.decision && answer) {
+        const targetValue = answer === 'yes' ? step.yesStepIndex : step.noStepIndex
+        target = Number.isInteger(targetValue) && targetValue >= 0 && targetValue < guide.steps.length
+          ? targetValue
+          : cursor + 1 < guide.steps.length ? cursor + 1 : null
+      } else {
+        target = cursor + 1 < guide.steps.length ? cursor + 1 : null
+      }
+      if (target === null) break
+      cursor = target
+    }
+    return new Set(route)
+  })()
 
   useEffect(() => {
     try { window.localStorage.setItem(progressStorageKey, JSON.stringify(progress)) } catch { /* storage unavailable */ }
@@ -2801,11 +2825,16 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
               <div className="process-flow-track">
                 {guide.steps.map((step, index) => {
                   const isDone = completed.includes(index)
-                  return <div className={'process-flow-item' + (isDone ? ' completed' : '')} key={'flow-' + guide.id + '-' + index}>
+                  const isCurrent = executionStep === index
+                  const isOnRoute = executionRoute.has(index)
+                  const answer = executionAnswers[index]
+                  const status = isCurrent ? 'Текущий шаг' : answer ? (answer === 'yes' ? 'Ответ: Да' : 'Ответ: Нет') : isDone ? 'Выполнено' : executionStep !== null && !isOnRoute ? 'Вне выбранного маршрута' : 'Ожидает выполнения'
+                  return <div className={'process-flow-item' + (isDone ? ' completed' : '') + (isCurrent ? ' current' : '') + (executionStep !== null && !isOnRoute ? ' skipped' : '')} key={'flow-' + guide.id + '-' + index}>
                     <div className="process-flow-node">
                       <span className="process-flow-number">{isDone ? <CheckCircle2 size={17}/> : String(index + 1).padStart(2, '0')}</span>
-                      <div className="process-flow-copy"><strong>{step.title}</strong><span>{isDone ? 'Выполнено' : 'Ожидает выполнения'}</span></div>
+                      <div className="process-flow-copy"><strong>{step.title}</strong><span>{status}</span>{step.decision && <small>Контрольный вопрос: {step.decision}</small>}</div>
                     </div>
+                    {step.decision && <div className="process-flow-branch-labels"><span className={answer === 'yes' ? 'selected' : ''}>Да{Number.isInteger(step.yesStepIndex) ? ' → шаг ' + (step.yesStepIndex + 1) : ''}</span><span className={answer === 'no' ? 'selected' : ''}>Нет{Number.isInteger(step.noStepIndex) ? ' → шаг ' + (step.noStepIndex + 1) : ''}</span></div>}
                     {index < guide.steps.length - 1 && <div className="process-flow-connector" aria-hidden="true"><ArrowDownRight size={16}/></div>}
                   </div>
                 })}
