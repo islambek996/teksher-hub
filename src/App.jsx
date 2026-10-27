@@ -342,6 +342,15 @@ function downloadCsvTemplate() {
 function buildGuideVersionChanges(current, previous) {
   if (!current || !previous) return []
   const changes = []
+  const displayValue = value => {
+    if (value === null || value === undefined || String(value).trim() === '') return 'не заполнено'
+    const text = Array.isArray(value) ? value.join(', ') : String(value)
+    return text.length > 140 ? text.slice(0, 137) + '…' : text
+  }
+  const compareField = (before, after, label) => {
+    if (String(before ?? '') === String(after ?? '')) return
+    changes.push(label + ': «' + displayValue(before) + '» → «' + displayValue(after) + '»')
+  }
   const fields = [
     ['title', 'Название процесса'],
     ['summary', 'Краткое описание'],
@@ -350,48 +359,64 @@ function buildGuideVersionChanges(current, previous) {
     ['time', 'Оценка времени'],
     ['searchTerm', 'Поисковые слова'],
   ]
-  fields.forEach(([key, label]) => {
-    if (String(current[key] ?? '') !== String(previous[key] ?? '')) changes.push(label + ': значение изменено')
-  })
+  fields.forEach(([key, label]) => compareField(previous[key], current[key], label))
+
   const currentSteps = Array.isArray(current.steps) ? current.steps : []
   const previousSteps = Array.isArray(previous.steps) ? previous.steps : []
   if (currentSteps.length !== previousSteps.length) {
     changes.push('Количество шагов: ' + previousSteps.length + ' → ' + currentSteps.length)
   }
   const stepFields = [
-    ['title', 'название'],
-    ['detail', 'описание'],
-    ['responsible', 'ответственный'],
-    ['documents', 'документы'],
-    ['decision', 'контрольный вопрос'],
-    ['yesOutcome', 'результат «Да»'],
-    ['noOutcome', 'результат «Нет»'],
-    ['yesStepIndex', 'переход «Да»'],
-    ['noStepIndex', 'переход «Нет»'],
+    ['title', 'Название'],
+    ['detail', 'Описание'],
+    ['responsible', 'Ответственный'],
+    ['documents', 'Документы'],
+    ['decision', 'Контрольный вопрос'],
+    ['yesOutcome', 'Результат «Да»'],
+    ['noOutcome', 'Результат «Нет»'],
+    ['yesStepIndex', 'Переход «Да»'],
+    ['noStepIndex', 'Переход «Нет»'],
   ]
   const maxSteps = Math.max(currentSteps.length, previousSteps.length)
   for (let index = 0; index < maxSteps; index++) {
     const before = previousSteps[index]
     const after = currentSteps[index]
     if (!before) {
-      changes.push('Добавлен шаг ' + (index + 1) + ': ' + (after?.title || 'без названия'))
+      changes.push('Добавлен шаг ' + (index + 1) + ': «' + displayValue(after?.title) + '»')
       continue
     }
     if (!after) {
-      changes.push('Удалён шаг ' + (index + 1) + ': ' + (before?.title || 'без названия'))
+      changes.push('Удалён шаг ' + (index + 1) + ': «' + displayValue(before?.title) + '»')
       continue
     }
     const changedFields = stepFields
       .filter(([key]) => String(before[key] ?? '') !== String(after[key] ?? ''))
-      .map(([, label]) => label)
+      .map(([key, label]) => label + ': «' + displayValue(before[key]) + '» → «' + displayValue(after[key]) + '»')
     if (changedFields.length) {
-      changes.push('Шаг ' + (index + 1) + ' «' + (after.title || before.title || 'без названия')
-        + '»: изменено – ' + changedFields.join(', '))
+      changes.push('Шаг ' + (index + 1) + ' «' + displayValue(after.title || before.title) + '»: ' + changedFields.join('; '))
     }
   }
-  const currentSources = JSON.stringify(current.sources || [])
-  const previousSources = JSON.stringify(previous.sources || [])
-  if (currentSources !== previousSources) changes.push('Список источников и ссылок изменён')
+
+  const normalizeSources = sources => (Array.isArray(sources) ? sources : []).map(source => ({
+    title: String(source?.title ?? '').trim(),
+    url: String(source?.url ?? '').trim(),
+  }))
+  const currentSources = normalizeSources(current.sources)
+  const previousSources = normalizeSources(previous.sources)
+  if (JSON.stringify(currentSources) !== JSON.stringify(previousSources)) {
+    changes.push('Источники и ссылки: ' + previousSources.length + ' → ' + currentSources.length)
+    const sourceCount = Math.max(currentSources.length, previousSources.length)
+    for (let index = 0; index < sourceCount; index++) {
+      const before = previousSources[index]
+      const after = currentSources[index]
+      if (!before) changes.push('Добавлен источник: «' + displayValue(after.title || after.url) + '»')
+      else if (!after) changes.push('Удалён источник: «' + displayValue(before.title || before.url) + '»')
+      else if (before.title !== after.title || before.url !== after.url) {
+        changes.push('Источник ' + (index + 1) + ': «' + displayValue(before.title || before.url)
+          + '» → «' + displayValue(after.title || after.url) + '»')
+      }
+    }
+  }
   return changes
 }
 
