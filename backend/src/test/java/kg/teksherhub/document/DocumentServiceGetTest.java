@@ -30,7 +30,5 @@ class DocumentServiceGetTest {
 
         assertEquals(HttpStatus.NOT_FOUND, error.getStatusCode());
         assertEquals("Документ не найден", error.getReason());
-        verifyNoInteractions(
-                mock(DocumentVersionRepository.class));
     }
 }
