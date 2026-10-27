@@ -15,6 +15,7 @@ import java.util.Map;
 @RequestMapping("/api/business-process-progress")
 public class ProcessProgressController {
     private static final TypeReference<List<String>> STRING_LIST = new TypeReference<>() {};
+    private static final TypeReference<List<BusinessProcessStep>> STEP_LIST = new TypeReference<>() {};
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
@@ -48,10 +49,26 @@ public class ProcessProgressController {
         if (processId == null || processId.isBlank() || processId.length() > 80) {
             throw new IllegalArgumentException("Некорректный идентификатор бизнес-процесса.");
         }
+        final String stepsJson;
+        try {
+            stepsJson = jdbc.queryForObject(
+                    "SELECT steps_json FROM business_process_guides WHERE id = ?",
+                    String.class, processId);
+        } catch (org.springframework.dao.EmptyResultDataAccessException ex) {
+            throw new IllegalArgumentException("Бизнес-процесс не найден.");
+        }
+        if (stepsJson == null || stepsJson.isBlank()) {
+            throw new IllegalArgumentException("У бизнес-процесса нет доступных шагов.");
+        }
+        List<BusinessProcessStep> processSteps = mapper.readValue(stepsJson, STEP_LIST);
+        int stepCount = processSteps == null ? 0 : processSteps.size();
         List<String> safeSteps = completedSteps == null ? List.of() : completedSteps.stream()
-                .filter(step -> step != null && !step.isBlank() && step.length() <= 120)
+                .filter(step -> step != null && step.matches("\\d{1,3}"))
+                .map(Integer::parseInt)
+                .filter(index -> index >= 0 && index < stepCount)
                 .distinct()
-                .limit(100)
+                .sorted()
+                .map(String::valueOf)
                 .toList();
         String json = mapper.writeValueAsString(safeSteps);
         jdbc.update("""
