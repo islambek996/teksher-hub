@@ -95,7 +95,12 @@ public class DocumentService {
     }
 
     @Transactional(readOnly = true)
-    public DocumentResponse get(UUID id) { return toResponse(findEntity(id)); }
+    public DocumentResponse get(UUID id) {
+        DocumentRecord document = documents.findById(id)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Документ не найден"));
+        return toResponse(document);
+    }
 
     @Transactional(readOnly = true)
     public Set<UUID> readableDocumentIdsFor(String role) {
