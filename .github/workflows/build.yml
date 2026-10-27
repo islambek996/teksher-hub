@@ -141,6 +141,24 @@ jobs:
           READER_TOKEN=$(echo "$READER_LOGIN" | jq -r '.token')
           test -n "$READER_TOKEN" && test "$READER_TOKEN" != "null"
 
+          OLD_READER_TOKEN="$READER_TOKEN"
+          curl --silent --show-error --fail -X PUT "http://localhost:8080/api/users/$READER_USER_ID/password" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"password":"ci-password-rotated-987654"}' | jq -e '.username == "ci-reader"'
+          OLD_TOKEN_STATUS=$(curl --silent --output /tmp/ci-old-token-after-password-reset.json --write-out '%{http_code}' "http://localhost:8080/api/auth/me" -H "Authorization: Bearer $OLD_READER_TOKEN")
+          test "$OLD_TOKEN_STATUS" != "200"
+          READER_LOGIN=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/auth/login -H 'Content-Type: application/json' -d '{"username":"ci-reader","password":"ci-password-rotated-987654"}')
+          READER_TOKEN=$(echo "$READER_LOGIN" | jq -r '.token')
+          test -n "$READER_TOKEN" && test "$READER_TOKEN" != "null"
+          OLD_READER_TOKEN="$READER_TOKEN"
+          curl --silent --show-error --fail -X PATCH "http://localhost:8080/api/users/$READER_USER_ID/enabled" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"enabled":false}' | jq -e '.enabled == false'
+          DISABLED_TOKEN_STATUS=$(curl --silent --output /tmp/ci-disabled-token.json --write-out '%{http_code}' "http://localhost:8080/api/auth/me" -H "Authorization: Bearer $OLD_READER_TOKEN")
+          test "$DISABLED_TOKEN_STATUS" != "200"
+          curl --silent --show-error --fail -X PATCH "http://localhost:8080/api/users/$READER_USER_ID/enabled" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"enabled":true}' | jq -e '.enabled == true'
+          REENABLED_OLD_TOKEN_STATUS=$(curl --silent --output /tmp/ci-reenabled-old-token.json --write-out '%{http_code}' "http://localhost:8080/api/auth/me" -H "Authorization: Bearer $OLD_READER_TOKEN")
+          test "$REENABLED_OLD_TOKEN_STATUS" != "200"
+          READER_LOGIN=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/auth/login -H 'Content-Type: application/json' -d '{"username":"ci-reader","password":"ci-password-rotated-987654"}')
+          READER_TOKEN=$(echo "$READER_LOGIN" | jq -r '.token')
+          test -n "$READER_TOKEN" && test "$READER_TOKEN" != "null"
+
           curl --silent --show-error --fail "http://localhost:8080/api/business-processes" -H "Authorization: Bearer $READER_TOKEN" | jq -e --arg id "$PROCESS_ID" 'all(.[]; .id != $id)'
           curl --silent --show-error --fail -X POST "http://localhost:8080/api/business-processes/$PROCESS_ID/submit-for-review" -H "Authorization: Bearer $EDITOR_TOKEN" | jq -e '.workflowStatus == "IN_REVIEW"'
           EDITOR_PUBLISH_STATUS=$(curl --silent --output /tmp/ci-editor-publish.json --write-out '%{http_code}' -X POST "http://localhost:8080/api/business-processes/$PROCESS_ID/publish" -H "Authorization: Bearer $EDITOR_TOKEN")
