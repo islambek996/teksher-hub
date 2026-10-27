@@ -2086,3 +2086,74 @@ html[data-theme="dark"] .process-step-branch {
   .process-execution-current h3 { font-size: 16px; }
   .process-execution-current { padding: 14px; }
 }
+
+
+/* Business-process route and decision branch states */
+.process-flow-item.current .process-flow-node {
+  border-color: #6f9ed6;
+  box-shadow: 0 0 0 2px rgba(91, 145, 207, .16);
+  background: #f0f6ff;
+}
+.process-flow-item.current .process-flow-number {
+  background: #315f91;
+  color: #fff;
+}
+.process-flow-item.current .process-flow-copy > span {
+  color: #315f91;
+  font-weight: 700;
+}
+.process-flow-item.skipped .process-flow-node {
+  opacity: .56;
+  border-style: dashed;
+}
+.process-flow-copy small {
+  color: #72859c;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.process-flow-branch-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 7px 0 0 42px;
+}
+.process-flow-branch-labels span {
+  padding: 4px 7px;
+  border: 1px solid #dce5f0;
+  border-radius: 6px;
+  background: #f7f9fc;
+  color: #687d95;
+  font-size: 10px;
+  line-height: 1.35;
+}
+.process-flow-branch-labels span.selected {
+  border-color: #76b99b;
+  background: #eaf8f0;
+  color: #176847;
+  font-weight: 700;
+}
+html[data-theme="dark"] .process-flow-item.current .process-flow-node {
+  border-color: #6c9bd3;
+  background: #203c5b;
+  box-shadow: 0 0 0 2px rgba(108, 155, 211, .2);
+}
+html[data-theme="dark"] .process-flow-item.current .process-flow-number {
+  background: #497bb4;
+  color: #fff;
+}
+html[data-theme="dark"] .process-flow-item.current .process-flow-copy > span {
+  color: #a8ceff;
+}
+html[data-theme="dark"] .process-flow-copy small {
+  color: #a9bed5;
+}
+html[data-theme="dark"] .process-flow-branch-labels span {
+  background: #1a2d44;
+  border-color: #3a5069;
+  color: #b8c9dc;
+}
+html[data-theme="dark"] .process-flow-branch-labels span.selected {
+  background: #193a30;
+  border-color: #34775e;
+  color: #9be7c4;
+}
