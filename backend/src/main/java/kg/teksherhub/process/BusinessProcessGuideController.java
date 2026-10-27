@@ -38,6 +38,12 @@ public class BusinessProcessGuideController {
         return service.update(id, request, user.getUsername());
     }
 
+    @GetMapping("/deleted")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    public List<BusinessProcessGuideService.DeletedGuide> deletedGuides() {
+        return service.deletedGuides();
+    }
+
     @GetMapping("/{id}/versions")
     @PreAuthorize("hasAnyRole('ADMIN','EDITOR','READER')")
     public List<BusinessProcessGuideService.GuideVersion> versions(@PathVariable String id) {

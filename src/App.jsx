@@ -2500,6 +2500,10 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
   const [restoringVersion, setRestoringVersion] = useState(0)
   const [versionComparison, setVersionComparison] = useState(null)
   const [versionComparisonLoading, setVersionComparisonLoading] = useState(0)
+  const [deletedGuides, setDeletedGuides] = useState([])
+  const [deletedGuidesOpen, setDeletedGuidesOpen] = useState(false)
+  const [deletedGuidesLoading, setDeletedGuidesLoading] = useState(false)
+  const [restoringDeletedId, setRestoringDeletedId] = useState('')
 
   useEffect(() => {
     if (!API_ENABLED) {
@@ -2879,6 +2883,50 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
     }
   }
 
+  const openDeletedGuides = async () => {
+    if (!API_ENABLED || !canDelete) return
+    setDeletedGuidesOpen(true)
+    setDeletedGuidesLoading(true)
+    try {
+      const rows = await apiRequest('/api/business-processes/deleted')
+      setDeletedGuides(Array.isArray(rows) ? rows : [])
+    } catch (error) {
+      setGuideMessage(error.message || 'Не удалось загрузить удалённые бизнес-процессы.')
+      setDeletedGuidesOpen(false)
+    } finally {
+      setDeletedGuidesLoading(false)
+    }
+  }
+
+  const restoreDeletedGuide = async item => {
+    if (!canManageGuides || !item?.processId || !item?.versionNumber || restoringDeletedId) return
+    const confirmed = window.confirm('Восстановить удалённый процесс «' + item.title + '» из последней сохранённой версии?')
+    if (!confirmed) return
+    setRestoringDeletedId(item.processId)
+    setGuideMessage('')
+    try {
+      const saved = await apiRequest('/api/business-processes/' + encodeURIComponent(item.processId)
+        + '/versions/' + item.versionNumber + '/restore', { method: 'POST' })
+      setGuides(current => current.some(existing => existing.id === saved.id)
+        ? current.map(existing => existing.id === saved.id ? saved : existing)
+        : [...current, saved])
+      setSelectedGuideId(saved.id)
+      setProgress(current => ({ ...current, [saved.id]: [] }))
+      try {
+        await apiRequest('/api/business-process-progress/' + encodeURIComponent(saved.id), { method: 'DELETE' })
+      } catch {
+        setGuideMessage('Процесс восстановлен, но прогресс не удалось сбросить на сервере. Проверь отметки шагов.')
+      }
+      setDeletedGuides(current => current.filter(deleted => deleted.processId !== item.processId))
+      setGuideMessage('Бизнес-процесс «' + saved.title + '» восстановлен. Создана новая версия истории.')
+      if (deletedGuides.length <= 1) setDeletedGuidesOpen(false)
+    } catch (error) {
+      setGuideMessage(error.message || 'Не удалось восстановить удалённый бизнес-процесс.')
+    } finally {
+      setRestoringDeletedId('')
+    }
+  }
+
   const deleteGuide = async item => {
     if (!canDelete) return
     const confirmed = window.confirm('Удалить бизнес-процесс «' + item.title + '»? Это действие нельзя отменить.')
@@ -2920,6 +2968,7 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
       <div className="process-heading-actions">
         <div className="process-overall-progress"><strong>{totalCompleted} / {totalSteps}</strong><span>шагов выполнено</span></div>
         {canManageGuides && <button type="button" className="primary-button process-create-guide-button" onClick={openNewGuideEditor}><FilePlus2 size={15}/> Новая инструкция</button>}
+        {canDelete && API_ENABLED && <button type="button" className="secondary-button" onClick={openDeletedGuides}><History size={15}/> Удалённые</button>}
       </div>
     </div>
 
@@ -3033,6 +3082,24 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
           </article>
         </div>
     }
+
+    {deletedGuidesOpen && <div className="modal-backdrop process-guide-editor-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !restoringDeletedId) setDeletedGuidesOpen(false) }}>
+      <section className="create-modal process-guide-editor-modal process-version-history-modal" role="dialog" aria-modal="true" aria-labelledby="deleted-processes-title">
+        <div className="modal-header">
+          <div><div className="section-kicker">АРХИВ ИНСТРУКЦИЙ</div><h2 id="deleted-processes-title">Удалённые бизнес-процессы</h2><p>Удалённые инструкции можно восстановить из последней сохранённой версии.</p></div>
+          <button type="button" className="icon-button" onClick={() => setDeletedGuidesOpen(false)} aria-label="Закрыть архив" disabled={Boolean(restoringDeletedId)}><X size={18}/></button>
+        </div>
+        {deletedGuidesLoading
+          ? <div className="empty-state"><RefreshCw size={20} className="spin"/><span>Загружаем архив…</span></div>
+          : deletedGuides.length
+            ? <div className="process-version-list">{deletedGuides.map(item => <article className="process-version-row" key={item.processId}>
+                <div className="process-version-number"><Trash2 size={15}/></div>
+                <div className="process-version-copy"><strong>{item.title || 'Без названия'}</strong><span>Удалил: {item.deletedBy || 'неизвестно'}</span><small>{item.deletedAt ? new Date(item.deletedAt).toLocaleString('ru-RU') : 'Дата не указана'}</small><small>Последняя версия: v{item.versionNumber}</small></div>
+                {canManageGuides && <button type="button" className="secondary-button" disabled={Boolean(restoringDeletedId)} onClick={() => restoreDeletedGuide(item)}>{restoringDeletedId === item.processId ? <RefreshCw size={13} className="spin"/> : <History size={13}/>} Восстановить</button>}
+              </article>)}</div>
+            : <div className="empty-state"><CheckCircle2 size={22}/><b>Удалённых процессов нет</b><span>Удалённые инструкции с сохранённой историей появятся здесь.</span></div>}
+      </section>
+    </div>}
 
     {versionHistoryOpen && <div className="modal-backdrop process-guide-editor-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !restoringVersion) setVersionHistoryOpen(false) }}>
       <section className="create-modal process-guide-editor-modal process-version-history-modal" role="dialog" aria-modal="true" aria-labelledby="process-version-history-title">

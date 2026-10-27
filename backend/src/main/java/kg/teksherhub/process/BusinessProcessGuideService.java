@@ -72,6 +72,36 @@ public class BusinessProcessGuideService {
     }
 
     @Transactional(readOnly = true)
+    public List<DeletedGuide> deletedGuides() {
+        return jdbc.query("""
+                SELECT a.entity_id, a.entity_label, a.username, a.created_at,
+                       (SELECT MAX(v.version_number)
+                        FROM business_process_guide_versions v
+                        WHERE v.process_id = a.entity_id) AS version_number
+                FROM audit_log a
+                WHERE a.entity_type = 'BUSINESS_PROCESS'
+                  AND a.action = 'DELETE'
+                  AND a.id = (
+                      SELECT MAX(latest.id)
+                      FROM audit_log latest
+                      WHERE latest.entity_type = 'BUSINESS_PROCESS'
+                        AND latest.entity_id = a.entity_id
+                  )
+                  AND EXISTS (
+                      SELECT 1 FROM business_process_guide_versions v
+                      WHERE v.process_id = a.entity_id
+                  )
+                ORDER BY a.created_at DESC
+                """,
+                (rs, rowNum) -> new DeletedGuide(
+                        rs.getString("entity_id"),
+                        rs.getString("entity_label"),
+                        rs.getString("username"),
+                        rs.getTimestamp("created_at").toInstant(),
+                        rs.getInt("version_number")));
+    }
+
+    @Transactional(readOnly = true)
     public List<GuideVersion> versions(String processId) {
         return jdbc.query("""
                 SELECT version_number, action, title, changed_by, changed_at, snapshot_json
@@ -180,6 +210,8 @@ public class BusinessProcessGuideService {
                 VALUES (?, ?, 'BUSINESS_PROCESS', ?, ?, ?, NOW())
                 """, username, action, processId, title, details);
     }
+
+    public record DeletedGuide(String processId, String title, String deletedBy, Instant deletedAt, int versionNumber) {}
 
     public record GuideVersion(int versionNumber, String action, String title, String changedBy, Instant changedAt, int stepCount, int branchCount) {}
 
