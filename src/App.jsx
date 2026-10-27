@@ -2370,7 +2370,7 @@ function loadProcessExecutionState(storageKey = PROCESS_PROGRESS_KEY) {
       finished: parsed.finished && typeof parsed.finished === 'object' ? parsed.finished : {},
     }
   } catch {
-    return { steps: {}, answers: {} }
+    return { steps: {}, answers: {}, finished: {} }
   }
 }
 
