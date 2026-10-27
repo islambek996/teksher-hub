@@ -729,8 +729,17 @@ function App() {
       const hash = window.location.hash.replace(/^#/, '')
       const match = hash.match(/^([^/]+)(?:\/document\/(.*))?$/)
       const hashSection = match?.[1] || ''
-      const section = knownSections.has(hashSection) ? hashSection : ''
+      let section = knownSections.has(hashSection) ? hashSection : ''
       const docId = match?.[2] ? decodeURIComponent(match[2]) : null
+      const adminOnlySection = section === 'users' || section === 'audit'
+      if (API_ENABLED && currentUser && adminOnlySection && currentUser.role !== 'ADMIN') {
+        setActive('home')
+        setSelectedDoc(null)
+        syncRoute('home', null, true)
+        setActionError('Раздел доступен только администраторам.')
+        setSuccessMessage('')
+        return
+      }
 
       if (section) {
         setActive(section)
@@ -752,7 +761,7 @@ function App() {
       window.removeEventListener('popstate', restoreRoute)
       window.removeEventListener('hashchange', restoreRoute)
     }
-  }, [documents])
+  }, [documents, currentUser])
 
   const toggleFavoriteDocument = async doc => {
     if (!doc?.id) return
@@ -1455,7 +1464,7 @@ function App() {
             : active === 'processes' ? <ProcessGuidesSection key={currentUser?.username || 'local'} progressStorageKey={API_ENABLED ? PROCESS_PROGRESS_KEY + ':' + (currentUser?.username || 'anonymous') : PROCESS_PROGRESS_KEY} onSearchMaterials={searchProductGroupMaterials} canEdit={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'} canApprove={!API_ENABLED || currentUser?.role === 'ADMIN'} canViewDashboard={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)} />
             : active === 'monitoring' ? <MonitorSection monitors={monitors} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
                 onAdd={() => { setActionError(''); setMonitorModalOpen(true) }} onCheck={handleCheckMonitor} onDelete={handleDeleteMonitor} />
-            : active === 'users' ? <UsersSection users={users} onAdd={() => { setActionError(''); setUserModalOpen(true) }} onToggle={handleToggleUser} onReset={user => { setActionError(''); setPasswordResetTarget(user) }} />
+            : active === 'users' && currentUser?.role === 'ADMIN' ? <UsersSection users={users} onAdd={() => { setActionError(''); setUserModalOpen(true) }} onToggle={handleToggleUser} onReset={user => { setActionError(''); setPasswordResetTarget(user) }} />
             : active === 'audit' && currentUser?.role === 'ADMIN' ? <AuditLogSection />
             : active === 'tasks' ? <MyTasksPanel currentUser={currentUser} canAssign={['ADMIN','EDITOR'].includes(currentUser?.role)} />
             : active === 'notifications' ? <NotificationsSection onOpenTasks={() => openSection('tasks')} />
