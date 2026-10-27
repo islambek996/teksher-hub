@@ -1998,3 +1998,91 @@ html[data-theme="dark"] .assistant-feedback-toggle:hover{background:#203b58;bord
   .process-execution-choices { flex-direction: column; }
   .process-execution-choices button { width: 100%; justify-content: center; }
 }
+
+
+/* Business-process execution: preserve contrast in dark theme */
+html[data-theme="dark"] .process-execution-panel {
+  background: var(--surface, #17263a);
+  border-color: var(--border-color, #354a63);
+  color: var(--text-primary, #edf4ff);
+}
+html[data-theme="dark"] .process-execution-heading p,
+html[data-theme="dark"] .process-execution-current p {
+  color: var(--text-secondary, #b7c8dc);
+}
+html[data-theme="dark"] .process-execution-current {
+  background: #142338;
+  border-color: #344a64;
+  color: #edf4ff;
+}
+html[data-theme="dark"] .process-execution-current h3 {
+  color: #edf4ff;
+}
+html[data-theme="dark"] .process-execution-step-number {
+  background: #294567;
+  color: #e4efff;
+}
+html[data-theme="dark"] .process-execution-question {
+  background: #1a2d44;
+  border-left-color: #8bb7ed;
+  color: #e5eefb;
+}
+html[data-theme="dark"] .process-execution-finished {
+  color: #7dd6ad;
+}
+html[data-theme="dark"] .process-flow-preview {
+  background: linear-gradient(145deg, #142338, #182a40);
+  border-color: #344a64;
+}
+html[data-theme="dark"] .process-flow-preview-heading > div strong {
+  color: #e7f0fc;
+}
+html[data-theme="dark"] .process-flow-preview-heading > span {
+  background: #263d58;
+  color: #c7d9ef;
+}
+html[data-theme="dark"] .process-flow-node {
+  background: #1a2d44;
+  border-color: #3a5069;
+  box-shadow: none;
+}
+html[data-theme="dark"] .process-flow-number {
+  background: #29415e;
+  color: #dceaff;
+}
+html[data-theme="dark"] .process-flow-copy strong {
+  color: #e5eefb;
+}
+html[data-theme="dark"] .process-flow-copy span {
+  color: #afc2d8;
+}
+html[data-theme="dark"] .process-flow-item.completed .process-flow-node {
+  background: #19362f;
+  border-color: #34775e;
+}
+html[data-theme="dark"] .process-flow-item.completed .process-flow-number {
+  background: #245746;
+  color: #a9f0d0;
+}
+html[data-theme="dark"] .process-flow-item.completed .process-flow-copy span {
+  color: #8ee0bb;
+}
+html[data-theme="dark"] .process-flow-connector {
+  color: #91aac7;
+}
+html[data-theme="dark"] .process-editor-decision-fields {
+  background: #142338;
+  border-color: #344a64;
+}
+html[data-theme="dark"] .process-step-meta {
+  color: #b7c8dc;
+}
+html[data-theme="dark"] .process-step-branch {
+  background: #1a2d44;
+  border-left-color: #8bb7ed;
+  color: #e5eefb;
+}
+@media (max-width: 640px) {
+  .process-execution-current h3 { font-size: 16px; }
+  .process-execution-current { padding: 14px; }
+}
