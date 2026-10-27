@@ -2613,6 +2613,20 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
       setEditorError('У каждого шага должны быть заполнены название и описание.')
       return
     }
+    const invalidTransition = body.steps.findIndex((step, index) => {
+      const targets = [step.yesStepIndex, step.noStepIndex].filter(target => target !== null)
+      if (targets.some(target => !Number.isInteger(target) || target < 0 || target >= body.steps.length)) return true
+      const hasBranch = targets.length > 0
+      return hasBranch && !step.decision
+    })
+    if (invalidTransition !== -1) {
+      const step = body.steps[invalidTransition]
+      const hasBranch = step.yesStepIndex !== null || step.noStepIndex !== null
+      setEditorError(hasBranch && !step.decision
+        ? `В шаге ${invalidTransition + 1} укажи контрольный вопрос для ветвления.`
+        : `В шаге ${invalidTransition + 1} выбран несуществующий переход. Проверь номера шагов.`)
+      return
+    }
     setSavingGuide(true)
     setEditorError('')
     setGuideMessage('')
