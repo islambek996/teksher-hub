@@ -15,6 +15,7 @@ DB_SERVICE="${DB_SERVICE:-db}"
 API_SERVICE="${API_SERVICE:-api}"
 DB_NAME="${DB_NAME:-}"
 DB_USERNAME="${DB_USERNAME:-}"
+BACKUP_DIR="${BACKUP_DIR:-$ROOT_DIR/backups}"
 
 [[ -s "$DB_BACKUP" ]] || { echo "Ошибка: дамп базы не найден или пуст: $DB_BACKUP" >&2; exit 1; }
 [[ -s "$UPLOADS_BACKUP" ]] || { echo "Ошибка: архив вложений не найден или пуст: $UPLOADS_BACKUP" >&2; exit 1; }
@@ -46,6 +47,10 @@ cat <<'WARNING'
 WARNING
 read -r -p "Для продолжения введи RESTORE: " confirmation
 [[ "$confirmation" == "RESTORE" ]] || { echo "Восстановление отменено."; exit 1; }
+
+echo "Создаю аварийную копию текущей базы и вложений перед восстановлением..."
+DB_SERVICE="$DB_SERVICE" API_SERVICE="$API_SERVICE" BACKUP_DIR="$BACKUP_DIR" \
+  DB_NAME="$DB_NAME" DB_USERNAME="$DB_USERNAME" bash scripts/backup-teksher-hub.sh
 
 api_stopped=0
 restart_api() {
