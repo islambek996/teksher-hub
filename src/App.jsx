@@ -49,6 +49,7 @@ const navGroups = [
     { id: 'knowledge', label: 'Инструкции и база знаний', icon: BookOpen },
   ]},
   { title: 'АДМИНИСТРИРОВАНИЕ', items: [
+    { id: 'analytics', label: 'Аналитика руководителя', icon: Layers3 },
     { id: 'monitoring', label: 'Источники и проверки', icon: RefreshCw },
     { id: 'users', label: 'Пользователи', icon: UsersRound },
     { id: 'audit', label: 'Журнал действий', icon: History },
@@ -434,6 +435,41 @@ function classifyGuideVersionChange(change) {
   return 'changed'
 }
 
+
+function ManagerAnalyticsSection({ documents, monitors }) {
+  const metrics = useMemo(() => {
+    const today = new Date()
+    const parseDate = value => { if (!value) return null; const parsed = Date.parse(value); return Number.isNaN(parsed) ? null : parsed }
+    const statusOf = doc => String(doc.statusLabel || doc.status || '').toLocaleLowerCase('ru-RU')
+    const review = documents.filter(doc => /на проверке|under_review|черновик|draft/.test(statusOf(doc))).length
+    const expired = documents.filter(doc => { const end = parseDate(doc.effectiveUntil); return end !== null && end < new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime() }).length
+    const missingSource = documents.filter(doc => !String(doc.sourceUrl || '').trim()).length
+    const stale = documents.filter(doc => { const checked = parseDate(doc.lastReviewedAt || doc.lastSourceCheckedAt || doc.reviewedAt); return !checked || today.getTime() - checked > 180 * 24 * 60 * 60 * 1000 }).length
+    const byJurisdiction = ['KG', 'RU', 'EAEU'].map(code => ({ code, label: ({ KG: 'КР', RU: 'РФ', EAEU: 'ЕАЭС' })[code], count: documents.filter(doc => doc.jurisdiction === code).length }))
+    return { total: documents.length, review, expired, missingSource, stale, byJurisdiction, monitorTotal: monitors.length, monitorEnabled: monitors.filter(item => item.enabled === true).length }
+  }, [documents, monitors])
+  const cards = [
+    { label: 'Всего материалов', value: metrics.total, note: 'Карточки базы знаний', tone: 'neutral' },
+    { label: 'Требуют проверки', value: metrics.review, note: 'Черновики и очередь проверки', tone: 'warning' },
+    { label: 'Истёк срок действия', value: metrics.expired, note: 'По полю «Действует по»', tone: 'danger' },
+    { label: 'Без официального источника', value: metrics.missingSource, note: 'Нужна ссылка на первоисточник', tone: 'warning' },
+  ]
+  return <section className="management-page manager-analytics">
+    <div className="page-heading"><div><div className="section-kicker">УПРАВЛЕНЧЕСКАЯ СВОДКА</div><h1>Аналитика руководителя</h1><p>Состояние базы знаний, нормативной актуальности и мониторинга источников. Данные рассчитаны по доступным карточкам.</p></div></div>
+    <div className="manager-metric-grid">{cards.map(card => <article className={'manager-metric-card metric-' + card.tone} key={card.label}><span>{card.label}</span><strong>{card.value}</strong><small>{card.note}</small></article>)}</div>
+    <div className="manager-analytics-grid">
+      <section className="manager-analytics-panel"><div className="manager-panel-heading"><h2>Материалы по юрисдикции</h2><span>{metrics.total} всего</span></div>
+        {metrics.byJurisdiction.map(item => <div className="manager-breakdown-row" key={item.code}><span>{item.label}</span><div className="manager-breakdown-track"><span style={{ width: (metrics.total ? item.count / metrics.total * 100 : 0) + '%' }} /></div><strong>{item.count}</strong></div>)}
+      </section>
+      <section className="manager-analytics-panel"><div className="manager-panel-heading"><h2>Контроль качества</h2><span>Внутренние сигналы</span></div>
+        <div className="manager-quality-row"><span>Нет отметки проверки или старше 180 дней</span><strong>{metrics.stale}</strong></div>
+        <div className="manager-quality-row"><span>Источники в мониторинге</span><strong>{metrics.monitorEnabled} / {metrics.monitorTotal}</strong></div>
+        <p className="manager-analytics-note">Возраст проверки – напоминание для сотрудника, а не автоматическое юридическое заключение. Проверьте первоисточник перед изменением статуса НПА.</p>
+      </section>
+    </div>
+  </section>
+}
+
 function App() {
   const [theme, setTheme] = useState(loadTheme)
   const [showGlobalSearch, setShowGlobalSearch] = useState(false)
@@ -669,7 +705,8 @@ function App() {
     return () => { cancelled = true }
   }, [currentUser, selectedDoc?.id, selectedDoc?.versionNumber])
 
-  const pageTitle = active === 'home' ? 'База знаний оператора маркировки'
+  const pageTitle = active === 'analytics' ? 'Аналитика руководителя'
+    : active === 'home' ? 'База знаний оператора маркировки'
     : active === 'RU' ? 'МЗКМ · материалы для маркировки в РФ'
     : active === 'KG' ? 'ГАИС МТ · национальные материалы КР'
     : jurisdictions[active]?.label || ({ assistant: 'ИИ-помощник', documents: 'Все документы', favorites: 'Избранные материалы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний', monitoring: 'Мониторинг официальных источников', users: 'Управление пользователями', audit: 'Журнал действий', tasks: 'Задачи команды', notifications: 'Уведомления' }[active] || 'TEKSHER HUB')
@@ -721,7 +758,7 @@ function App() {
   useEffect(() => {
     const knownSections = new Set([
       'home', 'RU', 'KG', 'EAEU', 'assistant', 'documents', 'favorites', 'groups',
-      'processes', 'knowledge', 'monitoring', 'users', 'audit', 'tasks', 'notifications'
+      'processes', 'knowledge', 'monitoring', 'users', 'audit', 'tasks', 'notifications', 'analytics'
     ])
 
     const restoreRoute = () => {
@@ -731,7 +768,7 @@ function App() {
       const hashSection = match?.[1] || ''
       let section = knownSections.has(hashSection) ? hashSection : ''
       const docId = match?.[2] ? decodeURIComponent(match[2]) : null
-      const adminOnlySection = section === 'users' || section === 'audit'
+      const adminOnlySection = section === 'users' || section === 'audit' || section === 'analytics'
       if (API_ENABLED && currentUser && adminOnlySection && currentUser.role !== 'ADMIN') {
         setActive('home')
         setSelectedDoc(null)
@@ -1325,7 +1362,8 @@ function App() {
         <div className="page-content">
           {actionError && <div className="feedback feedback-error" role="alert"><CircleHelp size={16} /><span>{actionError}</span><button onClick={() => setActionError('')} aria-label="Закрыть сообщение"><X size={15} /></button></div>}
           {successMessage && <div className="feedback feedback-success" role="status"><CheckCircle2 size={16} /><span>{successMessage}</span><button onClick={() => setSuccessMessage('')} aria-label="Закрыть сообщение"><X size={15} /></button></div>}
-          {active === 'home' && !selectedDoc ? <>
+          {active === 'analytics' && currentUser?.role === 'ADMIN' && !selectedDoc ? <ManagerAnalyticsSection documents={documents} monitors={monitors} />
+             : active === 'home' && !selectedDoc ? <>
             <section className="welcome">
               <div className="welcome-content">
                 <div className="eyebrow"><Sparkles size={14} /> ЕДИНОЕ ПРОСТРАНСТВО ЗНАНИЙ</div>
