@@ -24,13 +24,13 @@ psql -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "CREATE DATABASE $source_db" >/dev/n
 psql -v ON_ERROR_STOP=1 -d "$source_db" -c "CREATE TABLE recovery_probe (id INTEGER PRIMARY KEY, marker TEXT NOT NULL); INSERT INTO recovery_probe VALUES (1, 'restored-row-ok')" >/dev/null
 
 echo "Creating PostgreSQL custom-format backup..."
-pg_dump --format=custom --no-owner --no-acl --file="$work_dir/database.dump" --dbname="$source_db"
+docker run --rm --network host --env PGPASSWORD --env PGHOST --env PGPORT --env PGUSER --volume "$work_dir:/backup" postgres:16-alpine pg_dump --format=custom --no-owner --no-acl --file=/backup/database.dump --dbname="$source_db"
 test -s "$work_dir/database.dump"
-pg_restore --list "$work_dir/database.dump" >/dev/null
+docker run --rm --network host --env PGPASSWORD --env PGHOST --env PGPORT --env PGUSER --volume "$work_dir:/backup" postgres:16-alpine pg_restore --list /backup/database.dump >/dev/null
 
 psql -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "CREATE DATABASE $target_db" >/dev/null
 echo "Restoring PostgreSQL backup into a clean database..."
-pg_restore --no-owner --no-acl --exit-on-error --dbname="$target_db" "$work_dir/database.dump"
+docker run --rm --network host --env PGPASSWORD --env PGHOST --env PGPORT --env PGUSER --volume "$work_dir:/backup" postgres:16-alpine pg_restore --no-owner --no-acl --exit-on-error --dbname="$target_db" /backup/database.dump
 restored_value="$(psql -v ON_ERROR_STOP=1 -At -d "$target_db" -c "SELECT marker FROM recovery_probe WHERE id = 1")"
 [[ "$restored_value" == "restored-row-ok" ]] || { echo "Database recovery verification failed." >&2; exit 1; }
 
