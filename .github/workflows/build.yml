@@ -104,7 +104,7 @@ jobs:
 
           PROCESS_GUIDES=$(curl --silent --show-error --fail "http://localhost:8080/api/business-processes" -H "Authorization: Bearer $TOKEN")
           echo "$PROCESS_GUIDES" | jq -e 'length == 6 and any(.[]; .id == "registration" and (.steps | length) == 5)'
-          PROCESS_CREATED=$(curl --silent --show-error --fail -X POST "http://localhost:8080/api/business-processes" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"category":"CI","title":"CI business process guide","summary":"Temporary process for CRUD smoke test","scope":"CI","time":"1 step","searchTerm":"CI process","sources":[],"steps":[{"title":"Initial step","detail":"Initial detail"}]}')
+          PROCESS_CREATED=$(curl --silent --show-error --fail -X POST "http://localhost:8080/api/business-processes" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"category":"CI","title":"CI business process guide","summary":"Temporary process for CRUD smoke test","scope":"CI","time":"1 step","searchTerm":"CI process","sources":[],"steps":[{"title":"Initial step","detail":"Initial detail"},{"title":"Second step","detail":"Second detail"},{"title":"Third step","detail":"Third detail"}]}')
           PROCESS_ID=$(echo "$PROCESS_CREATED" | jq -r '.id')
           test -n "$PROCESS_ID" && test "$PROCESS_ID" != "null"
           PROCESS_UPDATE_BODY=$(echo "$PROCESS_CREATED" | jq -c '.summary = "Updated by CI" | {category,title,summary,scope,time,searchTerm,sources,steps,orderIndex}')
