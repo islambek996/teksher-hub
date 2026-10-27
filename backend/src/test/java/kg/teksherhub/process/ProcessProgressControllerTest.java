@@ -48,6 +48,8 @@ class ProcessProgressControllerTest {
     void completeWritesCompletionStateAndAuditLog() {
         when(jdbc.queryForObject(contains("SELECT workflow_status"), eq(String.class), eq("registration")))
                 .thenReturn("PUBLISHED");
+        when(jdbc.update(contains("SET execution_status = 'COMPLETED'"),
+                eq("tester"), eq("registration"))).thenReturn(1);
 
         Map<String, Object> result = controller.complete("registration", user);
 
@@ -56,6 +58,18 @@ class ProcessProgressControllerTest {
                 eq("tester"), eq("registration"));
         verify(jdbc).update(contains("INSERT INTO audit_log"), eq("tester"), eq("registration"),
                 eq("registration"), eq("Завершено прохождение бизнес-процесса"));
+    }
+
+    @Test
+    void completeRejectsExecutionThatHasNotBeenStarted() {
+        when(jdbc.queryForObject(contains("SELECT workflow_status"), eq(String.class), eq("registration")))
+                .thenReturn("PUBLISHED");
+        when(jdbc.update(contains("SET execution_status = 'COMPLETED'"),
+                eq("tester"), eq("registration"))).thenReturn(0);
+
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> controller.complete("registration", user));
+        verify(jdbc, never()).update(contains("INSERT INTO audit_log"), any(Object[].class));
     }
 
     @Test
