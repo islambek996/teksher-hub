@@ -179,6 +179,7 @@ public class BusinessProcessGuideService {
         if (steps.isEmpty()) {
             throw new IllegalArgumentException("Добавьте хотя бы один шаг.");
         }
+        validateStepTransitions(steps);
 
         guide.setCategory(request.category().trim());
         guide.setTitle(request.title().trim());
@@ -221,6 +222,29 @@ public class BusinessProcessGuideService {
             return result == null ? new ArrayList<>() : List.copyOf(result);
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("Не удалось прочитать данные инструкции из базы.", exception);
+            static void validateStepTransitions(List<BusinessProcessStep> steps) {
+        for (int i = 0; i < steps.size(); i++) {
+            BusinessProcessStep step = steps.get(i);
+            validateTransitionTarget(step.yesStepIndex(), steps.size(), i, "положительной");
+            validateTransitionTarget(step.noStepIndex(), steps.size(), i, "отрицательной");
+            if ((step.yesStepIndex() != null || step.noStepIndex() != null)
+                    && (step.decision() == null || step.decision().isBlank())) {
+                throw new IllegalArgumentException(
+                        "Для шага " + (i + 1) + " с ветвлением укажите контрольный вопрос.");
+            }
         }
+    }
+
+    private static void validateTransitionTarget(Integer target, int stepCount, int sourceIndex, String branchName) {
+        if (target == null) {
+            return;
+        }
+        if (target < 0 || target >= stepCount) {
+            throw new IllegalArgumentException(
+                    "Некорректный переход " + branchName + " ветви шага " + (sourceIndex + 1)
+                            + ": выберите существующий шаг.");
+        }
+    }
+}
     }
 }
