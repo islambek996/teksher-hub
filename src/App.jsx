@@ -339,6 +339,62 @@ function downloadCsvTemplate() {
   URL.revokeObjectURL(url)
 }
 
+function buildGuideVersionChanges(current, previous) {
+  if (!current || !previous) return []
+  const changes = []
+  const fields = [
+    ['title', 'Название процесса'],
+    ['summary', 'Краткое описание'],
+    ['category', 'Категория'],
+    ['scope', 'Область применения'],
+    ['time', 'Оценка времени'],
+    ['searchTerm', 'Поисковые слова'],
+  ]
+  fields.forEach(([key, label]) => {
+    if (String(current[key] ?? '') !== String(previous[key] ?? '')) changes.push(label + ': значение изменено')
+  })
+  const currentSteps = Array.isArray(current.steps) ? current.steps : []
+  const previousSteps = Array.isArray(previous.steps) ? previous.steps : []
+  if (currentSteps.length !== previousSteps.length) {
+    changes.push('Количество шагов: ' + previousSteps.length + ' → ' + currentSteps.length)
+  }
+  const stepFields = [
+    ['title', 'название'],
+    ['detail', 'описание'],
+    ['responsible', 'ответственный'],
+    ['documents', 'документы'],
+    ['decision', 'контрольный вопрос'],
+    ['yesOutcome', 'результат «Да»'],
+    ['noOutcome', 'результат «Нет»'],
+    ['yesStepIndex', 'переход «Да»'],
+    ['noStepIndex', 'переход «Нет»'],
+  ]
+  const maxSteps = Math.max(currentSteps.length, previousSteps.length)
+  for (let index = 0; index < maxSteps; index++) {
+    const before = previousSteps[index]
+    const after = currentSteps[index]
+    if (!before) {
+      changes.push('Добавлен шаг ' + (index + 1) + ': ' + (after?.title || 'без названия'))
+      continue
+    }
+    if (!after) {
+      changes.push('Удалён шаг ' + (index + 1) + ': ' + (before?.title || 'без названия'))
+      continue
+    }
+    const changedFields = stepFields
+      .filter(([key]) => String(before[key] ?? '') !== String(after[key] ?? ''))
+      .map(([, label]) => label)
+    if (changedFields.length) {
+      changes.push('Шаг ' + (index + 1) + ' «' + (after.title || before.title || 'без названия')
+        + '»: изменено – ' + changedFields.join(', '))
+    }
+  }
+  const currentSources = JSON.stringify(current.sources || [])
+  const previousSources = JSON.stringify(previous.sources || [])
+  if (currentSources !== previousSources) changes.push('Список источников и ссылок изменён')
+  return changes
+}
+
 function App() {
   const [theme, setTheme] = useState(loadTheme)
   const [showGlobalSearch, setShowGlobalSearch] = useState(false)
@@ -2403,6 +2459,8 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false)
   const [versionHistoryLoading, setVersionHistoryLoading] = useState(false)
   const [restoringVersion, setRestoringVersion] = useState(0)
+  const [versionComparison, setVersionComparison] = useState(null)
+  const [versionComparisonLoading, setVersionComparisonLoading] = useState(0)
 
   useEffect(() => {
     if (!API_ENABLED) {
@@ -2694,6 +2752,7 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
     setVersionHistoryOpen(true)
     setVersionHistoryLoading(true)
     setVersionHistory([])
+    setVersionComparison(null)
     setGuideMessage('')
     try {
       const rows = await apiRequest('/api/business-processes/' + encodeURIComponent(item.id) + '/versions')
@@ -2703,6 +2762,25 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
       setGuideMessage(error.message || 'Не удалось загрузить историю версий.')
     } finally {
       setVersionHistoryLoading(false)
+    }
+  }
+
+  const compareGuideVersion = async version => {
+    if (!guide?.id || !version?.versionNumber || versionComparisonLoading) return
+    setVersionComparisonLoading(version.versionNumber)
+    setVersionComparison(null)
+    try {
+      const previous = await apiRequest('/api/business-processes/' + encodeURIComponent(guide.id)
+        + '/versions/' + version.versionNumber)
+      setVersionComparison({
+        versionNumber: version.versionNumber,
+        title: version.title,
+        changes: buildGuideVersionChanges(guide, previous),
+      })
+    } catch (error) {
+      setGuideMessage(error.message || 'Не удалось сравнить версии процесса.')
+    } finally {
+      setVersionComparisonLoading(0)
     }
   }
 
@@ -2903,9 +2981,18 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
             ? <div className="process-version-list">{versionHistory.map(version => <article className="process-version-row" key={version.versionNumber}>
                 <div className="process-version-number"><History size={15}/><b>v{version.versionNumber}</b></div>
                 <div className="process-version-copy"><strong>{version.title}</strong><span>{({ CREATE: 'Создание', UPDATE: 'Изменение', RESTORE: 'Восстановление' }[version.action] || version.action)} · {version.changedBy}</span><small>{version.changedAt ? new Date(version.changedAt).toLocaleString('ru-RU') : 'Дата не указана'}</small><small>{Number.isFinite(version.stepCount) ? version.stepCount + ' шагов' : 'Количество шагов не указано'} · {Number.isFinite(version.branchCount) ? version.branchCount + ' ветвлений' : 'Ветвления не указаны'}</small></div>
-                {canManageGuides && <button type="button" className="secondary-button" disabled={restoringVersion !== 0} onClick={() => restoreGuideVersion(version)}>{restoringVersion === version.versionNumber ? <RefreshCw size={13} className="spin"/> : <History size={13}/>} Восстановить</button>}
+                <button type="button" className="secondary-button" disabled={versionComparisonLoading !== 0 || restoringVersion !== 0} onClick={() => compareGuideVersion(version)}>{versionComparisonLoading === version.versionNumber ? <RefreshCw size={13} className="spin"/> : <ListTree size={13}/>} Сравнить</button> {canManageGuides && <button type="button" className="secondary-button" disabled={restoringVersion !== 0 || versionComparisonLoading !== 0} onClick={() => restoreGuideVersion(version)}>{restoringVersion === version.versionNumber ? <RefreshCw size={13} className="spin"/> : <History size={13}/>} Восстановить</button>}
               </article>)}</div>
             : <div className="empty-state"><History size={22}/><b>История пока пуста</b><span>Новая версия появится после сохранения инструкции.</span></div>}
+        {versionComparison && <section className="process-version-comparison" aria-live="polite">
+          <div className="process-version-comparison-heading">
+            <div><strong>Сравнение v{versionComparison.versionNumber} с текущей редакцией</strong><small>{versionComparison.title}</small></div>
+            <button type="button" className="icon-button" onClick={() => setVersionComparison(null)} aria-label="Закрыть сравнение"><X size={16}/></button>
+          </div>
+          {versionComparison.changes.length
+            ? <ul>{versionComparison.changes.map((change, index) => <li key={index}>{change}</li>)}</ul>
+            : <p>Изменений между этой версией и текущей редакцией не найдено.</p>}
+        </section>}
       </section>
     </div>}
     {editorOpen && <ProcessGuideEditorModal
