@@ -31,6 +31,34 @@ class ProcessProgressControllerTest {
     }
 
     @Test
+    void startCreatesAnInProgressExecutionAndWritesAuditLog() {
+        when(jdbc.queryForObject(contains("SELECT workflow_status"), eq(String.class), eq("registration")))
+                .thenReturn("PUBLISHED");
+
+        Map<String, Object> result = controller.start("registration", user);
+
+        assertEquals(true, result.get("started"));
+        verify(jdbc).update(contains("INSERT INTO business_process_progress"),
+                eq("tester"), eq("registration"));
+        verify(jdbc).update(contains("INSERT INTO audit_log"), eq("tester"), eq("registration"),
+                eq("registration"), eq("Начато прохождение бизнес-процесса"));
+    }
+
+    @Test
+    void completeWritesCompletionStateAndAuditLog() {
+        when(jdbc.queryForObject(contains("SELECT workflow_status"), eq(String.class), eq("registration")))
+                .thenReturn("PUBLISHED");
+
+        Map<String, Object> result = controller.complete("registration", user);
+
+        assertEquals(true, result.get("completed"));
+        verify(jdbc).update(contains("SET execution_status = 'COMPLETED'"),
+                eq("tester"), eq("registration"));
+        verify(jdbc).update(contains("INSERT INTO audit_log"), eq("tester"), eq("registration"),
+                eq("registration"), eq("Завершено прохождение бизнес-процесса"));
+    }
+
+    @Test
     void saveNormalizesCompletedStepsBeforePersisting() throws Exception {
         List<String> submitted = new ArrayList<>();
         submitted.add("1");
