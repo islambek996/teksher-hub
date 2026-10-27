@@ -13,11 +13,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.Set;
+import java.util.LinkedHashSet;
 
 @Service
 public class BusinessProcessGuideService {
     private static final TypeReference<List<BusinessProcessStep>> STEPS_TYPE = new TypeReference<>() {};
     private static final TypeReference<List<BusinessProcessSource>> SOURCES_TYPE = new TypeReference<>() {};
+    private static final TypeReference<List<String>> PROGRESS_TYPE = new TypeReference<>() {};
 
     private final BusinessProcessGuideRepository repository;
     private final ObjectMapper objectMapper;
@@ -36,10 +39,159 @@ public class BusinessProcessGuideService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<BusinessProcessGuideResponse> publishedList() {
+        return repository.findAllByOrderByOrderIndexAscTitleAsc().stream()
+                .map(this::toResponse)
+                .filter(item -> "PUBLISHED".equals(item.workflowStatus()))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public WorkflowOverview overview() {
+        List<WorkflowStatusCount> counts = jdbc.query(
+                "SELECT workflow_status, COUNT(*) AS total FROM business_process_guides GROUP BY workflow_status ORDER BY workflow_status",
+                (rs, rowNum) -> new WorkflowStatusCount(rs.getString("workflow_status"), rs.getLong("total")));
+        List<ProcessExecutionSummary> executions = jdbc.query("""
+                SELECT p.process_id, g.title, g.workflow_status, p.username,
+                       COALESCE(u.display_name, p.username) AS display_name,
+                       p.completed_steps_json, p.updated_at, g.steps_json
+                FROM business_process_progress p
+                JOIN business_process_guides g ON g.id = p.process_id
+                LEFT JOIN users u ON u.username = p.username
+                ORDER BY p.updated_at DESC
+                LIMIT 1000
+                """, (rs, rowNum) -> {
+            int totalSteps = readJson(rs.getString("steps_json"), STEPS_TYPE).size();
+            int completedSteps = 0;
+            try {
+                List<String> stored = objectMapper.readValue(
+                        rs.getString("completed_steps_json") == null ? "[]" : rs.getString("completed_steps_json"),
+                        PROGRESS_TYPE);
+                Set<Integer> valid = new LinkedHashSet<>();
+                if (stored != null) {
+                    for (String value : stored) {
+                        try {
+                            int index = Integer.parseInt(value);
+                            if (index >= 0 && index < totalSteps) valid.add(index);
+                        } catch (NumberFormatException ignored) {
+                            // Ignore old or invalid indexes in the manager overview.
+                        }
+                    }
+                }
+                completedSteps = valid.size();
+            } catch (JsonProcessingException ignored) {
+                // One damaged progress row must not make the entire overview unavailable.
+            }
+            int percent = totalSteps == 0 ? 0 : Math.round(completedSteps * 100f / totalSteps);
+            return new ProcessExecutionSummary(
+                    rs.getString("process_id"), rs.getString("title"), rs.getString("workflow_status"),
+                    rs.getString("username"), rs.getString("display_name"), completedSteps, totalSteps,
+                    percent, rs.getTimestamp("updated_at").toInstant());
+        });
+        return new WorkflowOverview(counts, executions);
+    }
+
+    public record WorkflowStatusCount(String status, long total) {}
+    public record ProcessExecutionSummary(String processId, String title, String workflowStatus,
+            String username, String displayName, int completedSteps, int totalSteps,
+            int progressPercent, Instant updatedAt) {}
+    public record WorkflowOverview(List<WorkflowStatusCount> statusCounts,
+            List<ProcessExecutionSummary> executions) {}
+
+    @Transactional
+    public BusinessProcessGuideResponse submitForReview(String id, String username) {
+        BusinessProcessGuide guide = requireGuide(id);
+        if (!"DRAFT".equals(guide.getWorkflowStatus())) {
+            throw new IllegalArgumentException("На согласование можно отправить только черновик.");
+        }
+        guide.setWorkflowStatus("IN_REVIEW");
+        guide.setSubmittedAt(Instant.now());
+        guide.setReviewComment(null);
+        BusinessProcessGuideResponse saved = toResponse(repository.save(guide));
+        recordVersion(saved, username, "SUBMIT_FOR_REVIEW");
+        recordAudit(username, "SUBMIT_FOR_REVIEW", id, saved.title(), "Процесс отправлен на согласование");
+        return saved;
+    }
+
+    @Transactional
+    public BusinessProcessGuideResponse publish(String id, String username) {
+        BusinessProcessGuide guide = requireGuide(id);
+        if (!"DRAFT".equals(guide.getWorkflowStatus()) && !"IN_REVIEW".equals(guide.getWorkflowStatus())) {
+            throw new IllegalArgumentException("Опубликовать можно только черновик или процесс на согласовании.");
+        }
+        guide.setWorkflowStatus("PUBLISHED");
+        guide.setApprovedBy(username);
+        guide.setApprovedAt(Instant.now());
+        guide.setReviewComment(null);
+        guide.setArchivedAt(null);
+        BusinessProcessGuideResponse saved = toResponse(repository.save(guide));
+        recordVersion(saved, username, "PUBLISH");
+        recordAudit(username, "PUBLISH", id, saved.title(), "Процесс опубликован");
+        return saved;
+    }
+
+    @Transactional
+    public BusinessProcessGuideResponse returnForRevision(String id, String comment, String username) {
+        BusinessProcessGuide guide = requireGuide(id);
+        if (!"IN_REVIEW".equals(guide.getWorkflowStatus())) {
+            throw new IllegalArgumentException("На доработку можно вернуть только процесс на согласовании.");
+        }
+        String reason = comment == null ? "" : comment.trim();
+        if (reason.isEmpty()) {
+            throw new IllegalArgumentException("Укажите причину возврата на доработку.");
+        }
+        if (reason.length() > 1000) throw new IllegalArgumentException("Причина не должна превышать 1000 символов.");
+        guide.setWorkflowStatus("DRAFT");
+        guide.setReviewComment(reason);
+        BusinessProcessGuideResponse saved = toResponse(repository.save(guide));
+        recordVersion(saved, username, "RETURN_FOR_REVISION");
+        recordAudit(username, "RETURN_FOR_REVISION", id, saved.title(), reason);
+        return saved;
+    }
+
+    @Transactional
+    public BusinessProcessGuideResponse archive(String id, String username) {
+        BusinessProcessGuide guide = requireGuide(id);
+        if (!"PUBLISHED".equals(guide.getWorkflowStatus())) {
+            throw new IllegalArgumentException("В архив можно отправить только опубликованный процесс.");
+        }
+        guide.setWorkflowStatus("ARCHIVED");
+        guide.setArchivedAt(Instant.now());
+        BusinessProcessGuideResponse saved = toResponse(repository.save(guide));
+        recordVersion(saved, username, "ARCHIVE");
+        recordAudit(username, "ARCHIVE", id, saved.title(), "Процесс перемещён в архив");
+        return saved;
+    }
+
+    @Transactional
+    public BusinessProcessGuideResponse restoreArchived(String id, String username) {
+        BusinessProcessGuide guide = requireGuide(id);
+        if (!"ARCHIVED".equals(guide.getWorkflowStatus())) {
+            throw new IllegalArgumentException("В черновик можно вернуть только архивный процесс.");
+        }
+        guide.setWorkflowStatus("DRAFT");
+        guide.setArchivedAt(null);
+        guide.setApprovedBy(null);
+        guide.setApprovedAt(null);
+        guide.setSubmittedAt(null);
+        guide.setReviewComment(null);
+        BusinessProcessGuideResponse saved = toResponse(repository.save(guide));
+        recordVersion(saved, username, "RESTORE_TO_DRAFT");
+        recordAudit(username, "RESTORE_TO_DRAFT", id, saved.title(), "Процесс возвращён из архива в черновики");
+        return saved;
+    }
+
+    private BusinessProcessGuide requireGuide(String id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Бизнес-процесс не найден: " + id));
+    }
+
     @Transactional
     public BusinessProcessGuideResponse create(BusinessProcessGuideRequest request, String username) {
         BusinessProcessGuide guide = new BusinessProcessGuide();
         guide.setId(UUID.randomUUID().toString());
+        guide.setWorkflowStatus("DRAFT");
         guide.setCreatedBy(username);
         guide.setCreatedAt(Instant.now());
         int nextOrder = repository.findAllByOrderByOrderIndexAscTitleAsc().stream()
@@ -55,8 +207,22 @@ public class BusinessProcessGuideService {
     public BusinessProcessGuideResponse update(String id, BusinessProcessGuideRequest request, String username) {
         BusinessProcessGuide guide = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Бизнес-процесс не найден: " + id));
+        if ("IN_REVIEW".equals(guide.getWorkflowStatus())) {
+            throw new IllegalArgumentException("Процесс находится на согласовании. Дождитесь решения администратора.");
+        }
+        if ("ARCHIVED".equals(guide.getWorkflowStatus())) {
+            throw new IllegalArgumentException("Архивный процесс сначала нужно вернуть в черновики.");
+        }
         String previousStepsJson = guide.getStepsJson();
+        boolean wasPublished = "PUBLISHED".equals(guide.getWorkflowStatus());
         apply(guide, request, username, guide.getOrderIndex());
+        if (wasPublished) {
+            guide.setWorkflowStatus("DRAFT");
+            guide.setApprovedBy(null);
+            guide.setApprovedAt(null);
+            guide.setSubmittedAt(null);
+            guide.setReviewComment(null);
+        }
         if (!Objects.equals(previousStepsJson, guide.getStepsJson())) {
             resetAllProgress(guide.getId());
         }
@@ -186,6 +352,12 @@ public class BusinessProcessGuideService {
                 previous.time(), previous.searchTerm(), previous.sources(), previous.steps(), previous.orderIndex());
         String previousStepsJson = guide.getStepsJson();
         apply(guide, request, username, previous.orderIndex());
+        guide.setWorkflowStatus("DRAFT");
+        guide.setApprovedBy(null);
+        guide.setApprovedAt(null);
+        guide.setSubmittedAt(null);
+        guide.setArchivedAt(null);
+        guide.setReviewComment(null);
         if (!Objects.equals(previousStepsJson, guide.getStepsJson())) {
             resetAllProgress(guide.getId());
         }
@@ -284,7 +456,9 @@ public class BusinessProcessGuideService {
                 guide.getScope(), guide.getTime(), guide.getSearchTerm(),
                 readJson(guide.getSourcesJson(), SOURCES_TYPE),
                 readJson(guide.getStepsJson(), STEPS_TYPE),
-                guide.getOrderIndex(), guide.getCreatedBy(), guide.getUpdatedBy(), guide.getUpdatedAt()
+                guide.getOrderIndex(), guide.getCreatedBy(), guide.getUpdatedBy(), guide.getUpdatedAt(),
+                guide.getWorkflowStatus(), guide.getReviewComment(), guide.getSubmittedAt(),
+                guide.getApprovedBy(), guide.getApprovedAt(), guide.getArchivedAt()
         );
     }
 
