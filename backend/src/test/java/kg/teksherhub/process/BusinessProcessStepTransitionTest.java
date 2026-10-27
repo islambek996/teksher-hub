@@ -8,6 +8,18 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class BusinessProcessStepTransitionTest {
     @Test
+    void addsHttpsToDomainWithoutProtocol() {
+        assertEquals("https://teksher.kg", BusinessProcessGuideService.normalizeSourceUrl("teksher.kg"));
+        assertEquals("https://www.example.org/docs", BusinessProcessGuideService.normalizeSourceUrl(" www.example.org/docs "));
+    }
+
+    @Test
+    void preservesExplicitHttpAndHttpsProtocols() {
+        assertEquals("http://example.org", BusinessProcessGuideService.normalizeSourceUrl("http://example.org"));
+        assertEquals("https://example.org", BusinessProcessGuideService.normalizeSourceUrl("https://example.org"));
+    }
+
+    @Test
     void acceptsValidHttpAndHttpsSources() {
         assertDoesNotThrow(() -> BusinessProcessGuideService.validateSources(List.of(
                 new BusinessProcessSource("Документация", "https://example.org/docs"),
@@ -36,6 +48,10 @@ class BusinessProcessStepTransitionTest {
         assertThrows(IllegalArgumentException.class, () ->
                 BusinessProcessGuideService.validateSources(List.of(
                         new BusinessProcessSource("Документация", "https://")
+                )));
+        assertThrows(IllegalArgumentException.class, () ->
+                BusinessProcessGuideService.validateSources(List.of(
+                        new BusinessProcessSource("Документация", "https:// not a domain")
                 )));
     }
 

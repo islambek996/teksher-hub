@@ -339,6 +339,13 @@ function downloadCsvTemplate() {
   URL.revokeObjectURL(url)
 }
 
+function normalizeBusinessProcessSourceUrl(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  const withProtocol = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : 'https://' + raw
+  return withProtocol
+}
+
 function buildGuideVersionChanges(current, previous) {
   if (!current || !previous) return []
   const changes = []
@@ -2695,12 +2702,15 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
       }
     })
     if (invalidSource) {
-      setEditorError('Источник ' + invalidSource.index + ': укажи полный адрес, начинающийся с https:// или http://.')
+      setEditorError('Источник ' + invalidSource.index + ': проверь адрес сайта. Можно указать домен, например teksher.kg.')
       return
     }
     const cleanedSources = sourceRows
       .filter(source => source.label && source.url)
-      .map(({ label, url }) => ({ label, url }))
+      .map(({ label, url }) => ({
+        label,
+        url: normalizeBusinessProcessSourceUrl(url),
+      }))
     const body = {
       category: String(draft.category || '').trim(),
       title: String(draft.title || '').trim(),

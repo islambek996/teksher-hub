@@ -261,6 +261,17 @@ public class BusinessProcessGuideService {
         }
     }
 
+    static String normalizeSourceUrl(String value) {
+        String url = value == null ? "" : value.trim();
+        if (url.isEmpty()) {
+            return url;
+        }
+        if (!url.matches("(?i)^[a-z][a-z0-9+.-]*://.*$")) {
+            url = "https://" + url;
+        }
+        return url;
+    }
+
     static void validateSources(List<BusinessProcessSource> sources) {
         if (sources == null) {
             return;
@@ -271,7 +282,7 @@ public class BusinessProcessGuideService {
                 throw new IllegalArgumentException("Источник " + (i + 1) + ": некорректная запись.");
             }
             String label = source.label() == null ? "" : source.label().trim();
-            String url = source.url() == null ? "" : source.url().trim();
+            String url = normalizeSourceUrl(source.url());
             if (label.isEmpty() || url.isEmpty()) {
                 throw new IllegalArgumentException("Источник " + (i + 1)
                         + ": укажите и название, и ссылку.");
@@ -290,7 +301,7 @@ public class BusinessProcessGuideService {
                 }
             } catch (IllegalArgumentException ex) {
                 throw new IllegalArgumentException("Источник " + (i + 1)
-                        + ": укажите корректную ссылку с http:// или https://.");
+                        + ": укажите корректный адрес сайта, например teksher.kg.");
             }
         }
     }
