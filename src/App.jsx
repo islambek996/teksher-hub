@@ -2363,10 +2363,11 @@ function loadProcessExecutionState(storageKey = PROCESS_PROGRESS_KEY) {
   try {
     const raw = window.localStorage.getItem(storageKey + ':execution')
     const parsed = raw ? JSON.parse(raw) : null
-    if (!parsed || typeof parsed !== 'object') return { steps: {}, answers: {} }
+    if (!parsed || typeof parsed !== 'object') return { steps: {}, answers: {}, finished: {} }
     return {
       steps: parsed.steps && typeof parsed.steps === 'object' ? parsed.steps : {},
       answers: parsed.answers && typeof parsed.answers === 'object' ? parsed.answers : {},
+      finished: parsed.finished && typeof parsed.finished === 'object' ? parsed.finished : {},
     }
   } catch {
     return { steps: {}, answers: {} }
@@ -2389,6 +2390,7 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
   const [progress, setProgress] = useState(() => loadProcessGuideProgress(progressStorageKey))
   const [executionStepByGuide, setExecutionStepByGuide] = useState(() => loadProcessExecutionState(progressStorageKey).steps)
   const [executionAnswersByGuide, setExecutionAnswersByGuide] = useState(() => loadProcessExecutionState(progressStorageKey).answers)
+  const [executionFinishedByGuide, setExecutionFinishedByGuide] = useState(() => loadProcessExecutionState(progressStorageKey).finished)
   const [guidesLoading, setGuidesLoading] = useState(API_ENABLED)
   const [guideLoadError, setGuideLoadError] = useState('')
   const [guideMessage, setGuideMessage] = useState('')
@@ -2436,6 +2438,7 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
     : []
   const executionStep = Number.isInteger(executionStepByGuide[guide.id]) ? executionStepByGuide[guide.id] : null
   const executionAnswers = executionAnswersByGuide[guide.id] || {}
+  const executionFinished = Boolean(executionFinishedByGuide[guide.id])
   const guideDone = completed.length
   const totalCompleted = guides.reduce((total, item) => {
     const steps = Array.isArray(progress[item.id]) ? progress[item.id] : []
@@ -2479,9 +2482,10 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
       window.localStorage.setItem(progressStorageKey + ':execution', JSON.stringify({
         steps: executionStepByGuide,
         answers: executionAnswersByGuide,
+        finished: executionFinishedByGuide,
       }))
     } catch { /* storage unavailable */ }
-  }, [executionStepByGuide, executionAnswersByGuide, progressStorageKey])
+  }, [executionStepByGuide, executionAnswersByGuide, executionFinishedByGuide, progressStorageKey])
 
   useEffect(() => {
     if (!API_ENABLED) return undefined
@@ -2523,6 +2527,7 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
   const startExecution = () => {
     setExecutionStepByGuide(current => ({ ...current, [guide.id]: 0 }))
     setExecutionAnswersByGuide(current => ({ ...current, [guide.id]: {} }))
+    setExecutionFinishedByGuide(current => ({ ...current, [guide.id]: false }))
     setGuideMessage('Прохождение процесса начато. Выполняй текущий шаг и выбирай результат контрольных вопросов.')
   }
 
@@ -2541,6 +2546,7 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
     persistProgress(guide.id, nextProgress)
     if (target === null) {
       setExecutionStepByGuide(current => ({ ...current, [guide.id]: null }))
+      setExecutionFinishedByGuide(current => ({ ...current, [guide.id]: true }))
       setGuideMessage('Процесс завершён. Проверь итог и при необходимости открой историю изменений.')
     } else {
       setExecutionStepByGuide(current => ({ ...current, [guide.id]: target }))
@@ -2551,6 +2557,7 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
   const resetGuide = () => {
     setExecutionStepByGuide(current => ({ ...current, [guide.id]: null }))
     setExecutionAnswersByGuide(current => ({ ...current, [guide.id]: {} }))
+    setExecutionFinishedByGuide(current => ({ ...current, [guide.id]: false }))
     setProgress(current => ({ ...current, [guide.id]: [] }))
     if (API_ENABLED && !guide.id.startsWith('local-')) {
       apiRequest('/api/business-process-progress/' + encodeURIComponent(guide.id), { method: 'DELETE' })
@@ -2812,9 +2819,9 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
               {executionStep !== null && guide.steps[executionStep] && <div className="process-execution-current"><span className="process-execution-step-number">Шаг {executionStep + 1} из {guide.steps.length}</span><h3>{guide.steps[executionStep].title}</h3><p>{guide.steps[executionStep].detail}</p>
                 {guide.steps[executionStep].responsible && <p><b>Ответственный:</b> {guide.steps[executionStep].responsible}</p>}
                 {guide.steps[executionStep].documents && <p><b>Документы и условия:</b> {guide.steps[executionStep].documents}</p>}
-                {guide.steps[executionStep].decision ? <><div className="process-execution-question"><b>Контрольный вопрос:</b> {guide.steps[executionStep].decision}</div><div className="process-execution-choices"><button type="button" className="primary-button" onClick={() => chooseExecutionAnswer(executionStep, 'yes')}><CheckCircle2 size={15}/> Да{guide.steps[executionStep].yesOutcome ? ': ' + guide.steps[executionStep].yesOutcome : ''}</button><button type="button" className="secondary-button" onClick={() => chooseExecutionAnswer(executionStep, 'no')}><X size={15}/> Нет{guide.steps[executionStep].noOutcome ? ': ' + guide.steps[executionStep].noOutcome : ''}</button></div></> : <button type="button" className="primary-button" onClick={() => { const next = executionStep + 1; const currentSteps = Array.isArray(progress[guide.id]) ? progress[guide.id] : []; const nextProgress = currentSteps.includes(executionStep) ? currentSteps : [...currentSteps, executionStep]; setProgress(current => ({ ...current, [guide.id]: nextProgress })); persistProgress(guide.id, nextProgress); if (next < guide.steps.length) setExecutionStepByGuide(current => ({ ...current, [guide.id]: next })); else { setExecutionStepByGuide(current => ({ ...current, [guide.id]: null })); setGuideMessage('Процесс завершён. Все шаги пройдены.'); } }}><CheckCircle2 size={15}/> Шаг выполнен, далее</button>}
+                {guide.steps[executionStep].decision ? <><div className="process-execution-question"><b>Контрольный вопрос:</b> {guide.steps[executionStep].decision}</div><div className="process-execution-choices"><button type="button" className="primary-button" onClick={() => chooseExecutionAnswer(executionStep, 'yes')}><CheckCircle2 size={15}/> Да{guide.steps[executionStep].yesOutcome ? ': ' + guide.steps[executionStep].yesOutcome : ''}</button><button type="button" className="secondary-button" onClick={() => chooseExecutionAnswer(executionStep, 'no')}><X size={15}/> Нет{guide.steps[executionStep].noOutcome ? ': ' + guide.steps[executionStep].noOutcome : ''}</button></div></> : <button type="button" className="primary-button" onClick={() => { const next = executionStep + 1; const currentSteps = Array.isArray(progress[guide.id]) ? progress[guide.id] : []; const nextProgress = currentSteps.includes(executionStep) ? currentSteps : [...currentSteps, executionStep]; setProgress(current => ({ ...current, [guide.id]: nextProgress })); persistProgress(guide.id, nextProgress); if (next < guide.steps.length) setExecutionStepByGuide(current => ({ ...current, [guide.id]: next })); else { setExecutionStepByGuide(current => ({ ...current, [guide.id]: null })); setExecutionFinishedByGuide(current => ({ ...current, [guide.id]: true })); setGuideMessage('Процесс завершён. Все шаги пройдены.'); } }}><CheckCircle2 size={15}/> Шаг выполнен, далее</button>}
               </div>}
-              {executionStep === null && executionAnswersByGuide[guide.id] && Object.keys(executionAnswersByGuide[guide.id]).length > 0 && <p className="process-execution-finished"><CheckCircle2 size={15}/> Прохождение завершено. Можно начать процесс заново.</p>}
+              {executionStep === null && executionFinished && <p className="process-execution-finished"><CheckCircle2 size={15}/> Прохождение завершено. Можно начать процесс заново.</p>}
             </section>
 
             <section className="process-flow-preview" aria-label="Схема бизнес-процесса">
