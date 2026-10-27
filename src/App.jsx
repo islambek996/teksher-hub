@@ -2959,13 +2959,7 @@ function ProcessGuideEditorModal({ guide, saving, error, onClose, onSave }) {
                 <label className="form-field"><span>Перейти при «Да»</span><select value={step.yesStepIndex ?? ''} onChange={event => updateStep(index, 'yesStepIndex', event.target.value === '' ? '' : Number(event.target.value))}><option value="">Следующий шаг по порядку</option>{form.steps.map((target, targetIndex) => targetIndex !== index && <option key={'yes-target-' + targetIndex} value={targetIndex}>{'Шаг ' + (targetIndex + 1) + ': ' + (target.title.trim() || 'Без названия')}</option>)}</select></label>
                 <label className="form-field"><span>Перейти при «Нет»</span><select value={step.noStepIndex ?? ''} onChange={event => updateStep(index, 'noStepIndex', event.target.value === '' ? '' : Number(event.target.value))}><option value="">Следующий шаг по порядку</option>{form.steps.map((target, targetIndex) => targetIndex !== index && <option key={'no-target-' + targetIndex} value={targetIndex}>{'Шаг ' + (targetIndex + 1) + ': ' + (target.title.trim() || 'Без названия')}</option>)}</select></label>
               </div>
-              <label className="form-field"><span>Ответственный</span><input maxLength={160} value={step.responsible || ''} onChange={event => updateStep(index, 'responsible', event.target.value)} placeholder="Например, участник маркировки или оператор"/></label>
-              <label className="form-field"><span>Документы и условия выполнения</span><textarea maxLength={2000} rows={2} value={step.documents || ''} onChange={event => updateStep(index, 'documents', event.target.value)} placeholder="Какие документы нужны и что должно быть выполнено перед началом шага"/></label>
-              <div className="process-editor-decision-fields">
-                <label className="form-field"><span>Контрольный вопрос (для ветвления)</span><input maxLength={500} value={step.decision || ''} onChange={event => updateStep(index, 'decision', event.target.value)} placeholder="Например, Карточка товара опубликована?"/></label>
-                <label className="form-field"><span>Если «Да»</span><input maxLength={500} value={step.yesOutcome || ''} onChange={event => updateStep(index, 'yesOutcome', event.target.value)} placeholder="Следующее действие при положительном ответе"/></label>
-                <label className="form-field"><span>Если «Нет»</span><input maxLength={500} value={step.noOutcome || ''} onChange={event => updateStep(index, 'noOutcome', event.target.value)} placeholder="Что исправить или куда вернуться"/></label>
-              </div>
+
             </article>)}
           </div>
         </section>
