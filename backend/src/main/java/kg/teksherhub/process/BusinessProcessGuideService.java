@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URI;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -192,9 +193,7 @@ public class BusinessProcessGuideService {
         if (request.steps().stream().anyMatch(Objects::isNull)) {
             throw new IllegalArgumentException("Каждый шаг должен содержать название и описание.");
         }
-        if (request.sources() != null && request.sources().stream().anyMatch(Objects::isNull)) {
-            throw new IllegalArgumentException("Некорректная ссылка в инструкции.");
-        }
+        validateSources(request.sources());
         List<BusinessProcessSource> sources = request.sources() == null
                 ? List.of()
                 : request.sources().stream()
@@ -259,6 +258,40 @@ public class BusinessProcessGuideService {
             return result == null ? new ArrayList<>() : List.copyOf(result);
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("Не удалось прочитать данные инструкции из базы.", exception);
+        }
+    }
+
+    static void validateSources(List<BusinessProcessSource> sources) {
+        if (sources == null) {
+            return;
+        }
+        for (int i = 0; i < sources.size(); i++) {
+            BusinessProcessSource source = sources.get(i);
+            if (source == null) {
+                throw new IllegalArgumentException("Источник " + (i + 1) + ": некорректная запись.");
+            }
+            String label = source.label() == null ? "" : source.label().trim();
+            String url = source.url() == null ? "" : source.url().trim();
+            if (label.isEmpty() || url.isEmpty()) {
+                throw new IllegalArgumentException("Источник " + (i + 1)
+                        + ": укажите и название, и ссылку.");
+            }
+            if (label.length() > 200 || url.length() > 2000) {
+                throw new IllegalArgumentException("Источник " + (i + 1)
+                        + ": превышена допустимая длина названия или ссылки.");
+            }
+            try {
+                URI parsed = URI.create(url);
+                String scheme = parsed.getScheme();
+                if (scheme == null
+                        || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))
+                        || parsed.getHost() == null || parsed.getHost().isBlank()) {
+                    throw new IllegalArgumentException();
+                }
+            } catch (IllegalArgumentException ex) {
+                throw new IllegalArgumentException("Источник " + (i + 1)
+                        + ": укажите корректную ссылку с http:// или https://.");
+            }
         }
     }
 
