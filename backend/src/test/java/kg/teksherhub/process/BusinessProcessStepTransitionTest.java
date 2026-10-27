@@ -15,7 +15,7 @@ class BusinessProcessStepTransitionTest {
                 new BusinessProcessStep("Продолжить", "Следующий этап", null, null,
                         null, null, null, null, null),
                 new BusinessProcessStep("Исправить", "Устранить ошибки", null, null,
-                        null, null, null, 0, null)
+                        null, null, null, null, null)
         );
 
         assertDoesNotThrow(() -> BusinessProcessGuideService.validateStepTransitions(steps));
