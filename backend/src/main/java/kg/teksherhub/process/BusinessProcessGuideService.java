@@ -198,7 +198,7 @@ public class BusinessProcessGuideService {
                 ? List.of()
                 : request.sources().stream()
                     .map(source -> new BusinessProcessSource(
-                            source.label().trim(), source.url().trim()))
+                            source.label().trim(), normalizeSourceUrl(source.url())))
                     .toList();
         List<BusinessProcessStep> steps = request.steps().stream()
                 .map(step -> new BusinessProcessStep(

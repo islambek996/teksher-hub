@@ -20,6 +20,13 @@ class BusinessProcessStepTransitionTest {
     }
 
     @Test
+    void validatesBareDomainAsSecureHttpsSource() {
+        assertDoesNotThrow(() -> BusinessProcessGuideService.validateSources(List.of(
+                new BusinessProcessSource("Сайт", "teksher.kg")
+        )));
+    }
+
+    @Test
     void acceptsValidHttpAndHttpsSources() {
         assertDoesNotThrow(() -> BusinessProcessGuideService.validateSources(List.of(
                 new BusinessProcessSource("Документация", "https://example.org/docs"),
