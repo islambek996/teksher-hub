@@ -108,6 +108,22 @@ public class BusinessProcessGuideService {
                 processId);
     }
 
+    @Transactional(readOnly = true)
+    public BusinessProcessGuideResponse versionDetail(String processId, int versionNumber) {
+        String snapshot = jdbc.query(
+                "SELECT snapshot_json FROM business_process_guide_versions WHERE process_id = ? AND version_number = ?",
+                rs -> rs.next() ? rs.getString("snapshot_json") : null,
+                processId, versionNumber);
+        if (snapshot == null || snapshot.isBlank()) {
+            throw new IllegalArgumentException("Версия бизнес-процесса не найдена.");
+        }
+        try {
+            return objectMapper.readValue(snapshot, BusinessProcessGuideResponse.class);
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("Не удалось прочитать сохранённую версию процесса.", ex);
+        }
+    }
+
     @Transactional
     public BusinessProcessGuideResponse restore(String processId, int versionNumber, String username) {
         String snapshot = jdbc.query(
