@@ -55,7 +55,11 @@ public class BusinessProcessGuideService {
     public BusinessProcessGuideResponse update(String id, BusinessProcessGuideRequest request, String username) {
         BusinessProcessGuide guide = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Бизнес-процесс не найден: " + id));
+        String previousStepsJson = guide.getStepsJson();
         apply(guide, request, username, guide.getOrderIndex());
+        if (!Objects.equals(previousStepsJson, guide.getStepsJson())) {
+            resetAllProgress(guide.getId());
+        }
         BusinessProcessGuideResponse saved = toResponse(repository.save(guide));
         recordVersion(saved, username, "UPDATE");
         recordAudit(username, "UPDATE", saved.id(), saved.title(), "Обновлён бизнес-процесс");
@@ -180,12 +184,20 @@ public class BusinessProcessGuideService {
         BusinessProcessGuideRequest request = new BusinessProcessGuideRequest(
                 previous.category(), previous.title(), previous.summary(), previous.scope(),
                 previous.time(), previous.searchTerm(), previous.sources(), previous.steps(), previous.orderIndex());
+        String previousStepsJson = guide.getStepsJson();
         apply(guide, request, username, previous.orderIndex());
+        if (!Objects.equals(previousStepsJson, guide.getStepsJson())) {
+            resetAllProgress(guide.getId());
+        }
         BusinessProcessGuideResponse saved = toResponse(repository.save(guide));
         recordVersion(saved, username, "RESTORE");
         recordAudit(username, "RESTORE", processId, saved.title(),
                 "Восстановлена версия " + versionNumber);
         return saved;
+    }
+
+    private void resetAllProgress(String processId) {
+        jdbc.update("DELETE FROM business_process_progress WHERE process_id = ?", processId);
     }
 
     private void recordVersion(BusinessProcessGuideResponse response, String username, String action) {
