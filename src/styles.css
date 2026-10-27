@@ -2416,3 +2416,20 @@ html[data-theme="dark"] .process-version-group li{background:#17263a;border-colo
 .issue-registry-note { margin: 18px 0 0; color: var(--text-secondary, #64748b); font-size: 12px; line-height: 1.6; }
 @media (max-width: 900px) { .issue-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .issue-card-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .issue-metric-grid { grid-template-columns: 1fr; gap: 9px; } .issue-metric { padding: 13px 15px; } .issue-metric > strong { font-size: 25px; } .issue-form-grid, .issue-card-controls { grid-template-columns: 1fr; } .issue-create-form, .issue-card { padding: 14px; } .issue-comment-form { flex-direction: column; } .issue-search-panel { align-items: stretch; } }
+
+/* Forum-style presentation for marking topics */
+.issue-topic-kicker { margin-bottom: 7px; color: var(--text-secondary, #64748b); font-size: 10px; font-weight: 700; letter-spacing: .09em; }
+.issue-forum-body { margin-top: 17px; }
+.issue-forum-body h3, .issue-forum-section-title h3 { margin: 0; color: var(--text-primary, #243449); font-size: 13px; font-weight: 700; }
+.issue-forum-body .issue-card-description { margin: 8px 0 0; font-size: 13px; line-height: 1.75; }
+.issue-forum-solution { margin-top: 15px; padding: 14px 16px; border: 1px solid #bbf7d0; border-radius: 11px; background: #f0fdf4; }
+.issue-forum-section-title { display: flex; align-items: center; gap: 8px; color: #15803d; }
+.issue-forum-section-title h3 { color: #166534; }
+.issue-forum-solution p { margin: 8px 0 0; color: #166534; font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.issue-forum-unsolved { margin-top: 14px; padding: 10px 12px; border-radius: 9px; background: var(--surface-muted, #f8fafc); color: var(--text-secondary, #64748b); font-size: 12px; }
+.issue-replies-trigger { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 7px; white-space: nowrap; }
+.issue-card { padding: 21px; }
+.issue-card-top { align-items: flex-start; }
+.issue-card h2 { font-size: 18px; }
+.issue-forum-solution, .issue-forum-unsolved { overflow-wrap: anywhere; }
+@media (max-width: 600px) { .issue-card { padding: 14px; } .issue-card-top { gap: 8px; } .issue-replies-trigger { padding: 8px 9px; font-size: 11px; } }
