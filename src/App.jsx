@@ -2675,9 +2675,32 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
 
   const saveGuide = async draft => {
     const editingId = editingGuide?.id || ''
-    const cleanedSources = (draft.sources || [])
-      .filter(source => String(source.label || '').trim() && String(source.url || '').trim())
-      .map(source => ({ label: source.label.trim(), url: source.url.trim() }))
+    const sourceRows = (draft.sources || []).map((source, index) => ({
+      index: index + 1,
+      label: String(source.label || '').trim(),
+      url: String(source.url || '').trim(),
+    }))
+    const incompleteSource = sourceRows.find(source => Boolean(source.label) !== Boolean(source.url))
+    if (incompleteSource) {
+      setEditorError('Источник ' + incompleteSource.index + ': заполни и название, и ссылку либо удали пустую строку.')
+      return
+    }
+    const invalidSource = sourceRows.find(source => {
+      if (!source.label && !source.url) return false
+      try {
+        const parsed = new URL(source.url)
+        return !['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname
+      } catch {
+        return true
+      }
+    })
+    if (invalidSource) {
+      setEditorError('Источник ' + invalidSource.index + ': укажи полный адрес, начинающийся с https:// или http://.')
+      return
+    }
+    const cleanedSources = sourceRows
+      .filter(source => source.label && source.url)
+      .map(({ label, url }) => ({ label, url }))
     const body = {
       category: String(draft.category || '').trim(),
       title: String(draft.title || '').trim(),
