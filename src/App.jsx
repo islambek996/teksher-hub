@@ -3121,7 +3121,7 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
         <div className="process-overall-progress"><strong>{totalCompleted} / {totalSteps}</strong><span>шагов выполнено</span></div>
         {canViewDashboard && API_ENABLED && <button type="button" className="secondary-button process-overview-open-button" onClick={openWorkflowOverview}><UsersRound size={15}/> Панель руководителя</button>}
         {canManageGuides && <button type="button" className="primary-button process-create-guide-button" onClick={openNewGuideEditor}><FilePlus2 size={15}/> Новая инструкция</button>}
-        {canDelete && API_ENABLED && <button type="button" className="secondary-button" onClick={openDeletedGuides}><History size={15}/> Удалённые</button>
+        {canDelete && API_ENABLED && <button type="button" className="secondary-button" onClick={openDeletedGuides}><History size={15}/> Удалённые</button>}
       </div>
     </div>
 
