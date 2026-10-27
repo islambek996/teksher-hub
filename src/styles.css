@@ -2157,3 +2157,45 @@ html[data-theme="dark"] .process-flow-branch-labels span.selected {
   border-color: #34775e;
   color: #9be7c4;
 }
+
+
+.process-version-comparison {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--border-color, #dce3ec);
+  border-radius: 14px;
+  background: var(--surface-soft, rgba(120, 138, 160, .06));
+}
+.process-version-comparison-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.process-version-comparison-heading > div {
+  display: grid;
+  gap: 4px;
+}
+.process-version-comparison-heading strong {
+  overflow-wrap: anywhere;
+}
+.process-version-comparison-heading small {
+  color: var(--text-muted, #68758a);
+  font-size: 12px;
+}
+.process-version-comparison ul {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding-left: 20px;
+}
+.process-version-comparison li,
+.process-version-comparison p {
+  color: var(--text-color, inherit);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.process-version-comparison p {
+  margin: 12px 0 0;
+}
