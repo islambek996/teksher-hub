@@ -57,6 +57,16 @@ jobs:
           cache: maven
       - name: Install OCR engine and language data
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng tesseract-ocr-rus tesseract-ocr-kir
+      - name: Install PostgreSQL client tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+      - name: Smoke-test database and uploads recovery
+        env:
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: teksher
+          PGDATABASE: teksher_hub
+          PGPASSWORD: ci-test-password
+        run: bash scripts/test-backup-restore-smoke.sh
       - name: Compile backend
         run: mvn -B -f backend/pom.xml clean verify
       - name: Start API and smoke-test schema, login and documents
