@@ -3222,8 +3222,8 @@ function ProcessGuideEditorModal({ guide, saving, error, onClose, onSave }) {
     }
     if (count) visit(0)
     form.steps.forEach((step, index) => {
-      if (step.decision && !step.yesOutcome.trim() && (step.yesStepIndex === '' || step.yesStepIndex == null)) warnings.push({ type: 'warning', text: 'Шаг ' + (index + 1) + ': не описано действие при ответе «Да».' })
-      if (step.decision && !step.noOutcome.trim() && (step.noStepIndex === '' || step.noStepIndex == null)) warnings.push({ type: 'warning', text: 'Шаг ' + (index + 1) + ': не описано действие при ответе «Нет».' })
+      if (step.decision && !String(step.yesOutcome || '').trim() && (step.yesStepIndex === '' || step.yesStepIndex == null)) warnings.push({ type: 'warning', text: 'Шаг ' + (index + 1) + ': не описано действие при ответе «Да».' })
+      if (step.decision && !String(step.noOutcome || '').trim() && (step.noStepIndex === '' || step.noStepIndex == null)) warnings.push({ type: 'warning', text: 'Шаг ' + (index + 1) + ': не описано действие при ответе «Нет».' })
       for (const [label, target] of [['Да', step.yesStepIndex], ['Нет', step.noStepIndex]]) {
         if (target !== '' && target != null && (!Number.isInteger(Number(target)) || Number(target) < 0 || Number(target) >= count || Number(target) === index)) warnings.push({ type: 'error', text: 'Шаг ' + (index + 1) + ': некорректный переход «' + label + '».' })
       }
@@ -3278,7 +3278,7 @@ function ProcessGuideEditorModal({ guide, saving, error, onClose, onSave }) {
         <section className="process-editor-section process-editor-diagnostics">
           <div className="process-editor-section-heading"><div><b>Проверка схемы</b><span>Связность шагов и полнота ветвей</span></div><span className={processDiagnostics.some(item => item.type === 'error') ? 'process-diagnostic-count has-errors' : processDiagnostics.length ? 'process-diagnostic-count' : 'process-diagnostic-count is-clean'}>{processDiagnostics.length ? processDiagnostics.length + ' замеч.' : 'Ошибок нет'}</span></div>
           {processDiagnostics.length ? <ul className="process-diagnostic-list">{processDiagnostics.map((item, index) => <li className={item.type} key={index}><b>{item.type === 'error' ? 'Ошибка' : 'Проверьте'}</b>{item.text}</li>)}</ul> : <p className="process-diagnostic-success">Схема не содержит выявленных проблем.</p>}
-          <div className="process-editor-mini-flow">{form.steps.map((step, index) => <div className="process-editor-mini-node" key={'mini-' + index}><span>Шаг {index + 1}</span><strong>{step.title.trim() || 'Без названия'}</strong>{step.decision && <small>{step.decision}</small>}{step.decision && <div className="process-editor-mini-branches"><span>Да → {step.yesStepIndex === '' || step.yesStepIndex == null ? (index + 2 <= form.steps.length ? 'шаг ' + (index + 2) : 'завершение') : 'шаг ' + (Number(step.yesStepIndex) + 1)}</span><span>Нет → {step.noStepIndex === '' || step.noStepIndex == null ? (index + 2 <= form.steps.length ? 'шаг ' + (index + 2) : 'завершение') : 'шаг ' + (Number(step.noStepIndex) + 1)}</span></div>}</div>)}</div>
+          <div className="process-editor-mini-flow">{form.steps.map((step, index) => <div className="process-editor-mini-node" key={'mini-' + index}><span>Шаг {index + 1}</span><strong>{String(step.title || '').trim() || 'Без названия'}</strong>{step.decision && <small>{step.decision}</small>}{step.decision && <div className="process-editor-mini-branches"><span>Да → {step.yesStepIndex === '' || step.yesStepIndex == null ? (index + 2 <= form.steps.length ? 'шаг ' + (index + 2) : 'завершение') : 'шаг ' + (Number(step.yesStepIndex) + 1)}</span><span>Нет → {step.noStepIndex === '' || step.noStepIndex == null ? (index + 2 <= form.steps.length ? 'шаг ' + (index + 2) : 'завершение') : 'шаг ' + (Number(step.noStepIndex) + 1)}</span></div>}</div>)}</div>
         </section>
 
         <section className="process-editor-section">
