@@ -44,6 +44,12 @@ public class BusinessProcessGuideController {
         return service.versions(id);
     }
 
+    @GetMapping("/{id}/versions/{versionNumber}")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR','READER')")
+    public BusinessProcessGuideResponse versionDetail(@PathVariable String id, @PathVariable int versionNumber) {
+        return service.versionDetail(id, versionNumber);
+    }
+
     @PostMapping("/{id}/versions/{versionNumber}/restore")
     @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
     public BusinessProcessGuideResponse restore(@PathVariable String id, @PathVariable int versionNumber,
