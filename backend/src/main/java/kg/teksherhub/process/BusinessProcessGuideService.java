@@ -222,7 +222,10 @@ public class BusinessProcessGuideService {
             return result == null ? new ArrayList<>() : List.copyOf(result);
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("Не удалось прочитать данные инструкции из базы.", exception);
-            static void validateStepTransitions(List<BusinessProcessStep> steps) {
+        }
+    }
+
+    private static void validateStepTransitions(List<BusinessProcessStep> steps) {
         for (int i = 0; i < steps.size(); i++) {
             BusinessProcessStep step = steps.get(i);
             validateTransitionTarget(step.yesStepIndex(), steps.size(), i, "положительной");
@@ -244,7 +247,5 @@ public class BusinessProcessGuideService {
                     "Некорректный переход " + branchName + " ветви шага " + (sourceIndex + 1)
                             + ": выберите существующий шаг.");
         }
-    }
-}
     }
 }
