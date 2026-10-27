@@ -92,12 +92,16 @@ public class BusinessProcessGuideService {
                 // One damaged progress row must not make the entire overview unavailable.
             }
             int percent = totalSteps == 0 ? 0 : Math.round(completedSteps * 100f / totalSteps);
+            java.sql.Timestamp startedAt = rs.getTimestamp("started_at");
             java.sql.Timestamp completedAt = rs.getTimestamp("completed_at");
+            java.sql.Timestamp updatedAt = rs.getTimestamp("updated_at");
             return new ProcessExecutionSummary(
                     rs.getString("process_id"), rs.getString("title"), rs.getString("workflow_status"),
                     rs.getString("username"), rs.getString("display_name"), completedSteps, totalSteps,
-                    percent, rs.getString("execution_status"), rs.getTimestamp("started_at").toInstant(),
-                    completedAt == null ? null : completedAt.toInstant(), rs.getTimestamp("updated_at").toInstant());
+                    percent, rs.getString("execution_status"),
+                    startedAt == null ? null : startedAt.toInstant(),
+                    completedAt == null ? null : completedAt.toInstant(),
+                    updatedAt == null ? null : updatedAt.toInstant());
         });
         return new WorkflowOverview(counts, executions);
     }
