@@ -165,7 +165,16 @@ public class BusinessProcessGuideService {
                             source.label().trim(), source.url().trim()))
                     .toList();
         List<BusinessProcessStep> steps = request.steps().stream()
-                .map(step -> new BusinessProcessStep(step.title().trim(), step.detail().trim()))
+                .map(step -> new BusinessProcessStep(
+                        step.title().trim(),
+                        step.detail().trim(),
+                        clean(step.responsible()),
+                        clean(step.documents()),
+                        clean(step.decision()),
+                        clean(step.yesOutcome()),
+                        clean(step.noOutcome()),
+                        step.yesStepIndex(),
+                        step.noStepIndex()))
                 .toList();
         if (steps.isEmpty()) {
             throw new IllegalArgumentException("Добавьте хотя бы один шаг.");
@@ -182,6 +191,10 @@ public class BusinessProcessGuideService {
         guide.setOrderIndex(request.orderIndex() == null ? fallbackOrder : request.orderIndex());
         guide.setUpdatedBy(username);
         guide.setUpdatedAt(Instant.now());
+    }
+
+    private String clean(String value) {
+        return value == null ? null : value.trim();
     }
 
     private BusinessProcessGuideResponse toResponse(BusinessProcessGuide guide) {
