@@ -134,6 +134,28 @@ jobs:
           EDITOR_USERS_STATUS=$(curl --silent --output /tmp/ci-editor-users.json --write-out '%{http_code}' "http://localhost:8080/api/users" -H "Authorization: Bearer $EDITOR_TOKEN")
           test "$EDITOR_USERS_STATUS" = "403"
 
+          READER_CREATED=$(curl --silent --show-error --fail -X POST "http://localhost:8080/api/users" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"username":"ci-reader","displayName":"CI Reader","password":"ci-password-strong-enough-789","role":"READER"}')
+          READER_USER_ID=$(echo "$READER_CREATED" | jq -r '.id')
+          test -n "$READER_USER_ID" && test "$READER_USER_ID" != "null"
+          READER_LOGIN=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/auth/login -H 'Content-Type: application/json' -d '{"username":"ci-reader","password":"ci-password-strong-enough-789"}')
+          READER_TOKEN=$(echo "$READER_LOGIN" | jq -r '.token')
+          test -n "$READER_TOKEN" && test "$READER_TOKEN" != "null"
+
+          curl --silent --show-error --fail "http://localhost:8080/api/business-processes" -H "Authorization: Bearer $READER_TOKEN" | jq -e --arg id "$PROCESS_ID" 'all(.[]; .id != $id)'
+          curl --silent --show-error --fail -X POST "http://localhost:8080/api/business-processes/$PROCESS_ID/submit-for-review" -H "Authorization: Bearer $EDITOR_TOKEN" | jq -e '.workflowStatus == "IN_REVIEW"'
+          EDITOR_PUBLISH_STATUS=$(curl --silent --output /tmp/ci-editor-publish.json --write-out '%{http_code}' -X POST "http://localhost:8080/api/business-processes/$PROCESS_ID/publish" -H "Authorization: Bearer $EDITOR_TOKEN")
+          test "$EDITOR_PUBLISH_STATUS" = "403"
+          curl --silent --show-error --fail -X POST "http://localhost:8080/api/business-processes/$PROCESS_ID/publish" -H "Authorization: Bearer $TOKEN" | jq -e '.workflowStatus == "PUBLISHED"'
+          curl --silent --show-error --fail "http://localhost:8080/api/business-processes" -H "Authorization: Bearer $READER_TOKEN" | jq -e --arg id "$PROCESS_ID" 'any(.[]; .id == $id and .workflowStatus == "PUBLISHED")'
+          curl --silent --show-error --fail "http://localhost:8080/api/business-processes/$PROCESS_ID/versions" -H "Authorization: Bearer $READER_TOKEN" | jq -e 'length == 1 and .[0].workflowStatus == "PUBLISHED"'
+          READER_OLD_VERSION_STATUS=$(curl --silent --output /tmp/ci-reader-old-version.json --write-out '%{http_code}' "http://localhost:8080/api/business-processes/$PROCESS_ID/versions/1" -H "Authorization: Bearer $READER_TOKEN")
+          test "$READER_OLD_VERSION_STATUS" = "403"
+          curl --silent --show-error --fail -X POST "http://localhost:8080/api/business-process-progress/$PROCESS_ID/start" -H "Authorization: Bearer $READER_TOKEN" | jq -e '.started == true'
+          curl --silent --show-error --fail -X PUT "http://localhost:8080/api/business-process-progress/$PROCESS_ID" -H "Authorization: Bearer $READER_TOKEN" -H 'Content-Type: application/json' -d '["0"]' | jq -e '.saved == true and .completedSteps == ["0"]'
+          curl --silent --show-error --fail -X POST "http://localhost:8080/api/business-process-progress/$PROCESS_ID/complete" -H "Authorization: Bearer $READER_TOKEN" | jq -e '.completed == true'
+          curl --silent --show-error --fail "http://localhost:8080/api/business-processes/overview" -H "Authorization: Bearer $EDITOR_TOKEN" | jq -e --arg id "$PROCESS_ID" 'any(.executions[]; .processId == $id and .username == "ci-reader" and .executionStatus == "COMPLETED" and .completedSteps == 1)'
+
+
           ASSIGNED_TASK=$(curl --silent --show-error --fail -X POST "http://localhost:8080/api/tasks" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"title":"CI task with comments","description":"Validate assignment notifications and task comments","status":"TODO","priority":"NORMAL","dueDate":"2026-12-05","assignedTo":"ci-editor"}')
           ASSIGNED_TASK_ID=$(echo "$ASSIGNED_TASK" | jq -r '.id')
           test -n "$ASSIGNED_TASK_ID" && test "$ASSIGNED_TASK_ID" != "null"
