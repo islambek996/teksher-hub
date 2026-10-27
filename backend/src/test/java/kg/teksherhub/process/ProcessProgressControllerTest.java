@@ -83,6 +83,28 @@ class ProcessProgressControllerTest {
     }
 
     @Test
+    void resetRejectsBlankProcessIdWithoutDatabaseAccess() {
+        assertThrows(IllegalArgumentException.class, () -> controller.reset("  ", user));
+        verifyNoInteractions(jdbc);
+    }
+
+    @Test
+    void resetRejectsOverlongProcessIdWithoutDatabaseAccess() {
+        assertThrows(IllegalArgumentException.class, () -> controller.reset("p".repeat(81), user));
+        verifyNoInteractions(jdbc);
+    }
+
+    @Test
+    void resetDeletesOnlyCurrentUsersProgress() {
+        controller.reset("registration", user);
+
+        verify(jdbc).update(contains("DELETE FROM business_process_progress WHERE username = ? AND process_id = ?"),
+                eq("tester"), eq("registration"));
+        verify(jdbc).update(contains("INSERT INTO audit_log"), eq("tester"), eq("registration"),
+                eq("registration"), eq("Сброшен прогресс выполнения процесса"));
+    }
+
+    @Test
     void saveTreatsNullStepListAsEmpty() throws Exception {
         when(jdbc.queryForObject(anyString(), eq(String.class), eq("registration")))
                 .thenReturn("[{\"title\":\"First\",\"detail\":\"Details\"}]");

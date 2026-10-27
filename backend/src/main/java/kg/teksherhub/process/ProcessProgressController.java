@@ -86,6 +86,9 @@ public class ProcessProgressController {
 
     @DeleteMapping("/{processId}")
     public void reset(@PathVariable String processId, @AuthenticationPrincipal UserAccount user) {
+        if (processId == null || processId.isBlank() || processId.length() > 80) {
+            throw new IllegalArgumentException("Некорректный идентификатор бизнес-процесса.");
+        }
         jdbc.update("DELETE FROM business_process_progress WHERE username = ? AND process_id = ?",
                 user.getUsername(), processId);
         jdbc.update("""
