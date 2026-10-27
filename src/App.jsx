@@ -1452,7 +1452,7 @@ function App() {
             : active === 'assistant' ? <AiAssistantSection apiEnabled={API_ENABLED} isAdmin={currentUser?.role === 'ADMIN'} onOpenDocument={docId => { const target = documents.find(item => String(item.id) === String(docId)); if (target) { setActive('documents'); setSelectedDoc(target); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы'); syncRoute('documents', target.id) } }} />
             : active === 'knowledge' ? <KnowledgeCenterSection documents={documents} onSelectKind={(kind) => { setActive('documents'); setSelectedDoc(null); setQuery(''); setFilter(kind); setStatusFilter('Все статусы'); syncRoute('documents') }} onOpenAll={() => openSection('documents')} onAdd={openNewDocumentModal} canAdd={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} />
             : active === 'groups' ? <ProductGroupsSection onOpen={openSection} onSearchGroup={searchProductGroupMaterials} canManage={!API_ENABLED || ["ADMIN", "EDITOR"].includes(currentUser?.role)} />
-            : active === 'processes' ? <ProcessGuidesSection key={currentUser?.username || 'local'} progressStorageKey={API_ENABLED ? PROCESS_PROGRESS_KEY + ':' + (currentUser?.username || 'anonymous') : PROCESS_PROGRESS_KEY} onSearchMaterials={searchProductGroupMaterials} canEdit={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'} />
+            : active === 'processes' ? <ProcessGuidesSection key={currentUser?.username || 'local'} progressStorageKey={API_ENABLED ? PROCESS_PROGRESS_KEY + ':' + (currentUser?.username || 'anonymous') : PROCESS_PROGRESS_KEY} onSearchMaterials={searchProductGroupMaterials} canEdit={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'} canApprove={!API_ENABLED || currentUser?.role === 'ADMIN'} canViewDashboard={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)} />
             : active === 'monitoring' ? <MonitorSection monitors={monitors} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
                 onAdd={() => { setActionError(''); setMonitorModalOpen(true) }} onCheck={handleCheckMonitor} onDelete={handleDeleteMonitor} />
             : active === 'users' ? <UsersSection users={users} onAdd={() => { setActionError(''); setUserModalOpen(true) }} onToggle={handleToggleUser} onReset={user => { setActionError(''); setPasswordResetTarget(user) }} />
@@ -2479,7 +2479,15 @@ function loadLocalProcessGuides() {
   }
 }
 
-function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = false, progressStorageKey = PROCESS_PROGRESS_KEY }) {
+const PROCESS_WORKFLOW_LABELS = {
+  DRAFT: 'Черновик',
+  IN_REVIEW: 'На согласовании',
+  PUBLISHED: 'Опубликован',
+  ARCHIVED: 'В архиве',
+}
+const PROCESS_EXECUTION_LABELS = { IN_PROGRESS: 'В процессе', COMPLETED: 'Завершён' }
+
+function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = false, canApprove = false, canViewDashboard = false, progressStorageKey = PROCESS_PROGRESS_KEY }) {
   const [guides, setGuides] = useState(loadLocalProcessGuides)
   const [selectedGuideId, setSelectedGuideId] = useState(PROCESS_GUIDES[0].id)
   const [progress, setProgress] = useState(() => loadProcessGuideProgress(progressStorageKey))
@@ -2504,6 +2512,10 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
   const [deletedGuidesOpen, setDeletedGuidesOpen] = useState(false)
   const [deletedGuidesLoading, setDeletedGuidesLoading] = useState(false)
   const [restoringDeletedId, setRestoringDeletedId] = useState('')
+  const [workflowOverviewOpen, setWorkflowOverviewOpen] = useState(false)
+  const [workflowOverviewLoading, setWorkflowOverviewLoading] = useState(false)
+  const [workflowOverview, setWorkflowOverview] = useState(null)
+  const [workflowOverviewError, setWorkflowOverviewError] = useState('')
 
   useEffect(() => {
     if (!API_ENABLED) {
@@ -2548,8 +2560,10 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
   const totalSteps = guides.reduce((total, item) => total + item.steps.length, 0)
   const percent = guide.steps.length ? Math.round(guideDone / guide.steps.length * 100) : 0
   const canManageGuides = canEdit && (!API_ENABLED || !guideLoadError)
+  const guideWorkflowStatus = guide.workflowStatus || 'PUBLISHED'
+  const canEditSelectedGuide = canManageGuides && ['DRAFT', 'PUBLISHED'].includes(guideWorkflowStatus)
   const localOnly = !API_ENABLED
-  const executionRoute = (() => {
+  const executionPath = (() => {
     const route = []
     const seen = new Set()
     let cursor = 0
@@ -2571,8 +2585,9 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
       if (target === null) break
       cursor = target
     }
-    return new Set(route)
+    return route
   })()
+  const executionRoute = new Set(executionPath)
 
   useEffect(() => {
     try { window.localStorage.setItem(progressStorageKey, JSON.stringify(progress)) } catch { /* storage unavailable */ }
@@ -2609,8 +2624,8 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
   }, [])
 
   const persistProgress = (processId, steps) => {
-    if (!API_ENABLED || !processId || processId.startsWith('local-')) return
-    apiRequest('/api/business-process-progress/' + encodeURIComponent(processId), {
+    if (!API_ENABLED || !processId || String(processId).startsWith('local-')) return Promise.resolve()
+    return apiRequest('/api/business-process-progress/' + encodeURIComponent(processId), {
       method: 'PUT',
       body: steps.map(String),
     }).catch(() => setGuideMessage('Изменения сохранены в браузере, но не удалось синхронизировать прогресс с сервером.'))
@@ -2625,11 +2640,25 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
     persistProgress(guide.id, next)
   }
 
+  const finishExecution = async processId => {
+    if (!API_ENABLED || !processId || String(processId).startsWith('local-')) return
+    try {
+      await apiRequest('/api/business-process-progress/' + encodeURIComponent(processId) + '/complete', { method: 'POST' })
+    } catch (error) {
+      setGuideMessage('Процесс пройден в интерфейсе, но сервер не подтвердил завершение: ' + (error.message || 'ошибка синхронизации'))
+    }
+  }
+
   const startExecution = () => {
     setExecutionStepByGuide(current => ({ ...current, [guide.id]: 0 }))
     setExecutionAnswersByGuide(current => ({ ...current, [guide.id]: {} }))
     setExecutionFinishedByGuide(current => ({ ...current, [guide.id]: false }))
-    setGuideMessage('Прохождение процесса начато. Выполняй текущий шаг и выбирай результат контрольных вопросов.')
+    setProgress(current => ({ ...current, [guide.id]: [] }))
+    if (API_ENABLED && !String(guide.id).startsWith('local-')) {
+      apiRequest('/api/business-process-progress/' + encodeURIComponent(guide.id) + '/start', { method: 'POST' })
+        .catch(error => setGuideMessage('Процесс начат локально, но сервер не подтвердил запуск: ' + (error.message || 'ошибка синхронизации')))
+    }
+    setGuideMessage('Прохождение начато. Отвечай на контрольные вопросы и переходи по маршруту процесса.')
   }
 
   const chooseExecutionAnswer = (index, answer) => {
@@ -2639,20 +2668,59 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
     const target = Number.isInteger(targetValue) && targetValue >= 0 && targetValue < guide.steps.length
       ? targetValue
       : index + 1 < guide.steps.length ? index + 1 : null
-    const currentAnswers = executionAnswersByGuide[guide.id] || {}
     setExecutionAnswersByGuide(current => ({ ...current, [guide.id]: { ...(current[guide.id] || {}), [index]: answer } }))
     const currentSteps = Array.isArray(progress[guide.id]) ? progress[guide.id] : []
     const nextProgress = currentSteps.includes(index) ? currentSteps : [...currentSteps, index]
     setProgress(current => ({ ...current, [guide.id]: nextProgress }))
-    persistProgress(guide.id, nextProgress)
+    const saved = persistProgress(guide.id, nextProgress)
     if (target === null) {
       setExecutionStepByGuide(current => ({ ...current, [guide.id]: null }))
       setExecutionFinishedByGuide(current => ({ ...current, [guide.id]: true }))
-      setGuideMessage('Процесс завершён. Проверь итог и при необходимости открой историю изменений.')
+      setGuideMessage('Процесс завершён. Итог выбранного маршрута сохранён.')
+      Promise.resolve(saved).then(() => finishExecution(guide.id))
     } else {
       setExecutionStepByGuide(current => ({ ...current, [guide.id]: target }))
       setGuideMessage('Ответ сохранён. Следующий шаг: ' + (target + 1) + '. ' + guide.steps[target].title)
     }
+  }
+
+  const completeCurrentExecutionStep = () => {
+    if (!Number.isInteger(executionStep) || !guide.steps[executionStep]) return
+    const next = executionStep + 1
+    const currentSteps = Array.isArray(progress[guide.id]) ? progress[guide.id] : []
+    const nextProgress = currentSteps.includes(executionStep) ? currentSteps : [...currentSteps, executionStep]
+    setProgress(current => ({ ...current, [guide.id]: nextProgress }))
+    const saved = persistProgress(guide.id, nextProgress)
+    if (next < guide.steps.length) {
+      setExecutionStepByGuide(current => ({ ...current, [guide.id]: next }))
+      setGuideMessage('Шаг сохранён. Продолжай со следующего действия.')
+    } else {
+      setExecutionStepByGuide(current => ({ ...current, [guide.id]: null }))
+      setExecutionFinishedByGuide(current => ({ ...current, [guide.id]: true }))
+      setGuideMessage('Процесс завершён. Все шаги выбранного маршрута пройдены.')
+      Promise.resolve(saved).then(() => finishExecution(guide.id))
+    }
+  }
+
+  const goBackExecution = () => {
+    if (!Number.isInteger(executionStep)) return
+    const position = executionPath.lastIndexOf(executionStep)
+    if (position <= 0) {
+      setGuideMessage('Это первый шаг выбранного маршрута.')
+      return
+    }
+    const previousIndex = executionPath[position - 1]
+    const removeFromRoute = new Set(executionPath.slice(position - 1))
+    const nextAnswers = { ...(executionAnswersByGuide[guide.id] || {}) }
+    Object.keys(nextAnswers).forEach(key => { if (removeFromRoute.has(Number(key))) delete nextAnswers[key] })
+    const currentSteps = Array.isArray(progress[guide.id]) ? progress[guide.id] : []
+    const nextProgress = currentSteps.filter(stepIndex => !removeFromRoute.has(stepIndex))
+    setExecutionAnswersByGuide(current => ({ ...current, [guide.id]: nextAnswers }))
+    setProgress(current => ({ ...current, [guide.id]: nextProgress }))
+    persistProgress(guide.id, nextProgress)
+    setExecutionStepByGuide(current => ({ ...current, [guide.id]: previousIndex }))
+    setExecutionFinishedByGuide(current => ({ ...current, [guide.id]: false }))
+    setGuideMessage('Вернулись к шагу ' + (previousIndex + 1) + '. Можно изменить ответ и выбрать другой маршрут.')
   }
 
   const resetGuide = () => {
@@ -2660,10 +2728,94 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
     setExecutionAnswersByGuide(current => ({ ...current, [guide.id]: {} }))
     setExecutionFinishedByGuide(current => ({ ...current, [guide.id]: false }))
     setProgress(current => ({ ...current, [guide.id]: [] }))
-    if (API_ENABLED && !guide.id.startsWith('local-')) {
+    if (API_ENABLED && !String(guide.id).startsWith('local-')) {
       apiRequest('/api/business-process-progress/' + encodeURIComponent(guide.id), { method: 'DELETE' })
-        .catch(() => setGuideMessage('Прогресс сброшен локально, но сервер не подтвердил сброс.'))
+        .catch(() => setGuideMessage('Отметки сброшены локально, но сервер не подтвердил сброс.'))
     }
+  }
+
+  const applyWorkflowUpdate = (updated, message) => {
+    setGuides(current => current.map(item => item.id === updated.id ? updated : item))
+    if (!API_ENABLED) {
+      try { window.localStorage.setItem(PROCESS_GUIDES_STORAGE_KEY, JSON.stringify(guides.map(item => item.id === updated.id ? updated : item))) } catch { /* local persistence unavailable */ }
+    }
+    setGuideMessage(message)
+    setWorkflowOverview(current => current ? null : current)
+  }
+
+  const changeWorkflowStatus = async (action, targetStatus, successMessage, body = null, additions = {}) => {
+    setGuideMessage('')
+    try {
+      const updated = API_ENABLED
+        ? await apiRequest('/api/business-processes/' + encodeURIComponent(guide.id) + '/' + action, {
+            method: 'POST',
+            ...(body ? { body } : {}),
+          })
+        : { ...guide, workflowStatus: targetStatus, ...additions }
+      applyWorkflowUpdate(updated, successMessage)
+    } catch (error) {
+      setGuideMessage(error.message || 'Не удалось изменить статус бизнес-процесса.')
+    }
+  }
+
+  const submitGuideForReview = () => changeWorkflowStatus(
+    'submit-for-review', 'IN_REVIEW', 'Процесс отправлен на согласование.',
+    null, { submittedAt: new Date().toISOString(), reviewComment: null })
+  const publishGuide = () => changeWorkflowStatus(
+    'publish', 'PUBLISHED', 'Процесс опубликован и доступен пользователям.',
+    null, { approvedBy: 'Администратор', approvedAt: new Date().toISOString(), reviewComment: null })
+  const returnGuideForRevision = () => {
+    const comment = window.prompt('Укажи, что нужно исправить перед публикацией:')
+    if (!comment || !comment.trim()) return
+    changeWorkflowStatus('return-for-revision', 'DRAFT', 'Процесс возвращён автору на доработку.',
+      { comment: comment.trim() }, { reviewComment: comment.trim() })
+  }
+  const archiveGuide = () => {
+    if (!window.confirm('Переместить опубликованный процесс в архив?')) return
+    changeWorkflowStatus('archive', 'ARCHIVED', 'Процесс перемещён в архив.',
+      null, { archivedAt: new Date().toISOString() })
+  }
+  const restoreArchivedGuide = () => changeWorkflowStatus(
+    'restore-archived', 'DRAFT', 'Процесс возвращён в черновики для проверки и повторной публикации.',
+    null, { archivedAt: null, approvedAt: null, approvedBy: null, submittedAt: null, reviewComment: null })
+
+  const openWorkflowOverview = async () => {
+    if (!canViewDashboard || !API_ENABLED) return
+    setWorkflowOverviewOpen(true)
+    setWorkflowOverviewLoading(true)
+    setWorkflowOverviewError('')
+    try {
+      const data = await apiRequest('/api/business-processes/overview')
+      setWorkflowOverview(data && typeof data === 'object' ? data : { statusCounts: [], executions: [] })
+    } catch (error) {
+      setWorkflowOverviewError(error.message || 'Не удалось загрузить сводку выполнения.')
+    } finally {
+      setWorkflowOverviewLoading(false)
+    }
+  }
+
+  const downloadWorkflowOverviewCsv = () => {
+    const rows = [
+      ['Процесс', 'Статус процесса', 'Сотрудник', 'Логин', 'Статус прохождения', 'Выполнено шагов', 'Всего шагов', 'Прогресс, %', 'Начато', 'Завершено', 'Последнее действие'],
+      ...((workflowOverview?.executions || []).map(item => [
+        item.title, PROCESS_WORKFLOW_LABELS[item.workflowStatus] || item.workflowStatus, item.displayName,
+        item.username, PROCESS_EXECUTION_LABELS[item.executionStatus] || item.executionStatus,
+        item.completedSteps, item.totalSteps, item.progressPercent,
+        item.startedAt ? new Date(item.startedAt).toLocaleString('ru-RU') : '',
+        item.completedAt ? new Date(item.completedAt).toLocaleString('ru-RU') : '',
+        item.updatedAt ? new Date(item.updatedAt).toLocaleString('ru-RU') : '',
+      ])),
+    ]
+    const csvCell = value => '"' + String(value ?? '').replace(/"/g, '""') + '"'
+    const csv = '\uFEFF' + rows.map(row => row.map(csvCell).join(';')).join('\r\n')
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'teksher-hub-business-process-overview.csv'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
   }
 
   const openNewGuideEditor = () => {
@@ -2967,8 +3119,9 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
       </div>
       <div className="process-heading-actions">
         <div className="process-overall-progress"><strong>{totalCompleted} / {totalSteps}</strong><span>шагов выполнено</span></div>
+        {canViewDashboard && API_ENABLED && <button type="button" className="secondary-button process-overview-open-button" onClick={openWorkflowOverview}><UsersRound size={15}/> Панель руководителя</button>}
         {canManageGuides && <button type="button" className="primary-button process-create-guide-button" onClick={openNewGuideEditor}><FilePlus2 size={15}/> Новая инструкция</button>}
-        {canDelete && API_ENABLED && <button type="button" className="secondary-button" onClick={openDeletedGuides}><History size={15}/> Удалённые</button>}
+        {canDelete && API_ENABLED && <button type="button" className="secondary-button" onClick={openDeletedGuides}><History size={15}/> Удалённые</button>
       </div>
     </div>
 
@@ -3013,21 +3166,37 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
               </div>
             </header>
 
+            <section className="process-workflow-toolbar" aria-label="Статус и публикация процесса">
+              <div className="process-workflow-status-copy">
+                <span className={'process-workflow-status-pill status-' + guideWorkflowStatus.toLowerCase()}>{PROCESS_WORKFLOW_LABELS[guideWorkflowStatus] || 'Статус не указан'}</span>
+                {guide.approvedBy && guideWorkflowStatus === 'PUBLISHED' && <small>Опубликовал: {guide.approvedBy}{guide.approvedAt ? ' · ' + new Date(guide.approvedAt).toLocaleDateString('ru-RU') : ''}</small>}
+                {guide.reviewComment && guideWorkflowStatus === 'DRAFT' && <small className="process-review-comment">Возврат на доработку: {guide.reviewComment}</small>}
+              </div>
+              <div className="process-workflow-actions">
+                {canManageGuides && guideWorkflowStatus === 'DRAFT' && <button type="button" className="secondary-button" onClick={submitGuideForReview}><Send size={14}/> На согласование</button>}
+                {canApprove && guideWorkflowStatus === 'DRAFT' && <button type="button" className="primary-button" onClick={publishGuide}><CheckCircle2 size={14}/> Опубликовать</button>}
+                {canApprove && guideWorkflowStatus === 'IN_REVIEW' && <><button type="button" className="primary-button" onClick={publishGuide}><CheckCircle2 size={14}/> Согласовать и опубликовать</button><button type="button" className="secondary-button" onClick={returnGuideForRevision}><Pencil size={14}/> На доработку</button></>}
+                {guideWorkflowStatus === 'IN_REVIEW' && !canApprove && <span className="process-workflow-waiting">Ожидает решения администратора</span>}
+                {canApprove && guideWorkflowStatus === 'PUBLISHED' && <button type="button" className="secondary-button" onClick={archiveGuide}><Boxes size={14}/> В архив</button>}
+                {canApprove && guideWorkflowStatus === 'ARCHIVED' && <button type="button" className="primary-button" onClick={restoreArchivedGuide}><RefreshCw size={14}/> Вернуть в черновики</button>}
+              </div>
+            </section>
+
             <div className="process-progress-track" aria-label={'Выполнено ' + percent + '%'}>
               <span style={{ width: percent + '%' }}/>
             </div>
             <div className="process-progress-caption"><span>{percent === 100 ? 'Все шаги отмечены' : 'Выполнено ' + percent + '%'}</span><button type="button" className="tnved-clear-button" onClick={resetGuide}>Сбросить отметки</button></div>
 
             <section className="process-execution-panel" aria-label="Прохождение бизнес-процесса">
-              <div className="process-execution-heading"><div><span className="section-kicker">РЕЖИМ ВЫПОЛНЕНИЯ</span><strong>Проведение по шагам</strong><p>Запускай процесс, отмечай результат проверки и переходи к следующему шагу по выбранной ветке.</p></div>
-                {executionStep === null ? <button type="button" className="primary-button" onClick={startExecution}><Workflow size={15}/> Начать процесс</button> : <button type="button" className="secondary-button" onClick={resetGuide}>Начать заново</button>}
+              <div className="process-execution-heading"><div><span className="section-kicker">РЕЖИМ ВЫПОЛНЕНИЯ</span><strong>Проведение по шагам</strong><p>Выбирай ответ, возвращайся к предыдущим шагам и при необходимости меняй маршрут.</p></div>
+                {executionStep === null ? <button type="button" className="primary-button" onClick={startExecution}><Workflow size={15}/>{executionFinished ? 'Начать заново' : 'Начать процесс'}</button> : <div className="process-execution-heading-actions">{executionPath.lastIndexOf(executionStep) > 0 && <button type="button" className="secondary-button" onClick={goBackExecution}><ArrowUpRight size={14}/> Предыдущий шаг</button>}<button type="button" className="secondary-button" onClick={resetGuide}>Сбросить прохождение</button></div>}
               </div>
               {executionStep !== null && guide.steps[executionStep] && <div className="process-execution-current"><span className="process-execution-step-number">Шаг {executionStep + 1} из {guide.steps.length}</span><h3>{guide.steps[executionStep].title}</h3><p>{guide.steps[executionStep].detail}</p>
                 {guide.steps[executionStep].responsible && <p><b>Ответственный:</b> {guide.steps[executionStep].responsible}</p>}
                 {guide.steps[executionStep].documents && <p><b>Документы и условия:</b> {guide.steps[executionStep].documents}</p>}
-                {guide.steps[executionStep].decision ? <><div className="process-execution-question"><b>Контрольный вопрос:</b> {guide.steps[executionStep].decision}</div><div className="process-execution-choices"><button type="button" className="primary-button" onClick={() => chooseExecutionAnswer(executionStep, 'yes')}><CheckCircle2 size={15}/> Да{guide.steps[executionStep].yesOutcome ? ': ' + guide.steps[executionStep].yesOutcome : ''}</button><button type="button" className="secondary-button" onClick={() => chooseExecutionAnswer(executionStep, 'no')}><X size={15}/> Нет{guide.steps[executionStep].noOutcome ? ': ' + guide.steps[executionStep].noOutcome : ''}</button></div></> : <button type="button" className="primary-button" onClick={() => { const next = executionStep + 1; const currentSteps = Array.isArray(progress[guide.id]) ? progress[guide.id] : []; const nextProgress = currentSteps.includes(executionStep) ? currentSteps : [...currentSteps, executionStep]; setProgress(current => ({ ...current, [guide.id]: nextProgress })); persistProgress(guide.id, nextProgress); if (next < guide.steps.length) setExecutionStepByGuide(current => ({ ...current, [guide.id]: next })); else { setExecutionStepByGuide(current => ({ ...current, [guide.id]: null })); setExecutionFinishedByGuide(current => ({ ...current, [guide.id]: true })); setGuideMessage('Процесс завершён. Все шаги пройдены.'); } }}><CheckCircle2 size={15}/> Шаг выполнен, далее</button>}
+                {guide.steps[executionStep].decision ? <><div className="process-execution-question"><b>Контрольный вопрос:</b> {guide.steps[executionStep].decision}</div><div className="process-execution-choices"><button type="button" className="primary-button" onClick={() => chooseExecutionAnswer(executionStep, 'yes')}><CheckCircle2 size={15}/> Да{guide.steps[executionStep].yesOutcome ? ': ' + guide.steps[executionStep].yesOutcome : ''}</button><button type="button" className="secondary-button" onClick={() => chooseExecutionAnswer(executionStep, 'no')}><X size={15}/> Нет{guide.steps[executionStep].noOutcome ? ': ' + guide.steps[executionStep].noOutcome : ''}</button></div></> : <button type="button" className="primary-button" onClick={completeCurrentExecutionStep}><CheckCircle2 size={15}/> Шаг выполнен, далее</button>}
               </div>}
-              {executionStep === null && executionFinished && <p className="process-execution-finished"><CheckCircle2 size={15}/> Прохождение завершено. Можно начать процесс заново.</p>}
+              {executionStep === null && executionFinished && <div className="process-execution-finished"><CheckCircle2 size={17}/><div><strong>Процесс завершён</strong><span>На выбранном маршруте: {executionPath.length} шагов, выполнено отметок: {completed.length}. Ответы сохранены в текущем прохождении.</span>{Object.keys(executionAnswers).length > 0 && <small>{Object.entries(executionAnswers).map(([index, answer]) => 'Шаг ' + (Number(index) + 1) + ': ' + (answer === 'yes' ? 'Да' : 'Нет')).join(' · ')}</small>}</div></div>}
             </section>
 
             <section className="process-flow-preview" aria-label="Схема бизнес-процесса">
@@ -3101,6 +3270,23 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
       </section>
     </div>}
 
+    {workflowOverviewOpen && <div className="modal-backdrop process-guide-editor-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setWorkflowOverviewOpen(false) }}>
+      <section className="create-modal process-guide-editor-modal process-workflow-overview-modal" role="dialog" aria-modal="true" aria-labelledby="process-workflow-overview-title">
+        <div className="modal-header">
+          <div><div className="section-kicker">КОНТРОЛЬ И ПУБЛИКАЦИЯ</div><h2 id="process-workflow-overview-title">Панель руководителя</h2><p>Статусы инструкций и последние данные о прохождении сотрудниками.</p></div>
+          <button type="button" className="icon-button" onClick={() => setWorkflowOverviewOpen(false)} aria-label="Закрыть панель"><X size={18}/></button>
+        </div>
+        {workflowOverviewLoading ? <div className="empty-state"><RefreshCw size={20} className="spin"/><span>Загружаем выполнение процессов…</span></div>
+          : workflowOverviewError ? <div className="feedback feedback-error" role="alert">{workflowOverviewError}</div>
+          : <>
+            <div className="process-overview-status-grid">
+              {['DRAFT','IN_REVIEW','PUBLISHED','ARCHIVED'].map(status => <div className="process-overview-stat" key={status}><span className={'process-workflow-status-pill status-' + status.toLowerCase()}>{PROCESS_WORKFLOW_LABELS[status]}</span><strong>{(workflowOverview?.statusCounts || []).find(item => item.status === status)?.total || 0}</strong></div>)}
+            </div>
+            <div className="process-overview-table-heading"><div><b>Прохождение сотрудниками</b><span>Последние 1000 записей прогресса</span></div><button type="button" className="secondary-button" onClick={downloadWorkflowOverviewCsv} disabled={!workflowOverview?.executions?.length}><Download size={14}/> Экспорт CSV</button></div>
+            {(workflowOverview?.executions || []).length ? <div className="process-overview-table-wrap"><table className="process-overview-table"><thead><tr><th>Процесс / сотрудник</th><th>Статус</th><th>Прогресс</th><th>Начат</th><th>Завершён</th><th>Последнее действие</th></tr></thead><tbody>{workflowOverview.executions.map((item, index) => <tr key={item.processId + ':' + item.username + ':' + index}><td><strong>{item.title}</strong><span>{item.displayName} ({item.username})</span></td><td><span className={'process-execution-status status-' + String(item.executionStatus || '').toLowerCase()}>{PROCESS_EXECUTION_LABELS[item.executionStatus] || item.executionStatus}</span></td><td><strong>{item.completedSteps}/{item.totalSteps} · {item.progressPercent}%</strong><i className="process-overview-progress"><em style={{ width: item.progressPercent + '%' }}/></i></td><td>{item.startedAt ? new Date(item.startedAt).toLocaleString('ru-RU') : '–'}</td><td>{item.completedAt ? new Date(item.completedAt).toLocaleString('ru-RU') : '–'}</td><td>{item.updatedAt ? new Date(item.updatedAt).toLocaleString('ru-RU') : '–'}</td></tr>)}</tbody></table></div> : <div className="empty-state"><UsersRound size={22}/><b>Данные о прохождении пока отсутствуют</b><span>Когда сотрудник начнёт процесс и сохранит прогресс, запись появится здесь.</span></div>}
+          </>}
+      </section>
+    </div>}
     {versionHistoryOpen && <div className="modal-backdrop process-guide-editor-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !restoringVersion) setVersionHistoryOpen(false) }}>
       <section className="create-modal process-guide-editor-modal process-version-history-modal" role="dialog" aria-modal="true" aria-labelledby="process-version-history-title">
         <div className="modal-header">
