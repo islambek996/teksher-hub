@@ -4741,7 +4741,7 @@ function MarkingIssueRegistry({ currentUser, canManage }) {
   const [commentDrafts, setCommentDrafts] = useState({})
   const [commentLoadingId, setCommentLoadingId] = useState(null)
   const [commentSavingId, setCommentSavingId] = useState(null)
-  const [draft, setDraft] = useState({ title: '', description: '', category: 'TECHNICAL', system: 'MZKM', jurisdiction: 'KG', productGroup: '', priority: 'NORMAL', assignedTo: '' })
+  const [draft, setDraft] = useState({ title: '', description: '', resolution: '', category: 'TECHNICAL', system: 'MZKM', jurisdiction: 'KG', productGroup: '', priority: 'NORMAL', assignedTo: '' })
 
   const loadIssues = async () => {
     setLoading(true)
@@ -4772,12 +4772,12 @@ function MarkingIssueRegistry({ currentUser, canManage }) {
     setSaving(true); setError(''); setNotice('')
     try {
       const created = await apiRequest('/api/marking-issues', { method: 'POST', body: {
-        title: draft.title.trim(), description: draft.description.trim(), category: draft.category,
+        title: draft.title.trim(), description: draft.description.trim(), resolution: draft.resolution.trim(), category: draft.category,
         system: draft.system, jurisdiction: draft.jurisdiction, productGroup: draft.productGroup.trim(),
         priority: draft.priority, assignedTo: canManage ? draft.assignedTo.trim() : '',
       } })
       setIssues(rows => [created, ...rows.filter(row => row.id !== created.id)])
-      setDraft({ title: '', description: '', category: 'TECHNICAL', system: 'MZKM', jurisdiction: 'KG', productGroup: '', priority: 'NORMAL', assignedTo: '' })
+      setDraft({ title: '', description: '', resolution: '', category: 'TECHNICAL', system: 'MZKM', jurisdiction: 'KG', productGroup: '', priority: 'NORMAL', assignedTo: '' })
       setShowForm(false); setNotice('Проблема зарегистрирована.')
     } catch (exception) {
       setError(exception.message || 'Не удалось зарегистрировать проблему.')
@@ -4822,8 +4822,8 @@ function MarkingIssueRegistry({ currentUser, canManage }) {
 
   return <section className="management-page issue-registry">
     <div className="page-heading">
-      <div><div className="section-kicker">ОПЕРАЦИОННЫЙ КОНТРОЛЬ</div><h1>Реестр проблем маркировки</h1><p>Единый журнал ошибок и вопросов по МЗКМ, ГАИС МТ, Трансграну и трансграничной маркировке. Фиксируйте проблему, назначайте ответственного и отслеживайте решение.</p></div>
-      <div className="heading-actions"><button className="secondary-button" type="button" onClick={loadIssues} disabled={loading}><RefreshCw size={14} className={loading ? 'spin' : ''}/> Обновить</button><button className="primary-button" type="button" onClick={() => setShowForm(value => !value)}><FilePlus2 size={15}/>{showForm ? 'Скрыть форму' : 'Зарегистрировать проблему'}</button></div>
+      <div><div className="section-kicker">СООБЩЕСТВО / ОПЫТ И РЕШЕНИЯ</div><h1>Форум маркировки</h1><p>Общая база практических случаев: задавайте вопросы, описывайте ошибки и делитесь решениями по МЗКМ, ГАИС МТ, Трансграну и трансграничной маркировке.</p></div>
+      <div className="heading-actions"><button className="secondary-button" type="button" onClick={loadIssues} disabled={loading}><RefreshCw size={14} className={loading ? 'spin' : ''}/> Обновить</button><button className="primary-button" type="button" onClick={() => setShowForm(value => !value)}><FilePlus2 size={15}/>{showForm ? 'Скрыть форму' : 'Создать тему'}</button></div>
     </div>
     <div className="issue-metric-grid">
       <div className="issue-metric"><span>Всего записей</span><strong>{issues.length}</strong><small>В общем реестре</small></div>
@@ -4831,29 +4831,31 @@ function MarkingIssueRegistry({ currentUser, canManage }) {
       <div className={'issue-metric ' + (criticalCount ? 'issue-metric-critical' : '')}><span>Критические</span><strong>{criticalCount}</strong><small>Не закрытые критичные проблемы</small></div>
     </div>
     {showForm && <form className="issue-create-form" onSubmit={createIssue}>
-      <div className="issue-form-heading"><div><b>Новая проблема</b><span>Заполни основные сведения. Не включай пароли, персональные данные или секреты доступа.</span></div></div>
+      <div className="issue-form-heading"><div><b>Новая тема форума</b><span>Опишите ситуацию так, чтобы коллеги могли понять контекст и воспроизвести проблему. Не публикуйте пароли или секреты доступа.</span></div></div>
       <div className="issue-form-grid">
-        <label className="form-field issue-field-wide"><span>Краткое название *</span><input value={draft.title} onChange={event => setDraft(current => ({ ...current, title: event.target.value }))} required maxLength={240} placeholder="Например, ошибка публикации карточки товара"/></label>
+        <label className="form-field issue-field-wide"><span>Краткое наименование темы *</span><input value={draft.title} onChange={event => setDraft(current => ({ ...current, title: event.target.value }))} required maxLength={240} placeholder="Например, не публикуется карточка товара"/></label>
         <label className="form-field"><span>Категория</span><select value={draft.category} onChange={event => setDraft(current => ({ ...current, category: event.target.value }))}>{Object.entries(ISSUE_CATEGORY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         <label className="form-field"><span>Система</span><select value={draft.system} onChange={event => setDraft(current => ({ ...current, system: event.target.value }))}>{Object.entries(ISSUE_SYSTEM_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         <label className="form-field"><span>Юрисдикция</span><select value={draft.jurisdiction} onChange={event => setDraft(current => ({ ...current, jurisdiction: event.target.value }))}><option value="KG">Кыргызская Республика</option><option value="RU">Российская Федерация</option><option value="EAEU">ЕАЭС</option></select></label>
         <label className="form-field"><span>Приоритет</span><select value={draft.priority} onChange={event => setDraft(current => ({ ...current, priority: event.target.value }))}>{Object.entries(ISSUE_PRIORITY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         <label className="form-field"><span>Товарная группа</span><input value={draft.productGroup} onChange={event => setDraft(current => ({ ...current, productGroup: event.target.value }))} maxLength={240} placeholder="Если применимо"/></label>
         {canManage && <label className="form-field"><span>Ответственный (логин)</span><input value={draft.assignedTo} onChange={event => setDraft(current => ({ ...current, assignedTo: event.target.value }))} maxLength={120} placeholder="Необязательно"/></label>}
-        <label className="form-field issue-field-wide"><span>Описание, шаги воспроизведения и ожидаемый результат</span><textarea value={draft.description} onChange={event => setDraft(current => ({ ...current, description: event.target.value }))} maxLength={4000} rows={3} placeholder="Что произошло, в какой системе, когда и какие действия предшествовали ошибке"/></label>
+        <label className="form-field issue-field-wide"><span>Проблема *</span><textarea value={draft.description} onChange={event => setDraft(current => ({ ...current, description: event.target.value }))} required maxLength={4000} rows={4} placeholder="Что не работает? Какие действия выполнялись, какой текст ошибки отображается и какой результат ожидался?"/></label>
+        <label className="form-field issue-field-wide"><span>Решение / что помогло</span><textarea value={draft.resolution} onChange={event => setDraft(current => ({ ...current, resolution: event.target.value }))} maxLength={3000} rows={3} placeholder="Если решение уже найдено – опишите шаги. Можно оставить пустым, если вопрос пока открыт."/></label>
       </div>
-      <div className="modal-actions"><button className="secondary-button" type="button" onClick={() => setShowForm(false)}>Отмена</button><button className="primary-button" type="submit" disabled={saving || !draft.title.trim()}>{saving ? <RefreshCw size={14} className="spin"/> : <FilePlus2 size={14}/>} Создать запись</button></div>
+      <div className="modal-actions"><button className="secondary-button" type="button" onClick={() => setShowForm(false)}>Отмена</button><button className="primary-button" type="submit" disabled={saving || !draft.title.trim()}>{saving ? <RefreshCw size={14} className="spin"/> : <FilePlus2 size={14}/>} Опубликовать тему</button></div>
     </form>}
-    <div className="search-panel issue-search-panel"><div className="search-input-wrap"><Search size={17}/><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Поиск по проблеме, описанию, системе, товарной группе…"/></div><div className="filter-wrap"><SlidersHorizontal size={15}/><select aria-label="Фильтр по статусу проблемы" value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="ALL">Все статусы</option>{Object.entries(ISSUE_STATUS_LABELS).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div><div className="filter-wrap"><select aria-label="Фильтр по категории проблемы" value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)}><option value="ALL">Все категории</option>{Object.entries(ISSUE_CATEGORY_LABELS).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div><span className="record-count">{filtered.length} из {issues.length}</span></div>
+    <div className="search-panel issue-search-panel"><div className="search-input-wrap"><Search size={17}/><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Поиск по темам, проблемам, решениям, системам и товарным группам…"/></div><div className="filter-wrap"><SlidersHorizontal size={15}/><select aria-label="Фильтр по статусу проблемы" value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="ALL">Все статусы</option>{Object.entries(ISSUE_STATUS_LABELS).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div><div className="filter-wrap"><select aria-label="Фильтр по категории проблемы" value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)}><option value="ALL">Все категории</option>{Object.entries(ISSUE_CATEGORY_LABELS).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div><span className="record-count">{filtered.length} из {issues.length}</span></div>
     {error && <div className="feedback feedback-error" role="alert"><CircleHelp size={15}/><span>{error}</span></div>}
     {notice && <div className="feedback feedback-success" role="status"><CheckCircle2 size={15}/><span>{notice}</span></div>}
     {loading ? <div className="empty-state"><RefreshCw size={21} className="spin"/><b>Загружаем реестр…</b></div>
       : filtered.length ? <div className="issue-list">{filtered.map(issue => <article className={'issue-card issue-priority-' + issue.priority.toLowerCase()} key={issue.id}>
-        <div className="issue-card-top"><div className="issue-card-copy"><div className="issue-card-tags"><span className={'issue-status-pill issue-status-' + issue.status.toLowerCase()}>{ISSUE_STATUS_LABELS[issue.status] || issue.status}</span><span className={'issue-priority-pill issue-priority-pill-' + issue.priority.toLowerCase()}>{ISSUE_PRIORITY_LABELS[issue.priority] || issue.priority}</span><span className="issue-category-pill">{ISSUE_CATEGORY_LABELS[issue.category] || issue.category}</span></div><h2>#{issue.id} · {issue.title}</h2><div className="issue-card-meta"><span>{ISSUE_SYSTEM_LABELS[issue.system] || issue.system}</span><span>{issue.jurisdiction === 'KG' ? 'КР' : issue.jurisdiction === 'RU' ? 'РФ' : 'ЕАЭС'}</span>{issue.productGroup && <span>{issue.productGroup}</span>}<span>Автор: {issue.createdBy}</span>{issue.assignedTo && <span>Ответственный: {issue.assignedTo}</span>}<span>Обновлено: {formatDateTime(issue.updatedAt)}</span></div></div>
-          <button className="icon-button" type="button" onClick={() => toggleComments(issue)} title="История и комментарии" aria-label={'История проблемы ' + issue.id}><MessageCircle size={16}/></button>
+        <div className="issue-card-top"><div className="issue-card-copy"><div className="issue-topic-kicker">ТЕМА ФОРУМА · #{issue.id}</div><div className="issue-card-tags"><span className={'issue-status-pill issue-status-' + issue.status.toLowerCase()}>{ISSUE_STATUS_LABELS[issue.status] || issue.status}</span><span className={'issue-priority-pill issue-priority-pill-' + issue.priority.toLowerCase()}>{ISSUE_PRIORITY_LABELS[issue.priority] || issue.priority}</span><span className="issue-category-pill">{ISSUE_CATEGORY_LABELS[issue.category] || issue.category}</span></div><h2>{issue.title}</h2><div className="issue-card-meta"><span>{ISSUE_SYSTEM_LABELS[issue.system] || issue.system}</span><span>{issue.jurisdiction === 'KG' ? 'КР' : issue.jurisdiction === 'RU' ? 'РФ' : 'ЕАЭС'}</span>{issue.productGroup && <span>{issue.productGroup}</span>}<span>Автор: {issue.createdBy}</span>{issue.assignedTo && <span>Ответственный: {issue.assignedTo}</span>}<span>Обновлено: {formatDateTime(issue.updatedAt)}</span></div></div>
+          <button className="secondary-button issue-replies-trigger" type="button" onClick={() => toggleComments(issue)} title="Открыть обсуждение"><MessageCircle size={15}/>{Array.isArray(commentsByIssue[issue.id]) ? commentsByIssue[issue.id].length : 'Обсуждение'}</button>
         </div>
-        {issue.description && <p className="issue-card-description">{issue.description}</p>}
-        {issue.resolution && <div className="issue-resolution"><CheckCircle2 size={15}/><span><b>Решение:</b> {issue.resolution}</span></div>}
+        {issue.description && <div className="issue-forum-body"><h3>Проблема</h3><p className="issue-card-description">{issue.description}</p></div>}
+        {issue.resolution && <div className="issue-forum-solution"><div className="issue-forum-section-title"><CheckCircle2 size={15}/><h3>Решение</h3></div><p>{issue.resolution}</p></div>}
+        {!issue.resolution && <div className="issue-forum-unsolved">Решение ещё не добавлено – можно поделиться опытом в комментариях.</div>}
         <div className="issue-card-controls"><label className="form-field"><span>Статус</span><select value={issue.status} onChange={event => updateIssue(issue, { status: event.target.value })}>{Object.entries(ISSUE_STATUS_LABELS).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <label className="form-field"><span>Приоритет</span><select value={issue.priority} onChange={event => updateIssue(issue, { priority: event.target.value })}>{Object.entries(ISSUE_PRIORITY_LABELS).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           {canManage && <label className="form-field"><span>Ответственный</span><input key={issue.id + '-' + (issue.assignedTo || '')} defaultValue={issue.assignedTo || ''} maxLength={120} placeholder="Логин сотрудника" onBlur={event => { const value = event.target.value.trim(); if (value !== (issue.assignedTo || '')) updateIssue(issue, { assignedTo: value }) }}/></label>}
@@ -4866,7 +4868,7 @@ function MarkingIssueRegistry({ currentUser, canManage }) {
         </div>}
       </article>)}</div>
       : <div className="empty-state"><ClipboardList size={24}/><b>{query.trim() || statusFilter !== 'ALL' || categoryFilter !== 'ALL' ? 'Совпадений нет' : 'Реестр пока пуст'}</b><span>{query.trim() || statusFilter !== 'ALL' || categoryFilter !== 'ALL' ? 'Измени фильтры или поисковый запрос.' : 'Зарегистрируйте первую проблему, чтобы начать собирать историю ошибок и решений.'}</span></div>}
-    <p className="issue-registry-note">Реестр фиксирует рабочие обращения и результаты диагностики. Статус «Решена» не означает подтверждение юридической актуальности требований – нормативные вопросы нужно сверять с первоисточниками.</p>
+    <p className="issue-registry-note">Делитесь только проверенной информацией. Ответы участников – практический опыт, а нормативные требования необходимо сверять с официальными первоисточниками.</p>
   </section>
 }
 
