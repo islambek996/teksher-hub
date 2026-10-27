@@ -2695,7 +2695,7 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
     const invalidSource = sourceRows.find(source => {
       if (!source.label && !source.url) return false
       try {
-        const parsed = new URL(source.url)
+        const parsed = new URL(normalizeBusinessProcessSourceUrl(source.url))
         return !['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname
       } catch {
         return true
