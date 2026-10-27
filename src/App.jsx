@@ -420,6 +420,13 @@ function buildGuideVersionChanges(current, previous) {
   return changes
 }
 
+function classifyGuideVersionChange(change) {
+  const text = String(change || '')
+  if (/^(Добавлен шаг|Добавлен источник|Добавлен )/i.test(text)) return 'added'
+  if (/^(Удалён шаг|Удалён источник|Удалён )/i.test(text)) return 'removed'
+  return 'changed'
+}
+
 function App() {
   const [theme, setTheme] = useState(loadTheme)
   const [showGlobalSearch, setShowGlobalSearch] = useState(false)
@@ -3014,9 +3021,25 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
             <div><strong>Сравнение v{versionComparison.versionNumber} с текущей редакцией</strong><small>{versionComparison.title}</small></div>
             <button type="button" className="icon-button" onClick={() => setVersionComparison(null)} aria-label="Закрыть сравнение"><X size={16}/></button>
           </div>
-          {versionComparison.changes.length
-            ? <ul>{versionComparison.changes.map((change, index) => <li key={index}>{change}</li>)}</ul>
-            : <p>Изменений между этой версией и текущей редакцией не найдено.</p>}
+          {versionComparison.changes.length ? (() => {
+            const groups = [
+              { key: 'added', title: 'Добавлено', items: versionComparison.changes.filter(change => classifyGuideVersionChange(change) === 'added') },
+              { key: 'removed', title: 'Удалено', items: versionComparison.changes.filter(change => classifyGuideVersionChange(change) === 'removed') },
+              { key: 'changed', title: 'Изменено', items: versionComparison.changes.filter(change => classifyGuideVersionChange(change) === 'changed') },
+            ].filter(group => group.items.length)
+            return <>
+              <div className="process-version-comparison-summary" aria-label="Сводка изменений">
+                <span><b>{versionComparison.changes.length}</b> изменений</span>
+                {groups.map(group => <span className={'process-version-count ' + group.key} key={group.key}>{group.title}: <b>{group.items.length}</b></span>)}
+              </div>
+              <div className="process-version-groups">
+                {groups.map(group => <section className="process-version-group" key={group.key}>
+                  <h4><span className={'process-version-change-mark ' + group.key}>{group.key === 'added' ? '+' : group.key === 'removed' ? '−' : '↻'}</span>{group.title}<span>{group.items.length}</span></h4>
+                  <ul>{group.items.map((change, index) => <li key={index}>{change}</li>)}</ul>
+                </section>)}
+              </div>
+            </>
+          })() : <p>Изменений между этой версией и текущей редакцией не найдено.</p>}
         </section>}
       </section>
     </div>}
