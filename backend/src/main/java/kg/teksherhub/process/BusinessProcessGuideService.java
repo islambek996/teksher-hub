@@ -549,5 +549,10 @@ public class BusinessProcessGuideService {
                     "Некорректный переход " + branchName + " ветви шага " + (sourceIndex + 1)
                             + ": выберите существующий шаг.");
         }
+        if (target == sourceIndex) {
+            throw new IllegalArgumentException(
+                    "Некорректный переход " + branchName + " ветви шага " + (sourceIndex + 1)
+                            + ": переход не может вести на тот же шаг.");
+        }
     }
 }

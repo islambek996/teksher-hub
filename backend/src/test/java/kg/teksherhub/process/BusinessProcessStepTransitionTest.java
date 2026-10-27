@@ -107,6 +107,19 @@ class BusinessProcessStepTransitionTest {
     }
 
     @Test
+    void rejectsSelfTransition() {
+        List<BusinessProcessStep> steps = List.of(
+                new BusinessProcessStep("Проверка", "Проверь данные", null, null,
+                        "Данные корректны?", null, null, 0, null)
+        );
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> BusinessProcessGuideService.validateStepTransitions(steps));
+
+        assertTrue(error.getMessage().contains("не может вести на тот же шаг"));
+    }
+
+    @Test
     void rejectsBranchWithoutDecisionQuestion() {
         List<BusinessProcessStep> steps = List.of(
                 new BusinessProcessStep("Проверка", "Проверь данные", null, null,
