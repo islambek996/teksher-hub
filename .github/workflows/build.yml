@@ -193,6 +193,19 @@ jobs:
           curl --silent --show-error --fail -X DELETE "http://localhost:8080/api/favorites/$DOC_ID" -H "Authorization: Bearer $TOKEN"
           curl --silent --show-error --fail "http://localhost:8080/api/favorites" -H "Authorization: Bearer $TOKEN" | jq -e --arg id "$DOC_ID" 'index($id) == null'
           curl --silent --show-error --fail "http://localhost:8080/api/documents/$DOC_ID/versions" -H "Authorization: Bearer $TOKEN" | jq -e 'length == 1'
+
+          READER_DRAFT_DOCUMENT_STATUS=$(curl --silent --output /tmp/ci-reader-draft-document.json --write-out '%{http_code}' "http://localhost:8080/api/documents/$DOC_ID" -H "Authorization: Bearer $READER_TOKEN")
+          test "$READER_DRAFT_DOCUMENT_STATUS" = "404"
+          READER_DRAFT_FAVORITE_STATUS=$(curl --silent --output /tmp/ci-reader-draft-favorite.json --write-out '%{http_code}' -X PUT "http://localhost:8080/api/favorites/$DOC_ID" -H "Authorization: Bearer $READER_TOKEN")
+          test "$READER_DRAFT_FAVORITE_STATUS" = "404"
+          curl --silent --show-error --fail "http://localhost:8080/api/favorites" -H "Authorization: Bearer $READER_TOKEN" | jq -e --arg id "$DOC_ID" 'index($id) == null'
+          MISSING_DOCUMENT_STATUS=$(curl --silent --output /tmp/ci-missing-document.json --write-out '%{http_code}' "http://localhost:8080/api/documents/00000000-0000-0000-0000-000000000000" -H "Authorization: Bearer $READER_TOKEN")
+          test "$MISSING_DOCUMENT_STATUS" = "404"
+          curl --silent --show-error --fail -X POST "http://localhost:8080/api/documents/$DOC_ID/review" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"status":"ACTIVE","note":"CI confirms reader visibility only after publication"}' | jq -e '.status == "ACTIVE"'
+          curl --silent --show-error --fail "http://localhost:8080/api/documents/$DOC_ID/versions" -H "Authorization: Bearer $READER_TOKEN" | jq -e 'length == 1 and .[0].status == "ACTIVE"'
+          curl --silent --show-error --fail -X PUT "http://localhost:8080/api/favorites/$DOC_ID" -H "Authorization: Bearer $READER_TOKEN"
+          curl --silent --show-error --fail "http://localhost:8080/api/favorites" -H "Authorization: Bearer $READER_TOKEN" | jq -e --arg id "$DOC_ID" 'index($id) != null'
+          curl --silent --show-error --fail -X DELETE "http://localhost:8080/api/favorites/$DOC_ID" -H "Authorization: Bearer $READER_TOKEN"
           curl --silent --show-error --fail "http://localhost:8080/api/audit-log?limit=250" -H "Authorization: Bearer $TOKEN" | jq -e --arg id "$DOC_ID" 'any(.[]; .entityType == "DOCUMENT" and .entityId == $id and .action == "CREATE")'
           curl --silent --show-error --fail "http://localhost:8080/api/documents" -H "Authorization: Bearer $TOKEN" | jq -e --arg title "CI smoke test document" 'any(.[]; .title == $title)'
           printf '%s\n' 'attachment-search-marker-unique-9876' > /tmp/ci-attachment.txt
@@ -216,6 +229,7 @@ jobs:
 
           LINKED_BODY=$(curl --silent --show-error --fail "http://localhost:8080/api/documents/$DOC_ID" -H "Authorization: Bearer $TOKEN" | jq --arg related "$RELATED_ID" '{title,jurisdiction,kind,area,productGroup,keywords,relatedDocumentIds:[$related],documentNumber,documentDate,effectiveFrom,effectiveUntil,sourceUrl,description,content,status,changeNote:"CI deletion linked-doc regression test"}')
           curl --silent --show-error --fail -X PUT "http://localhost:8080/api/documents/$DOC_ID" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d "$LINKED_BODY" | jq -e --arg related "$RELATED_ID" '(.relatedDocumentIds | index($related)) != null'
+          curl --silent --show-error --fail "http://localhost:8080/api/documents/$DOC_ID" -H "Authorization: Bearer $READER_TOKEN" | jq -e '.relatedDocumentIds == []'
 
           RELATED_BODY=$(curl --silent --show-error --fail "http://localhost:8080/api/documents/$RELATED_ID" -H "Authorization: Bearer $TOKEN" | jq --arg target "$DOC_ID" '{title,jurisdiction,kind,area,productGroup,keywords,relatedDocumentIds:[$target],documentNumber,documentDate,effectiveFrom,effectiveUntil,sourceUrl,description,content,status,changeNote:"CI deletion inbound-link regression test"}')
           curl --silent --show-error --fail -X PUT "http://localhost:8080/api/documents/$RELATED_ID" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d "$RELATED_BODY" | jq -e --arg target "$DOC_ID" '(.relatedDocumentIds | index($target)) != null'
