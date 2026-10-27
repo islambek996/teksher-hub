@@ -111,7 +111,12 @@ public class DocumentController {
     @GetMapping("/{id}/versions")
     public List<VersionResponse> versions(@PathVariable UUID id, @AuthenticationPrincipal UserAccount user) {
         DocumentReadAccessPolicy.requireReadable(user.getRole(), service.get(id));
-        return service.history(id);
+        // A readable current document can still have old internal or draft snapshots.
+        // Apply the same access policy to every historical version before returning content.
+        return service.history(id).stream()
+                .filter(version -> DocumentReadAccessPolicy.canRead(
+                        user.getRole(), version.status(), version.kind()))
+                .toList();
     }
 
     @DeleteMapping("/{id}")
