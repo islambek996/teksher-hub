@@ -35,7 +35,7 @@ fi
 
 echo "Проверяю структуру резервных копий..."
 docker compose exec -T "$DB_SERVICE" pg_restore --list < "$DB_BACKUP" >/dev/null
-python3 scripts/validate-uploads-archive.py "$UPLOADS_BACKUP" || {
+python3 scripts/validate_uploads_archive.py "$UPLOADS_BACKUP" || {
   echo "Ошибка: архив вложений не прошёл проверку безопасности." >&2
   exit 1
 }
