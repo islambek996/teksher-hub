@@ -123,7 +123,9 @@ class BusinessProcessStepTransitionTest {
     void rejectsBranchWithoutDecisionQuestion() {
         List<BusinessProcessStep> steps = List.of(
                 new BusinessProcessStep("Проверка", "Проверь данные", null, null,
-                        " ", null, null, 0, null)
+                        " ", null, null, 1, null),
+                new BusinessProcessStep("Следующий шаг", "Действие", null, null,
+                        null, null, null, null, null)
         );
 
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
