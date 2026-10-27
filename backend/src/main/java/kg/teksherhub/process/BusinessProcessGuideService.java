@@ -225,7 +225,7 @@ public class BusinessProcessGuideService {
         }
     }
 
-    private static void validateStepTransitions(List<BusinessProcessStep> steps) {
+    static void validateStepTransitions(List<BusinessProcessStep> steps) {
         for (int i = 0; i < steps.size(); i++) {
             BusinessProcessStep step = steps.get(i);
             validateTransitionTarget(step.yesStepIndex(), steps.size(), i, "положительной");
