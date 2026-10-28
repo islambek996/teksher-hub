@@ -5,6 +5,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.net.ssl.SSLException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.URI;
@@ -23,6 +25,7 @@ import java.util.Set;
 @Service
 public class SourceMonitorService {
     private static final int MAX_BODY_BYTES = 2 * 1024 * 1024;
+    private static final int MAX_REQUEST_ATTEMPTS = 3;
     private final SourceMonitorRepository repository;
     private final JdbcTemplate jdbc;
     private final Set<String> allowedHosts;
@@ -34,7 +37,7 @@ public class SourceMonitorService {
         this.jdbc = jdbc;
         this.allowedHosts = java.util.Arrays.stream(hosts.split(",")).map(String::trim)
                 .map(s -> s.toLowerCase(Locale.ROOT)).filter(s -> !s.isBlank()).collect(java.util.stream.Collectors.toUnmodifiableSet());
-        this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5))
+        this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10))
                 .followRedirects(HttpClient.Redirect.NEVER).build();
     }
 
@@ -116,11 +119,11 @@ public class SourceMonitorService {
         m.setLastCheckedAt(Instant.now());
         try {
             URI uri = validateAllowedUrl(m.getSourceUrl());
-            HttpRequest request = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(12))
+            HttpRequest request = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(20))
                     .header("User-Agent", "TEKSHER-HUB-SourceMonitor/1.0")
                     .header("Accept", "text/html, text/plain, application/pdf, application/json, */*")
                     .GET().build();
-            HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            HttpResponse<InputStream> response = sendWithRetry(request);
             m.setLastHttpStatus(response.statusCode());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 try { response.body().close(); } catch (Exception ignored) {}
@@ -153,6 +156,28 @@ public class SourceMonitorService {
         }
     }
 
+    private HttpResponse<InputStream> sendWithRetry(HttpRequest request) throws IOException, InterruptedException {
+        IOException lastError = null;
+        for (int attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt++) {
+            try {
+                return httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            } catch (SSLException ex) {
+                // Never retry by weakening TLS: a certificate failure must remain visible.
+                throw ex;
+            } catch (IOException ex) {
+                lastError = ex;
+                if (attempt == MAX_REQUEST_ATTEMPTS) break;
+                try {
+                    Thread.sleep(500L * attempt);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw interrupted;
+                }
+            }
+        }
+        throw lastError == null ? new IOException("Не удалось подключиться к источнику") : lastError;
+    }
+
     private URI validateAllowedUrl(String value) {
         try {
             URI uri = URI.create(value.trim()).normalize();
@@ -180,7 +205,12 @@ public class SourceMonitorService {
     private static boolean isUniqueLocalIpv6(byte[] bytes) {
         return bytes.length == 16 && (Byte.toUnsignedInt(bytes[0]) & 0xfe) == 0xfc;
     }
+
     private static String safeError(Exception ex) {
+        if (ex instanceof SSLException) {
+            return "Ошибка TLS-сертификата: " + (ex.getMessage() == null ? "проверка цепочки сертификатов не пройдена" : ex.getMessage())
+                    + ". Проверка SSL не отключена; проверьте цепочку сертификатов источника и хранилище доверенных CA в runtime.";
+        }
         String message = ex.getMessage();
         if (message == null || message.isBlank()) return ex.getClass().getSimpleName();
         return message.substring(0, Math.min(900, message.length()));
