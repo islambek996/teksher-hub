@@ -78,25 +78,31 @@
 
 Остановка контейнеров: docker compose down. Данные PostgreSQL и файлы хранятся в Docker volumes и сохраняются при обычном перезапуске. Команда docker compose down -v удалит тома с данными – не используй её без резервной копии.
 
-## Конфигурация Netlify
+## Развёртывание frontend на Cloudflare Pages
 
-Для фронтенда:
-- Build command: npm run build
-- Publish directory: dist
-- Environment variable: VITE_API_URL=https://адрес-развёрнутого-api
+Для проекта используется **Cloudflare Pages**, не Netlify.
 
-Для backend в переменной APP_CORS_ORIGINS укажи точный origin Netlify-сайта, например https://твой-сайт.netlify.app, вместе с локальным адресом, если локальная разработка ещё используется. Не добавляй завершающий путь.
+Настройки сборки Cloudflare Pages:
+- Framework preset: **Vite** (или None).
+- Build command: `npm run build`.
+- Build output directory: `dist`.
+- Production branch: `main`.
+- Environment variable: `VITE_API_URL=https://адрес-развёрнутого-api`.
 
-Netlify хранит только frontend. В репозитории есть файл render.yaml – Blueprint для backend, PostgreSQL и постоянного диска под вложения на Render. Чтобы запустить Blueprint, выбери этот GitHub-репозиторий в Render Dashboard и проверь ресурсы и цену перед подтверждением: конфигурация включает оплачиваемый сервис API, managed PostgreSQL и persistent disk. При первоначальной настройке Render запросит сильный пароль администратора и точный origin Netlify для CORS.
+После изменения `VITE_API_URL` необходимо запустить новую сборку Pages: переменная встраивается во frontend во время build. Файл `public/_headers` содержит HTTP-заголовки безопасности и автоматически копируется Vite в `dist/_headers`.
+
+Backend и PostgreSQL разворачиваются отдельно. В переменной backend `APP_CORS_ORIGINS` укажи точный origin Cloudflare Pages (например, `https://имя-проекта.pages.dev`) и, если используется, production-домен. Указывай только origin без пути и завершающего слеша.
+
+Файл `render.yaml` описывает Blueprint backend, PostgreSQL и постоянного диска для вложений на Render. Перед запуском Blueprint проверь ресурсы и стоимость: API, managed PostgreSQL и persistent disk могут быть платными. При первоначальной настройке задай надёжный пароль администратора и точный origin Cloudflare Pages для CORS.
 
 После развёртывания:
-1. Скопируй публичный адрес API из Render (он должен отвечать на /api/health).
-2. В настройках Netlify добавь переменную VITE_API_URL со значением этого API URL.
-3. Убедись, что APP_CORS_ORIGINS на Render содержит точный origin Netlify без завершающего пути.
-4. Запусти новый deploy Netlify, чтобы VITE_API_URL попал в сборку.
-5. Войди под логином и паролем администратора, установленными при первом запуске.
+1. Проверь публичный адрес API: endpoint `/api/health` должен отвечать успешно.
+2. В Cloudflare Pages добавь `VITE_API_URL` со значением публичного адреса API без завершающего пути.
+3. В настройках backend установи `APP_CORS_ORIGINS` с точным origin Cloudflare Pages и production-доменом, если он используется.
+4. Запусти новый production deploy Cloudflare Pages, чтобы адрес API попал в сборку.
+5. Проверь вход администратора, роли ADMIN/EDITOR/READER, поиск, загрузку и скачивание вложений, а также сохранение бизнес-процессов.
 
-Для production используй HTTPS, резервное копирование базы, и проверь возможность восстановления файлов с постоянного диска. Не полагайся на временный диск контейнера для нормативных файлов. При необходимости мониторинга других официальных сайтов добавляй домены в MONITOR_ALLOWED_HOSTS после проверки доверенности.
+Для production используй HTTPS, резервное копирование базы и проверяй восстановление файлов с постоянного диска. Не полагайся на временный диск контейнера для нормативных файлов. При необходимости мониторинга других официальных сайтов добавляй домены в `MONITOR_ALLOWED_HOSTS` после проверки доверенности.
 
 ## Наполнение базы знаний о маркировке
 
