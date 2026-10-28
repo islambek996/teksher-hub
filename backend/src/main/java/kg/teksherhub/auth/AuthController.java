@@ -5,9 +5,13 @@ import kg.teksherhub.user.UserAccount;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,18 +20,36 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final TokenService tokens;
+    private final LoginAttemptService loginAttempts;
 
-    public AuthController(AuthenticationManager authenticationManager, TokenService tokens) {
+    public AuthController(AuthenticationManager authenticationManager, TokenService tokens,
+                          LoginAttemptService loginAttempts) {
         this.authenticationManager = authenticationManager;
         this.tokens = tokens;
+        this.loginAttempts = loginAttempts;
     }
 
     @PostMapping("/login")
-    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
-        Authentication auth = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.username(), request.password()));
-        UserAccount user = (UserAccount) auth.getPrincipal();
-        return new LoginResponse(tokens.create(user), PublicUser.from(user));
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+        long retryAfter = loginAttempts.secondsUntilAllowed(request.username());
+        if (retryAfter > 0) return tooManyRequests(retryAfter);
+
+        try {
+            Authentication auth = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.username(), request.password()));
+            UserAccount user = (UserAccount) auth.getPrincipal();
+            loginAttempts.recordSuccess(request.username());
+            return ResponseEntity.ok(new LoginResponse(tokens.create(user), PublicUser.from(user)));
+        } catch (AuthenticationException ex) {
+            retryAfter = loginAttempts.recordFailure(request.username());
+            if (retryAfter > 0) return tooManyRequests(retryAfter);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+    }
+
+    private ResponseEntity<LoginResponse> tooManyRequests(long seconds) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(seconds)).build();
     }
 
     @GetMapping("/me")
