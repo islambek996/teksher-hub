@@ -182,7 +182,7 @@ public class MarkingIssueController {
             @Size(max=240) String productGroup,
             @Pattern(regexp="LOW|NORMAL|HIGH|CRITICAL|low|normal|high|critical") String priority,
             @Pattern(regexp="NEW|IN_PROGRESS|WAITING|RESOLVED|CLOSED|new|in_progress|waiting|resolved|closed") String status,
-            @Size(max=120) String assignedTo, @Size(max=3000) String resolution) {}
+            @Size(max=120) String assignedTo, @Size(max=3000) String resolution, Boolean solutionVerified) {}
     public record CommentRequest(@NotBlank @Size(max=3000) String body) {}
     public record IssueComment(Long id, Long issueId, String username, String body, Instant createdAt) {}
     public record IssueView(Long id, String title, String description, String category, String system, String jurisdiction,
