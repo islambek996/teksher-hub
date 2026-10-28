@@ -136,8 +136,14 @@ public class SourceMonitorService {
                 return;
             }
             String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(body));
-            if (m.getLastContentHash() != null && !m.getLastContentHash().equals(hash)) {
+            String previousHash = m.getLastContentHash();
+            if (previousHash != null && !previousHash.equals(hash)) {
                 m.setLastChangeDetectedAt(Instant.now());
+                audit("SYSTEM", "SOURCE_CHANGE", m,
+                        "Изменилась контрольная сумма ответа официального источника. Предыдущий SHA-256: "
+                                + previousHash.substring(0, Math.min(12, previousHash.length()))
+                                + "; новый SHA-256: " + hash.substring(0, 12)
+                                + ". Требуется ручная проверка юридического значения изменений.");
             }
             m.setLastContentHash(hash);
             m.setLastError(null);
