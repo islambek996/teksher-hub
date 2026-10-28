@@ -175,7 +175,7 @@ public class MarkingIssueController {
             @Pattern(regexp="KG|RU|EAEU|kg|ru|eaeu") String jurisdiction,
             @Size(max=240) String productGroup,
             @Pattern(regexp="LOW|NORMAL|HIGH|CRITICAL|low|normal|high|critical") String priority,
-            @Size(max=120) String assignedTo, @Size(max=3000) String resolution, Boolean solutionVerified) {}
+            @Size(max=120) String assignedTo, @Size(max=3000) String resolution) {}
     public record IssueUpdateRequest(@Size(max=240) String title, @Size(max=4000) String description,
             @Pattern(regexp="TECHNICAL|REGULATORY|PRODUCT_CARD|CODE_ORDER|APPLICATION|CODE_MOVEMENT|OTHER|technical|regulatory|product_card|code_order|application|code_movement|other") String category,
             @Pattern(regexp="MZKM|GAIS_MT|TRANSGRAN|CROSS_BORDER|OTHER|mzkm|gais_mt|transgran|cross_border|other") String system,
@@ -183,7 +183,7 @@ public class MarkingIssueController {
             @Size(max=240) String productGroup,
             @Pattern(regexp="LOW|NORMAL|HIGH|CRITICAL|low|normal|high|critical") String priority,
             @Pattern(regexp="NEW|IN_PROGRESS|WAITING|RESOLVED|CLOSED|new|in_progress|waiting|resolved|closed") String status,
-            @Size(max=120) String assignedTo, @Size(max=3000) String resolution, Boolean solutionVerified) {}
+            @Size(max=120) String assignedTo, @Size(max=3000) String resolution) {}
     public record CommentRequest(@NotBlank @Size(max=3000) String body) {}
     public record IssueComment(Long id, Long issueId, String username, String body, Instant createdAt) {}
     public record IssueView(Long id, String title, String description, String category, String system, String jurisdiction,
