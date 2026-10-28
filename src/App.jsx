@@ -3028,11 +3028,36 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
       setGuides(next)
       if (editingId) {
         const previous = guides.find(item => item.id === editingId)
-        if (JSON.stringify(previous?.steps || []) !== JSON.stringify(saved.steps || [])) {
-          setProgress(current => ({ ...current, [saved.id]: [] }))
+        const previousSteps = previous?.steps || []
+        const savedSteps = saved.steps || []
+        if (JSON.stringify(previousSteps) !== JSON.stringify(savedSteps)) {
+          // Keep completion marks attached to unchanged step titles after reordering.
+          // Removed or renamed steps lose their marks; duplicate titles are matched one by one.
+          const completedIndexes = Array.isArray(progress[saved.id]) ? progress[saved.id] : []
+          const usedIndexes = new Set()
+          const nextCompletedIndexes = []
+          completedIndexes.forEach(index => {
+            if (!Number.isInteger(index) || index < 0 || index >= previousSteps.length) return
+            const title = String(previousSteps[index]?.title || '').trim()
+            if (!title) return
+            const nextIndex = savedSteps.findIndex((step, candidateIndex) =>
+              !usedIndexes.has(candidateIndex) && String(step?.title || '').trim() === title
+            )
+            if (nextIndex >= 0) {
+              usedIndexes.add(nextIndex)
+              nextCompletedIndexes.push(nextIndex)
+            }
+          })
+          nextCompletedIndexes.sort((left, right) => left - right)
+          setProgress(current => ({ ...current, [saved.id]: nextCompletedIndexes }))
           if (API_ENABLED) {
+            const progressUrl = '/api/business-process-progress/' + encodeURIComponent(saved.id)
             try {
-              await apiRequest('/api/business-process-progress/' + encodeURIComponent(saved.id), { method: 'DELETE' })
+              if (nextCompletedIndexes.length) {
+                await apiRequest(progressUrl, { method: 'PUT', body: nextCompletedIndexes.map(String) })
+              } else {
+                await apiRequest(progressUrl, { method: 'DELETE' })
+              }
             } catch {
               progressResetFailed = true
             }
@@ -3044,7 +3069,7 @@ function ProcessGuidesSection({ onSearchMaterials, canEdit = false, canDelete = 
       setEditingGuide(null)
       setGuideLoadError('')
       setGuideMessage(progressResetFailed
-        ? 'Инструкция «' + saved.title + '» сохранена, но прогресс шагов не удалось сбросить на сервере. Обнови страницу и проверь прогресс.'
+        ? 'Инструкция «' + saved.title + '» сохранена, но отметки прогресса не удалось синхронизировать с сервером. Обнови страницу и проверь отметки.'
         : 'Инструкция «' + saved.title + '» сохранена.')
     } catch (error) {
       setEditorError(error.message || 'Не удалось сохранить инструкцию.')
