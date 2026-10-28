@@ -6,12 +6,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Lightweight per-username login throttling.
- * State is intentionally process-local; use a shared store if the API is scaled to multiple instances.
+ * State is process-local; use a shared store if the API is scaled to multiple instances.
  */
 @Service
 public class LoginAttemptService {
@@ -25,9 +25,10 @@ public class LoginAttemptService {
     public synchronized long secondsUntilAllowed(String username) {
         Instant now = Instant.now();
         pruneExpired(now);
-        AttemptState state = attempts.get(normalize(username));
+        String key = normalize(username);
+        AttemptState state = attempts.get(key);
         if (state == null || state.lockedUntil == null || !state.lockedUntil.isAfter(now)) {
-            if (state != null && state.lockedUntil != null) attempts.remove(normalize(username));
+            if (state != null && state.lockedUntil != null) attempts.remove(key);
             return 0;
         }
         return Math.max(1, Duration.between(now, state.lockedUntil).toSeconds());
@@ -41,7 +42,7 @@ public class LoginAttemptService {
         if (state.lockedUntil != null && state.lockedUntil.isAfter(now)) {
             return Math.max(1, Duration.between(now, state.lockedUntil).toSeconds());
         }
-        if (state.windowStartedAt.plus(WINDOW).isBefore(now)) {
+        if (!state.windowStartedAt.plus(WINDOW).isAfter(now)) {
             state.windowStartedAt = now;
             state.failures = 0;
         }
@@ -61,14 +62,15 @@ public class LoginAttemptService {
         Iterator<Map.Entry<String, AttemptState>> iterator = attempts.entrySet().iterator();
         while (iterator.hasNext()) {
             AttemptState state = iterator.next().getValue();
-            boolean windowExpired = state.windowStartedAt.plus(WINDOW).isBefore(now);
+            boolean windowExpired = !state.windowStartedAt.plus(WINDOW).isAfter(now);
             boolean lockExpired = state.lockedUntil == null || !state.lockedUntil.isAfter(now);
             if (windowExpired && lockExpired) iterator.remove();
         }
         if (attempts.size() > MAX_TRACKED_USERS) {
-            Iterator<String> keys = attempts.keySet().iterator();
-            while (attempts.size() > MAX_TRACKED_USERS && keys.hasNext()) {
-                attempts.remove(keys.next());
+            Iterator<Map.Entry<String, AttemptState>> entries = attempts.entrySet().iterator();
+            while (attempts.size() > MAX_TRACKED_USERS && entries.hasNext()) {
+                entries.next();
+                entries.remove();
             }
         }
     }
