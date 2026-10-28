@@ -20,7 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/marking-issues")
 public class MarkingIssueController {
-    private static final String COLUMNS = "id, title, description, category, system_name, jurisdiction, product_group, priority, status, assigned_to, created_by, resolution, created_at, updated_at, resolved_at";
+    private static final String COLUMNS = "id, title, description, category, system_name, jurisdiction, product_group, priority, status, assigned_to, created_by, resolution, created_at, updated_at, resolved_at, solution_verified, solution_verified_by, solution_verified_at";
     private final JdbcTemplate jdbc;
 
     public MarkingIssueController(JdbcTemplate jdbc) { this.jdbc = jdbc; }
@@ -94,11 +94,30 @@ public class MarkingIssueController {
             }
         }
         String resolution = request.resolution() == null ? old.resolution() : request.resolution().trim();
+        boolean resolutionChanged = request.resolution() != null && !resolution.equals(old.resolution() == null ? "" : old.resolution());
+        boolean solutionVerified = old.solutionVerified();
+        String solutionVerifiedBy = old.solutionVerifiedBy();
+        if (request.solutionVerified() != null) {
+            if (!canManage(user)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Подтверждать решения могут только редакторы и администраторы.");
+            if (request.solutionVerified() && (resolution == null || resolution.isBlank()))
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Сначала добавьте решение, затем подтвердите его.");
+            solutionVerified = request.solutionVerified();
+            solutionVerifiedBy = solutionVerified ? user.getUsername() : null;
+        } else if (resolutionChanged) {
+            solutionVerified = false;
+            solutionVerifiedBy = null;
+        }
         jdbc.update("""
             UPDATE marking_issues SET title=?, description=?, category=?, system_name=?, jurisdiction=?, product_group=?, priority=?, status=?, assigned_to=?, resolution=?, updated_at=NOW(),
-            resolved_at=CASE WHEN ? IN ('RESOLVED','CLOSED') THEN COALESCE(resolved_at,NOW()) ELSE NULL END WHERE id=?
-            """, title, description, category, system, jurisdiction, productGroup, priority, status, assignee, resolution, status, id);
-        audit(user, "UPDATE", id, title, "Статус: " + status + "; приоритет: " + priority);
+            resolved_at=CASE WHEN ? IN ('RESOLVED','CLOSED') THEN COALESCE(resolved_at,NOW()) ELSE NULL END,
+            solution_verified=?, solution_verified_by=?, solution_verified_at=CASE WHEN ? THEN COALESCE(solution_verified_at,NOW()) ELSE NULL END
+            WHERE id=?
+            """, title, description, category, system, jurisdiction, productGroup, priority, status, assignee, resolution, status,
+                solutionVerified, solutionVerifiedBy, solutionVerified, id);
+        String auditDetails = "Статус: " + status + "; приоритет: " + priority;
+        if (request.solutionVerified() != null) auditDetails += solutionVerified ? "; решение подтверждено" : "; подтверждение решения снято";
+        else if (resolutionChanged) auditDetails += "; решение изменено, подтверждение снято";
+        audit(user, "UPDATE", id, title, auditDetails);
         return getOne(id);
     }
 
@@ -132,7 +151,7 @@ public class MarkingIssueController {
         return new IssueView(rs.getLong("id"), rs.getString("title"), rs.getString("description"), rs.getString("category"),
                 rs.getString("system_name"), rs.getString("jurisdiction"), rs.getString("product_group"), rs.getString("priority"),
                 rs.getString("status"), rs.getString("assigned_to"), rs.getString("created_by"), rs.getString("resolution"),
-                rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant(), resolved == null ? null : resolved.toInstant());
+                rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant(), resolved == null ? null : resolved.toInstant(),\n                rs.getBoolean("solution_verified"), rs.getString("solution_verified_by"), rs.getTimestamp("solution_verified_at") == null ? null : rs.getTimestamp("solution_verified_at").toInstant());
     }
 
     private void audit(UserAccount user, String action, long id, String title, String details) {
@@ -155,7 +174,7 @@ public class MarkingIssueController {
             @Pattern(regexp="KG|RU|EAEU|kg|ru|eaeu") String jurisdiction,
             @Size(max=240) String productGroup,
             @Pattern(regexp="LOW|NORMAL|HIGH|CRITICAL|low|normal|high|critical") String priority,
-            @Size(max=120) String assignedTo, @Size(max=3000) String resolution) {}
+            @Size(max=120) String assignedTo, @Size(max=3000) String resolution, Boolean solutionVerified) {}
     public record IssueUpdateRequest(@Size(max=240) String title, @Size(max=4000) String description,
             @Pattern(regexp="TECHNICAL|REGULATORY|PRODUCT_CARD|CODE_ORDER|APPLICATION|CODE_MOVEMENT|OTHER|technical|regulatory|product_card|code_order|application|code_movement|other") String category,
             @Pattern(regexp="MZKM|GAIS_MT|TRANSGRAN|CROSS_BORDER|OTHER|mzkm|gais_mt|transgran|cross_border|other") String system,
@@ -168,5 +187,5 @@ public class MarkingIssueController {
     public record IssueComment(Long id, Long issueId, String username, String body, Instant createdAt) {}
     public record IssueView(Long id, String title, String description, String category, String system, String jurisdiction,
             String productGroup, String priority, String status, String assignedTo, String createdBy, String resolution,
-            Instant createdAt, Instant updatedAt, Instant resolvedAt) {}
+            Instant createdAt, Instant updatedAt, Instant resolvedAt, boolean solutionVerified, String solutionVerifiedBy, Instant solutionVerifiedAt) {}
 }
