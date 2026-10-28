@@ -9,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,13 +27,15 @@ public class DocumentFileController {
     private final DocumentFileRepository files;
     private final FileStorageService storage;
     private final DocumentTextExtractionService textExtraction;
+    private final JdbcTemplate jdbc;
 
     public DocumentFileController(DocumentService documents, DocumentFileRepository files, FileStorageService storage,
-                                  DocumentTextExtractionService textExtraction) {
+                                  DocumentTextExtractionService textExtraction, JdbcTemplate jdbc) {
         this.documents = documents;
         this.files = files;
         this.storage = storage;
         this.textExtraction = textExtraction;
+        this.jdbc = jdbc;
     }
 
     @GetMapping
@@ -60,7 +63,10 @@ public class DocumentFileController {
             file.setExtractedText(extracted.text());
             file.setTextExtractionStatus(extracted.status());
             file.setTextExtractionNote(extracted.note());
-            return FileResponse.from(files.save(file));
+            DocumentFile saved = files.save(file);
+            audit(user.getUsername(), "UPLOAD_FILE", saved.getId().toString(), saved.getOriginalName(),
+                    "Загружен файл размером " + saved.getSizeBytes() + " байт");
+            return FileResponse.from(saved);
         } catch (RuntimeException ex) {
             storage.delete(stored.storedName());
             throw ex;
@@ -70,7 +76,8 @@ public class DocumentFileController {
     @PostMapping("/{fileId}/reindex")
     @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
     @Transactional
-    public FileResponse reindex(@PathVariable UUID documentId, @PathVariable UUID fileId) {
+    public FileResponse reindex(@PathVariable UUID documentId, @PathVariable UUID fileId,
+                                @AuthenticationPrincipal UserAccount user) {
         DocumentFile file = files.findByIdAndDocumentId(fileId, documentId)
                 .orElseThrow(() -> new IllegalArgumentException("Файл не найден"));
         var path = storage.resolve(file.getStoredName());
@@ -82,7 +89,10 @@ public class DocumentFileController {
         file.setExtractedText(extracted.text());
         file.setTextExtractionStatus(extracted.status());
         file.setTextExtractionNote(extracted.note());
-        return FileResponse.from(files.save(file));
+        DocumentFile saved = files.save(file);
+        audit(user.getUsername(), "REINDEX_FILE", saved.getId().toString(), saved.getOriginalName(),
+                "Повторная индексация файла: " + saved.getTextExtractionStatus());
+        return FileResponse.from(saved);
     }
 
     @GetMapping("/{fileId}/download")
@@ -109,10 +119,20 @@ public class DocumentFileController {
     @DeleteMapping("/{fileId}")
     @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
     @Transactional
-    public void delete(@PathVariable UUID documentId, @PathVariable UUID fileId) {
+    public void delete(@PathVariable UUID documentId, @PathVariable UUID fileId,
+                       @AuthenticationPrincipal UserAccount user) {
         DocumentFile file = files.findByIdAndDocumentId(fileId, documentId).orElseThrow(() -> new IllegalArgumentException("Файл не найден"));
+        audit(user.getUsername(), "DELETE_FILE", file.getId().toString(), file.getOriginalName(),
+                "Удалено вложение документа " + documentId);
         files.delete(file);
         storage.delete(file.getStoredName());
+    }
+
+    private void audit(String actor, String action, String fileId, String fileName, String details) {
+        jdbc.update("""
+                INSERT INTO audit_log(username, action, entity_type, entity_id, entity_label, details, created_at)
+                VALUES (?, ?, 'DOCUMENT_FILE', ?, ?, ?, NOW())
+                """, actor, action, fileId, fileName, details);
     }
 
     public record FileResponse(UUID id, String originalName, String contentType, long sizeBytes,
