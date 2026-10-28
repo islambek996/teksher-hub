@@ -143,7 +143,7 @@ public class DocumentController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    @PreAuthorize("hasRole('ADMIN')")
     public void delete(@PathVariable UUID id, @AuthenticationPrincipal UserAccount user) {
         service.delete(id, user.getUsername());
     }
