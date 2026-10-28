@@ -4809,6 +4809,10 @@ function MarkingIssueRegistry({ currentUser, canManage }) {
   }
 
   const updateIssue = async (issue, changes) => {
+    if (!canManage) {
+      setError('Недостаточно прав: читатель может просматривать записи, но не изменять их.')
+      return
+    }
     setError(''); setNotice('')
     try {
       const updated = await apiRequest('/api/marking-issues/' + issue.id, { method: 'PATCH', body: changes })
@@ -4880,11 +4884,11 @@ function MarkingIssueRegistry({ currentUser, canManage }) {
         {issue.description && <div className="issue-forum-body"><h3>Проблема</h3><p className="issue-card-description">{issue.description}</p></div>}
         {issue.resolution && <div className="issue-forum-solution"><div className="issue-forum-section-title"><CheckCircle2 size={15}/><h3>Решение</h3></div><p>{issue.resolution}</p></div>}
          {!issue.resolution && <div className="issue-forum-unsolved">Решение ещё не добавлено – можно поделиться опытом в комментариях.</div>}
-        <div className="issue-card-controls"><label className="form-field"><span>Статус</span><select value={issue.status} onChange={event => updateIssue(issue, { status: event.target.value })}>{Object.entries(ISSUE_STATUS_LABELS).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        {canManage && <div className="issue-card-controls"><label className="form-field"><span>Статус</span><select value={issue.status} onChange={event => updateIssue(issue, { status: event.target.value })}>{Object.entries(ISSUE_STATUS_LABELS).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <label className="form-field"><span>Приоритет</span><select value={issue.priority} onChange={event => updateIssue(issue, { priority: event.target.value })}>{Object.entries(ISSUE_PRIORITY_LABELS).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          {canManage && <label className="form-field"><span>Ответственный</span><input key={issue.id + '-' + (issue.assignedTo || '')} defaultValue={issue.assignedTo || ''} maxLength={120} placeholder="Логин сотрудника" onBlur={event => { const value = event.target.value.trim(); if (value !== (issue.assignedTo || '')) updateIssue(issue, { assignedTo: value }) }}/></label>}
+          <label className="form-field"><span>Ответственный</span><input key={issue.id + '-' + (issue.assignedTo || '')} defaultValue={issue.assignedTo || ''} maxLength={120} placeholder="Логин сотрудника" onBlur={event => { const value = event.target.value.trim(); if (value !== (issue.assignedTo || '')) updateIssue(issue, { assignedTo: value }) }}/></label>
           {['RESOLVED','CLOSED'].includes(issue.status) && <label className="form-field issue-resolution-field"><span>Краткое решение</span><input key={issue.id + '-resolution-' + (issue.resolution || '')} defaultValue={issue.resolution || ''} maxLength={3000} placeholder="Как устранена проблема" onBlur={event => { const value = event.target.value.trim(); if (value !== (issue.resolution || '')) updateIssue(issue, { resolution: value }) }}/></label>}
-        </div>
+        </div>}
         {expandedId === issue.id && <div className="issue-comments">
           <div className="issue-comments-heading"><b>История обсуждения</b><span>{(commentsByIssue[issue.id] || []).length} комментариев</span></div>
           {commentLoadingId === issue.id ? <div className="issue-comments-empty">Загружаем историю…</div> : (commentsByIssue[issue.id] || []).length ? <div className="issue-comment-list">{commentsByIssue[issue.id].map(comment => <article className="issue-comment" key={comment.id}><div><b>{comment.username}</b><time>{formatDateTime(comment.createdAt)}</time></div><p>{comment.body}</p></article>)}</div> : <p className="issue-comments-empty">Комментариев пока нет. Зафиксируйте диагностику, ответ поддержки или результат проверки.</p>}
