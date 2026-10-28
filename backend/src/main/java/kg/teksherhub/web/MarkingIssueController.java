@@ -151,7 +151,8 @@ public class MarkingIssueController {
         return new IssueView(rs.getLong("id"), rs.getString("title"), rs.getString("description"), rs.getString("category"),
                 rs.getString("system_name"), rs.getString("jurisdiction"), rs.getString("product_group"), rs.getString("priority"),
                 rs.getString("status"), rs.getString("assigned_to"), rs.getString("created_by"), rs.getString("resolution"),
-                rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant(), resolved == null ? null : resolved.toInstant(),\n                rs.getBoolean("solution_verified"), rs.getString("solution_verified_by"), rs.getTimestamp("solution_verified_at") == null ? null : rs.getTimestamp("solution_verified_at").toInstant());
+                rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant(), resolved == null ? null : resolved.toInstant(),
+                rs.getBoolean("solution_verified"), rs.getString("solution_verified_by"), rs.getTimestamp("solution_verified_at") == null ? null : rs.getTimestamp("solution_verified_at").toInstant());
     }
 
     private void audit(UserAccount user, String action, long id, String title, String details) {
