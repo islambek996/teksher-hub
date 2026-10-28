@@ -1534,7 +1534,7 @@ function App() {
             : active === 'audit' && currentUser?.role === 'ADMIN' ? <AuditLogSection />
             : active === 'tasks' ? <MyTasksPanel currentUser={currentUser} canAssign={['ADMIN','EDITOR'].includes(currentUser?.role)} />
             : active === 'issues' ? <MarkingIssueRegistry currentUser={currentUser} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)} />
-            : active === 'notifications' ? <NotificationsSection onOpenTasks={() => openSection('tasks')} />
+            : active === 'notifications' ? <NotificationsSection onOpenTasks={() => openSection('tasks')} onOpenMonitoring={() => openSection('monitoring')} />
             : <>
             <div className="page-heading">
               <div><div className="section-kicker">{active === 'favorites' ? 'ЛИЧНАЯ ПОДБОРКА' : 'БАЗА ЗНАНИЙ / ' + (active === 'RU' ? 'МЗКМ' : active === 'KG' ? 'ГАИС МТ · КР' : (jurisdictions[active]?.short || 'TEKSHER HUB'))}</div><h1>{pageTitle}</h1><p>{active === 'RU' ? 'Материалы МЗКМ, инструкции оператора и нормативные источники для маркировки товаров при обороте в РФ. Исходная юрисдикция каждого источника указана в карточке.' : active === 'KG' ? 'Национальные документы Кыргызской Республики и материалы ГАИС МТ. Карточки, классифицированные как МЗКМ, вынесены в отдельный каталог.' : active === 'favorites' ? 'Сохранённые вами нормативные акты, инструкции и рабочие материалы. Нажмите звезду в карточке документа, чтобы добавить его в эту подборку.' : jurisdictions[active] ? `Документы и материалы: ${jurisdictions[active].label}. ` : 'Поиск по нормативным актам и рабочим материалам платформы.'}{API_ENABLED ? ' Проверяйте реквизиты и статус каждого документа перед применением.' : ' Демонстрационные записи не являются официальной нормативной базой.'}</p></div>
@@ -4428,7 +4428,7 @@ function UsersSection({ users, onAdd, onToggle, onReset }) {
   </section>
 }
 
-function NotificationsSection({ onOpenTasks }) {
+function NotificationsSection({ onOpenTasks, onOpenMonitoring }) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [savingId, setSavingId] = useState(null)
@@ -4483,7 +4483,7 @@ function NotificationsSection({ onOpenTasks }) {
 
   return <section className="management-page notifications-page">
     <div className="page-heading">
-      <div><div className="section-kicker">ЛИЧНЫЙ ЦЕНТР / СОБЫТИЯ</div><h1>Уведомления</h1><p>Новые поручения, комментарии и изменения статусов задач, назначенные вам.</p></div>
+      <div><div className="section-kicker">ЛИЧНЫЙ ЦЕНТР / СОБЫТИЯ</div><h1>Уведомления</h1><p>Поручения, ответы в обсуждениях и сигналы об изменениях содержимого официальных источников.</p></div>
       <div className="heading-actions">
         <span className="record-count">{unreadCount} непрочитано</span>
         <button type="button" className="secondary-button" onClick={load} disabled={loading}><RefreshCw size={14} className={loading ? 'spin' : ''}/> Обновить</button>
@@ -4496,11 +4496,11 @@ function NotificationsSection({ onOpenTasks }) {
       : rows.length ? <div className="notification-list">{rows.map(row => <article className={'notification-card' + (row.readAt ? ' is-read' : ' is-unread')} key={row.id}>
         <span className="notification-icon"><Bell size={17}/></span>
         <div className="notification-copy"><div className="notification-title-row"><b>{row.title}</b><time>{formatDateTime(row.createdAt)}</time></div><p>{row.message}</p>
-          {row.taskId && <button type="button" className="text-button" onClick={onOpenTasks}>Открыть задачи <ArrowUpRight size={14}/></button>}
+          {row.title?.startsWith('Изменение официального источника:') ? <button type="button" className="text-button" onClick={onOpenMonitoring}>Открыть мониторинг источников <ArrowUpRight size={14}/></button> : row.taskId ? <button type="button" className="text-button" onClick={onOpenTasks}>Открыть задачи <ArrowUpRight size={14}/></button> : null}
         </div>
         {!row.readAt && <button type="button" className="secondary-button notification-read-button" onClick={() => markRead(row)} disabled={Boolean(savingId)}>{savingId === row.id ? 'Сохраняем…' : 'Прочитано'}</button>}
       </article>)}</div>
-      : <div className="empty-state"><Bell size={24}/><b>Уведомлений пока нет</b><span>Когда вам назначат задачу или коллега ответит в обсуждении, событие появится здесь.</span></div>}
+      : <div className="empty-state"><Bell size={24}/><b>Уведомлений пока нет</b><span>Когда вам назначат задачу, коллега ответит в обсуждении или мониторинг обнаружит изменение официальной страницы, событие появится здесь.</span></div>}
   </section>
 }
 
