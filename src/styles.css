@@ -3134,3 +3134,84 @@ html[data-theme="dark"] .service-unavailable-card p { color: #aabbd0; }
   .service-unavailable-card { border-radius: 14px; }
   .service-unavailable-card button { width: 100%; }
 }
+
+
+/* Regulatory comparison: complete dark-theme contrast and form-control fixes */
+html[data-theme="dark"] .reg-comparison { color:#dce7f5; }
+html[data-theme="dark"] .reg-comparison .page-heading,
+html[data-theme="dark"] .reg-comparison .reg-region-card,
+html[data-theme="dark"] .reg-comparison .reg-matrix-row,
+html[data-theme="dark"] .reg-comparison .reg-source-card,
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card {
+  color:#dce7f5; background:#17283c; border-color:#30465f;
+  box-shadow:0 6px 18px rgba(0,0,0,.14);
+}
+html[data-theme="dark"] .reg-comparison .page-heading h1,
+html[data-theme="dark"] .reg-comparison .reg-region-copy strong,
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell-title strong,
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell p,
+html[data-theme="dark"] .reg-comparison .reg-source-card h3,
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card strong { color:#e6effb; }
+html[data-theme="dark"] .reg-comparison .page-heading p,
+html[data-theme="dark"] .reg-comparison .reg-region-copy small,
+html[data-theme="dark"] .reg-comparison .reg-source-card p,
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card small,
+html[data-theme="dark"] .reg-comparison .reg-result-count,
+html[data-theme="dark"] .reg-comparison .reg-comparison-section-title p { color:#a9bdd3; }
+html[data-theme="dark"] .reg-comparison .reg-comparison-search,
+html[data-theme="dark"] .reg-comparison .reg-comparison-select {
+  color:#c5d5e8; background:#101d2c; border-color:#354b63;
+}
+html[data-theme="dark"] .reg-comparison .reg-comparison-search:focus-within,
+html[data-theme="dark"] .reg-comparison .reg-comparison-select:focus-within {
+  border-color:#6799d0; box-shadow:0 0 0 3px rgba(91,148,208,.15);
+}
+html[data-theme="dark"] .reg-comparison .reg-comparison-search input,
+html[data-theme="dark"] .reg-comparison .reg-comparison-select select {
+  color:#e0eaf6; color-scheme:dark;
+}
+html[data-theme="dark"] .reg-comparison .reg-comparison-search input::placeholder { color:#8298b1; }
+html[data-theme="dark"] .reg-comparison .reg-comparison-select option { color:#e0eaf6; background:#101d2c; }
+html[data-theme="dark"] .reg-comparison .reg-matrix-area {
+  color:#dce7f5; background:#122237;
+}
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell,
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell.region-kg,
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell.region-ru,
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell.region-eaeu {
+  color:#d4e0ee; background:#17283c;
+}
+html[data-theme="dark"] .reg-comparison .reg-matrix-row { overflow:hidden; }
+html[data-theme="dark"] .reg-comparison .reg-source-label {
+  color:#bdd4f1; background:#223a55; border-color:#354f6b;
+}
+html[data-theme="dark"] .reg-comparison .reg-source-filter button {
+  color:#b6c7da; background:#142338; border-color:#30465f;
+}
+html[data-theme="dark"] .reg-comparison .reg-source-filter button.is-active {
+  color:#d6e6ff; background:#1d3550; border-color:#45668e;
+}
+html[data-theme="dark"] .reg-comparison .reg-source-filter button:hover,
+html[data-theme="dark"] .reg-comparison .reg-region-card:hover,
+html[data-theme="dark"] .reg-comparison .reg-source-card:hover,
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card:hover {
+  background:#1c3047; border-color:#4b6b8d;
+}
+html[data-theme="dark"] .reg-comparison .reg-comparison-notice {
+  color:#c4d4e7; background:#172a40; border-color:#344a62;
+}
+html[data-theme="dark"] .reg-comparison .reg-comparison-notice strong { color:#e0ebf8; }
+html[data-theme="dark"] .reg-comparison .secondary-button {
+  color:#d1e3f8; background:#1b3047; border-color:#38536f;
+}
+html[data-theme="dark"] .reg-comparison .secondary-button:hover {
+  color:#f0f6ff; background:#243e5a; border-color:#53769b;
+}
+html[data-theme="dark"] .reg-comparison a { color:#a9ceff; }
+html[data-theme="dark"] .reg-comparison a:hover { color:#d0e4ff; }
+html[data-theme="dark"] .reg-comparison .empty-state {
+  color:#a9bdd3; background:#142338; border-color:#30465f;
+}
+html[data-theme="dark"] .reg-comparison .reg-comparison-footer-note {
+  color:#a9bbd1; background:#142338; border-color:#30465f;
+}
