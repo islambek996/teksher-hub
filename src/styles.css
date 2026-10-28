@@ -3070,3 +3070,67 @@ html[data-theme="dark"] .reg-comparison-footer-note { border-color:#2e4259; back
   .reg-ai-prompt-grid { grid-template-columns:1fr; }
   .reg-comparison-heading-icon { display:none; }
 }
+
+
+/* Production connection fallback */
+.service-unavailable-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #f3f6fa;
+  color: #172a43;
+}
+.service-unavailable-card {
+  width: min(520px, 100%);
+  padding: clamp(24px, 5vw, 40px);
+  border: 1px solid #dce5ef;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 18px 55px rgba(21, 43, 70, .10);
+}
+.service-unavailable-brand {
+  color: #244c7d;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+.service-unavailable-card h1 {
+  margin: 24px 0 10px;
+  font-size: clamp(24px, 4vw, 32px);
+  line-height: 1.2;
+}
+.service-unavailable-card p {
+  margin: 0;
+  color: #617187;
+  font-size: 15px;
+  line-height: 1.7;
+}
+.service-unavailable-card button {
+  margin-top: 24px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  background: #174b82;
+  color: #fff;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.service-unavailable-card button:hover { background: #123d6b; }
+html[data-theme="dark"] .service-unavailable-page {
+  background: #0b1726;
+  color: #e6eef8;
+}
+html[data-theme="dark"] .service-unavailable-card {
+  border-color: #2e435b;
+  background: #132439;
+  box-shadow: 0 18px 55px rgba(0, 0, 0, .25);
+}
+html[data-theme="dark"] .service-unavailable-brand { color: #a9ccfb; }
+html[data-theme="dark"] .service-unavailable-card p { color: #aabbd0; }
+@media (max-width: 540px) {
+  .service-unavailable-card { border-radius: 14px; }
+  .service-unavailable-card button { width: 100%; }
+}
