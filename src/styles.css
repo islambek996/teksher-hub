@@ -3375,3 +3375,156 @@ html[data-theme="dark"] .reg-comparison .reg-comparison-select {
   color-scheme: dark;
 }
 
+
+
+/* Regulatory comparison: final dark-mode contrast overrides */
+html[data-theme="dark"] .reg-comparison,
+html[data-theme="dark"] .reg-comparison .page-heading,
+html[data-theme="dark"] .reg-comparison .reg-comparison-section-title {
+  color: #e5edf7;
+}
+
+html[data-theme="dark"] .reg-comparison .reg-comparison-notice,
+html[data-theme="dark"] .reg-comparison .reg-comparison-footer-note,
+html[data-theme="dark"] .reg-comparison .reg-matrix-row,
+html[data-theme="dark"] .reg-comparison .reg-source-card,
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card,
+html[data-theme="dark"] .reg-comparison .reg-region-card {
+  background-color: #172537;
+  color: #dce7f5;
+  border-color: #344960;
+}
+
+html[data-theme="dark"] .reg-comparison .reg-comparison-notice strong,
+html[data-theme="dark"] .reg-comparison .reg-comparison-section-title h2,
+html[data-theme="dark"] .reg-comparison .reg-matrix-area h3,
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell-title strong,
+html[data-theme="dark"] .reg-comparison .reg-source-card h3,
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card > strong,
+html[data-theme="dark"] .reg-comparison .reg-region-copy strong {
+  color: #edf4ff;
+}
+
+html[data-theme="dark"] .reg-comparison .reg-comparison-notice span,
+html[data-theme="dark"] .reg-comparison .reg-comparison-section-title p,
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell p,
+html[data-theme="dark"] .reg-comparison .reg-source-card p,
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card > small,
+html[data-theme="dark"] .reg-comparison .reg-region-copy small,
+html[data-theme="dark"] .reg-comparison .reg-comparison-footer-note {
+  color: #b5c6da;
+}
+
+html[data-theme="dark"] .reg-comparison .reg-matrix-area {
+  background: #122237;
+  border-bottom-color: #344960;
+}
+
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell,
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell.region-kg,
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell.region-ru,
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell.region-eaeu {
+  background: #172537;
+  color: #dce7f5;
+}
+
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell + .reg-matrix-cell {
+  border-left-color: #344960;
+}
+
+html[data-theme="dark"] .reg-comparison .reg-comparison-search,
+html[data-theme="dark"] .reg-comparison .reg-comparison-select {
+  background: #101d2c;
+  color: #c9d8e9;
+  border-color: #3a5068;
+}
+
+html[data-theme="dark"] .reg-comparison .reg-comparison-search input,
+html[data-theme="dark"] .reg-comparison .reg-comparison-select select {
+  color: #edf4ff;
+  background: transparent;
+  color-scheme: dark;
+}
+
+html[data-theme="dark"] .reg-comparison .reg-comparison-select option {
+  color: #edf4ff;
+  background: #101d2c;
+}
+
+html[data-theme="dark"] .reg-comparison .reg-source-filter button {
+  background: #142338;
+  color: #c6d5e7;
+  border-color: #344960;
+}
+
+html[data-theme="dark"] .reg-comparison .reg-source-filter button.is-active {
+  background: #1d3550;
+  color: #e2edff;
+  border-color: #6288b4;
+}
+
+html[data-theme="dark"] .reg-comparison .reg-region-card.is-selected {
+  background: #1b3550;
+  border-color: #6b96c8;
+  box-shadow: 0 0 0 2px rgba(107,150,200,.16);
+}
+
+html[data-theme="dark"] .reg-comparison .reg-source-label,
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell-title > span,
+html[data-theme="dark"] .reg-comparison .reg-matrix-area > span,
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card > span {
+  background: #223a55;
+  color: #d0e3ff;
+  border-color: #3b5673;
+}
+
+html[data-theme="dark"] .reg-comparison .reg-source-card a,
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card > em,
+html[data-theme="dark"] .reg-comparison a {
+  color: #a9ceff;
+}
+
+html[data-theme="dark"] .reg-comparison .reg-source-card a:hover,
+html[data-theme="dark"] .reg-comparison a:hover {
+  color: #d7e8ff;
+}
+
+html[data-theme="dark"] .reg-comparison .reg-region-card:hover,
+html[data-theme="dark"] .reg-comparison .reg-source-card:hover,
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card:hover,
+html[data-theme="dark"] .reg-comparison .reg-source-filter button:hover {
+  background-color: #20364e;
+  border-color: #55779b;
+}
+
+html[data-theme="dark"] .reg-comparison .reg-region-card.is-selected:hover {
+  background-color: #21405f;
+}
+
+html[data-theme="dark"] .reg-comparison .reg-result-count {
+  color: #c7d8eb;
+  background: #142338;
+  border-color: #344960;
+}
+
+html[data-theme="dark"] .reg-comparison .empty-state {
+  color: #b5c6da;
+  background: #142338;
+  border-color: #344960;
+}
+
+html[data-theme="dark"] .reg-comparison .secondary-button {
+  color: #dceaff;
+  background: #20364e;
+  border-color: #405b78;
+}
+
+html[data-theme="dark"] .reg-comparison .secondary-button:hover {
+  color: #fff;
+  background: #2a4562;
+  border-color: #5b7fa5;
+}
+
+html[data-theme="dark"] .reg-comparison :focus-visible {
+  outline-color: #82b7f2;
+}
