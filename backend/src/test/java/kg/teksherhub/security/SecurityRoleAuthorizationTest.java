@@ -20,7 +20,7 @@ class SecurityRoleAuthorizationTest {
     void auditAndUserAdministrationAreAdminOnly() {
         assertClassGuard(AuditLogController.class, "hasRole('ADMIN')");
         assertClassGuard(UserAdminController.class, "hasRole('ADMIN')");
-        assertClassGuard(StorageBackupController.class, "hasRole('ADMIN')");
+        assertMethodGuard(StorageBackupController.class, "exportUploads", "hasRole('ADMIN')");
     }
 
     @Test
