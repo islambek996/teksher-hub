@@ -185,7 +185,7 @@ jobs:
           curl --silent --show-error --fail -X POST "http://localhost:8080/api/business-process-progress/$PROCESS_ID/start" -H "Authorization: Bearer $READER_TOKEN" | jq -e '.started == true'
           curl --silent --show-error --fail -X PUT "http://localhost:8080/api/business-process-progress/$PROCESS_ID" -H "Authorization: Bearer $READER_TOKEN" -H 'Content-Type: application/json' -d '["0"]' | jq -e '.saved == true and .completedSteps == ["0"]'
           curl --silent --show-error --fail -X POST "http://localhost:8080/api/business-process-progress/$PROCESS_ID/complete" -H "Authorization: Bearer $READER_TOKEN" | jq -e '.completed == true'
-          curl --silent --show-error --fail "http://localhost:8080/api/business-processes/overview" -H "Authorization: Bearer $EDITOR_TOKEN" | jq -e --arg id "$PROCESS_ID" 'any(.executions[]; .processId == $id and .username == "ci-reader" and .executionStatus == "COMPLETED" and .completedSteps == 1) and .metrics.totalExecutions >= 1 and .metrics.completed >= 1 and .metrics.uniqueEmployees >= 1'
+          curl --silent --show-error --fail "http://localhost:8080/api/business-processes/overview" -H "Authorization: Bearer $TOKEN" | jq -e --arg id "$PROCESS_ID" 'any(.executions[]; .processId == $id and .username == "ci-reader" and .executionStatus == "COMPLETED" and .completedSteps == 1) and .metrics.totalExecutions >= 1 and .metrics.completed >= 1 and .metrics.uniqueEmployees >= 1'
           READER_OVERVIEW_STATUS=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "http://localhost:8080/api/business-processes/overview" -H "Authorization: Bearer $READER_TOKEN")
           test "$READER_OVERVIEW_STATUS" = "403"
 
