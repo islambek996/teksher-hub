@@ -529,6 +529,7 @@ function AppContent() {
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false)
   const [monitorModalOpen, setMonitorModalOpen] = useState(false)
   const [userModalOpen, setUserModalOpen] = useState(false)
+  const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [passwordResetTarget, setPasswordResetTarget] = useState(null)
   const [confirmDialog, setConfirmDialog] = useState(null)
   const [reviewDialog, setReviewDialog] = useState(null)
@@ -1366,6 +1367,25 @@ function AppContent() {
     finally { setIsSaving(false) }
   }
 
+  const handleOwnPasswordChange = async (event) => {
+    event.preventDefault()
+    const data = new FormData(event.currentTarget)
+    const currentPassword = String(data.get('currentPassword') || '')
+    const newPassword = String(data.get('newPassword') || '')
+    setIsSaving(true); setActionError('')
+    try {
+      await apiRequest('/api/auth/password', { method: 'PUT', body: { currentPassword, newPassword } })
+      clearStoredToken()
+      setProfileModalOpen(false)
+      setCurrentUser(null)
+      setLoginError('Пароль успешно изменён. Войдите с новым паролем.')
+    } catch (error) {
+      setActionError(error.message || 'Не удалось изменить пароль.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const handleToggleUser = async (user) => {
     try {
       await apiRequest('/api/users/' + user.id + '/enabled', { method: 'PATCH', body: { enabled: !user.enabled } })
@@ -1415,7 +1435,7 @@ function AppContent() {
         <header className="topbar">
           <div className="breadcrumbs"><span>TEKSHER HUB</span><span className="crumb-slash">/</span><strong>{selectedDoc ? 'Карточка документа' : pageTitle}</strong></div>
           <button className="global-search-trigger" type="button" onClick={() => { setGlobalSearchQuery(''); setGlobalSearchActiveIndex(0); setGlobalSearchError(''); setShowGlobalSearch(true) }} aria-label="Поиск по базе документов"><Search size={15}/><span>Поиск по базе</span><kbd>Ctrl K</kbd></button>
-          <div className="topbar-right"><button className="theme-toggle" type="button" onClick={() => setTheme(current => current === 'dark' ? 'light' : 'dark')} aria-label={theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'} aria-pressed={theme === 'dark'} title={theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'}>{theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}<span>{theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}</span></button><span className="internal-badge"><ShieldCheck size={14} /> {API_ENABLED ? currentUser?.role || 'Пользователь' : 'Демо-режим'}</span><div className="avatar">{currentUser?.displayName ? currentUser.displayName.split(' ').map(part => part[0]).join('').slice(0,2).toUpperCase() : 'ОП'}</div>{API_ENABLED && <button className="logout-button" onClick={handleLogout} title="Выйти"><LogOut size={15} /><span>Выход</span></button>}</div>
+          <div className="topbar-right"><button className="theme-toggle" type="button" onClick={() => setTheme(current => current === 'dark' ? 'light' : 'dark')} aria-label={theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'} aria-pressed={theme === 'dark'} title={theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'}>{theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}<span>{theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}</span></button><span className="internal-badge"><ShieldCheck size={14} /> {API_ENABLED ? currentUser?.role || 'Пользователь' : 'Демо-режим'}</span>{API_ENABLED && <button className="secondary-button profile-trigger" type="button" onClick={() => { setActionError(''); setProfileModalOpen(true) }}><UsersRound size={15}/><span>Профиль</span></button>}<div className="avatar">{currentUser?.displayName ? currentUser.displayName.split(' ').map(part => part[0]).join('').slice(0,2).toUpperCase() : 'ОП'}</div>{API_ENABLED && <button className="logout-button" onClick={handleLogout} title="Выйти"><LogOut size={15} /><span>Выход</span></button>}</div>
         </header>
 
         <div className="page-content">
@@ -1611,6 +1631,7 @@ function AppContent() {
       {monitorModalOpen && <MonitorModal onClose={() => setMonitorModalOpen(false)} onSubmit={handleSaveMonitor} saving={isSaving} error={actionError} />}
       {userModalOpen && <UserModal onClose={() => setUserModalOpen(false)} onSubmit={handleSaveUser} saving={isSaving} error={actionError} />}
       {passwordResetTarget && <UserPasswordModal user={passwordResetTarget} onClose={() => setPasswordResetTarget(null)} onSubmit={handleResetPassword} saving={isSaving} error={actionError} />}
+      {profileModalOpen && <OwnPasswordModal user={currentUser} onClose={() => { setProfileModalOpen(false); setActionError('') }} onSubmit={handleOwnPasswordChange} saving={isSaving} error={actionError} />}
       {confirmDialog && <ConfirmActionModal {...confirmDialog} onClose={() => setConfirmDialog(null)} onConfirm={async () => { const action = confirmDialog?.onConfirm; if (action) await action() }} />}
       {reviewDialog && <ReviewSourceModal documentTitle={reviewDialog.documentTitle} status={reviewDialog.status} note={reviewNote} onNoteChange={setReviewNote} onClose={() => { if (!isReviewSaving) setReviewDialog(null) }} onSubmit={handleSubmitReview} saving={isReviewSaving} error={actionError} />}
     </div>
@@ -4785,6 +4806,22 @@ function UserModal({ onClose, onSubmit, saving, error }) {
       </div>
       {error && <div className="feedback feedback-error"><CircleHelp size={16} /><span>{error}</span></div>}
       <div className="modal-actions"><button className="secondary-button" type="button" onClick={onClose}>Отмена</button><button className="primary-button" type="submit" disabled={saving}>{saving ? 'Создание…' : 'Создать пользователя'}</button></div>
+      </form>
+    </section>
+  </div>
+}
+
+function OwnPasswordModal({ user, onClose, onSubmit, saving, error }) {
+  return <div className="modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !saving) onClose() }}>
+    <section className="create-modal compact-modal" role="dialog" aria-modal="true" aria-labelledby="own-password-title">
+      <header className="modal-header"><div><div className="section-kicker">МОЯ УЧЁТНАЯ ЗАПИСЬ</div><h2 id="own-password-title">Профиль и безопасность</h2><p>{user?.displayName || user?.username} · {user?.username}</p></div><button className="icon-button" type="button" onClick={onClose} disabled={saving} aria-label="Закрыть"><X size={20} /></button></header>
+      <div className="form-note"><UsersRound size={16}/><span>Вы вошли как <b>{user?.role || 'Пользователь'}</b>. Здесь можно самостоятельно изменить пароль.</span></div>
+      <form onSubmit={onSubmit}>
+        <label className="form-field full-field"><span>Текущий пароль *</span><input name="currentPassword" type="password" autoComplete="current-password" required maxLength="200" autoFocus /></label>
+        <label className="form-field full-field"><span>Новый пароль *</span><input name="newPassword" type="password" autoComplete="new-password" required minLength="12" maxLength="200" /></label>
+        <p className="field-hint">Не менее 12 символов. После смены пароля потребуется войти заново.</p>
+        {error && <div className="feedback feedback-error" role="alert"><CircleHelp size={16}/><span>{error}</span></div>}
+        <div className="modal-actions"><button className="secondary-button" type="button" onClick={onClose} disabled={saving}>Отмена</button><button className="primary-button" type="submit" disabled={saving}>{saving ? 'Сохраняем…' : 'Изменить пароль'}</button></div>
       </form>
     </section>
   </div>
