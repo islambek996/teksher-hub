@@ -8,7 +8,8 @@ RUN mvn -q -B clean package -DskipTests
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng tesseract-ocr-rus tesseract-ocr-kir \
+    && apt-get install -y --no-install-recommends ca-certificates ca-certificates-java tesseract-ocr tesseract-ocr-eng tesseract-ocr-rus tesseract-ocr-kir \
+    && update-ca-certificates -f \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --uid 10001 appuser \
     && mkdir -p /app/uploads \
