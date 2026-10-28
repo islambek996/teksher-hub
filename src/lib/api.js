@@ -1,6 +1,11 @@
 const TOKEN_KEY = 'teksher-hub-access-token'
 
-export const API_BASE = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '')
+// Local development can opt into an API via VITE_API_URL. Deployed builds use the
+// production API by default so a missing build variable cannot silently force demo mode.
+const configuredApiBase = (import.meta.env.VITE_API_URL || '').trim()
+const isLocalHost = typeof window !== 'undefined'
+  && ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
+export const API_BASE = (configuredApiBase || (isLocalHost ? '' : 'https://teksher-hub-api.onrender.com')).replace(/\/+$/, '')
 export const API_ENABLED = Boolean(API_BASE)
 
 export function getStoredToken() {
