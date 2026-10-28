@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { API_ENABLED, API_BASE, apiRequest, clearStoredToken, getStoredToken, storeToken } from './lib/api.js'
 import { loadTnvedCatalog } from './data/tnved-catalog.js'
+import RegulatoryComparison from './RegulatoryComparison.jsx'
 import {
   ArrowDownRight, ArrowUpRight, BookOpen, Boxes, CalendarDays, ChevronDown,
-  CircleHelp, ExternalLink, FileCheck2, FilePlus2, FileText, Globe2, Home, Star,
+  CircleHelp, ExternalLink, FileCheck2, FilePlus2, FileText, Globe2, Home, Star, Scale,
   Landmark, Layers3, LibraryBig, Link2, Search, ShieldCheck, SlidersHorizontal,
   Sparkles, Bot, Send, Workflow, X, Pencil, Trash2, RefreshCw, UsersRound, LogOut, Paperclip, Download, History, CheckCircle2, UserPlus, Moon, Sun, Copy, ListTree, Clock3, Printer, ThumbsUp, ThumbsDown, Bell, MessageCircle, ClipboardList
 } from 'lucide-react'
@@ -43,6 +44,7 @@ const navGroups = [
     { id: 'RU', label: 'МЗКМ · РФ', icon: Landmark },
     { id: 'KG', label: 'ГАИС МТ · КР', icon: ShieldCheck },
     { id: 'EAEU', label: 'ЕАЭС', icon: Globe2 },
+    { id: 'compare', label: 'Сравнение требований', icon: Scale },
   ]},
   { title: 'СПРАВОЧНИКИ', items: [
     { id: 'groups', label: 'Товарные группы', icon: Boxes },
@@ -480,6 +482,7 @@ function App() {
   const [globalSearchLoading, setGlobalSearchLoading] = useState(false)
   const [globalSearchError, setGlobalSearchError] = useState('')
   const [active, setActive] = useState('home')
+  const [assistantPrompt, setAssistantPrompt] = useState('')
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('Все типы')
   const [statusFilter, setStatusFilter] = useState('Все статусы')
@@ -710,7 +713,7 @@ function App() {
     : active === 'home' ? 'База знаний оператора маркировки'
     : active === 'RU' ? 'МЗКМ · материалы для маркировки в РФ'
     : active === 'KG' ? 'ГАИС МТ · национальные материалы КР'
-    : jurisdictions[active]?.label || ({ assistant: 'ИИ-помощник', documents: 'Все документы', favorites: 'Избранные материалы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний', monitoring: 'Мониторинг официальных источников', users: 'Управление пользователями', audit: 'Журнал действий', tasks: 'Задачи команды', issues: 'Реестр проблем маркировки', notifications: 'Уведомления' }[active] || 'TEKSHER HUB')
+    : ({ compare: 'Сравнение требований КР, РФ и ЕАЭС' }[active] || jurisdictions[active]?.label || ({ assistant: 'ИИ-помощник', documents: 'Все документы', favorites: 'Избранные материалы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний', monitoring: 'Мониторинг официальных источников', users: 'Управление пользователями', audit: 'Журнал действий', tasks: 'Задачи команды', issues: 'Реестр проблем маркировки', notifications: 'Уведомления' }[active] || 'TEKSHER HUB'))
 
   const syncRoute = (section, docId = null, replace = false) => {
     const route = { app: 'teksher-hub', section, docId }
@@ -768,7 +771,7 @@ function App() {
   useEffect(() => {
     const knownSections = new Set([
       'home', 'RU', 'KG', 'EAEU', 'assistant', 'documents', 'favorites', 'groups',
-      'processes', 'knowledge', 'monitoring', 'users', 'audit', 'tasks', 'issues', 'notifications', 'analytics'
+      'processes', 'knowledge', 'monitoring', 'users', 'audit', 'tasks', 'issues', 'notifications', 'analytics', 'compare'
     ])
 
     const restoreRoute = () => {
@@ -1520,7 +1523,8 @@ function App() {
               canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'}
               canReview={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)}
               files={API_ENABLED ? apiFiles : localAttachmentFiles} versions={documentVersions} documents={documents} onOpenRelated={docId => { const related = documents.find(item => item.id === docId); if (related) openDocument(related) }} onDownload={handleDownloadFile} onUploadFile={handleUploadAttachment} uploadingFile={isUploadingAttachment} canUploadFiles={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} onReview={handleReviewDocument} canReindex={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)} onReindexFile={handleReindexFile} reindexingFileId={reindexingFileId} />
-            : active === 'assistant' ? <AiAssistantSection apiEnabled={API_ENABLED} isAdmin={currentUser?.role === 'ADMIN'} onOpenDocument={docId => { const target = documents.find(item => String(item.id) === String(docId)); if (target) { setActive('documents'); setSelectedDoc(target); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы'); syncRoute('documents', target.id) } }} />
+            : active === 'compare' ? <RegulatoryComparison onAskAI={prompt => { setAssistantPrompt(prompt); openSection('assistant') }} />
+            : active === 'assistant' ? <AiAssistantSection apiEnabled={API_ENABLED} isAdmin={currentUser?.role === 'ADMIN'} initialPrompt={assistantPrompt} onOpenDocument={docId => { const target = documents.find(item => String(item.id) === String(docId)); if (target) { setActive('documents'); setSelectedDoc(target); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы'); syncRoute('documents', target.id) } }} />
             : active === 'knowledge' ? <KnowledgeCenterSection documents={documents} onSelectKind={(kind) => { setActive('documents'); setSelectedDoc(null); setQuery(''); setFilter(kind); setStatusFilter('Все статусы'); syncRoute('documents') }} onOpenAll={() => openSection('documents')} onAdd={openNewDocumentModal} canAdd={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} />
             : active === 'groups' ? <ProductGroupsSection onOpen={openSection} onSearchGroup={searchProductGroupMaterials} canManage={!API_ENABLED || ["ADMIN", "EDITOR"].includes(currentUser?.role)} />
             : active === 'processes' ? <ProcessGuidesSection key={currentUser?.username || 'local'} progressStorageKey={API_ENABLED ? PROCESS_PROGRESS_KEY + ':' + (currentUser?.username || 'anonymous') : PROCESS_PROGRESS_KEY} onSearchMaterials={searchProductGroupMaterials} canEdit={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'} canApprove={!API_ENABLED || currentUser?.role === 'ADMIN'} canViewDashboard={API_ENABLED && currentUser?.role === 'ADMIN'} />
@@ -4147,7 +4151,7 @@ function LoginScreen({ onSubmit, error, loading = false }) {
 }
 
 
-function AiAssistantSection({ apiEnabled, isAdmin, onOpenDocument }) {
+function AiAssistantSection({ apiEnabled, isAdmin, onOpenDocument, initialPrompt = '' }) {
   const [question, setQuestion] = useState('')
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
@@ -4158,6 +4162,11 @@ function AiAssistantSection({ apiEnabled, isAdmin, onOpenDocument }) {
   const [feedbackReasonTarget, setFeedbackReasonTarget] = useState(null)
   const inputRef = useRef(null)
   const messagesEndRef = useRef(null)
+
+  useEffect(() => {
+    const prompt = String(initialPrompt || '').trim()
+    if (prompt) setQuestion(prompt)
+  }, [initialPrompt])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
@@ -4210,7 +4219,9 @@ function AiAssistantSection({ apiEnabled, isAdmin, onOpenDocument }) {
     'Что делать, если не заказываются коды маркировки?',
     'Как проверить актуальность документа?',
     'Найди инструкции по работе с карточкой товара',
-    'Какие материалы относятся к ГАИС МТ в Кыргызстане?'
+    'Какие материалы относятся к ГАИС МТ в Кыргызстане?',
+    'Сравни правила маркировки в КР, РФ и ЕАЭС по официальным источникам',
+    'Какие нормативные акты регулируют маркировку этой товарной группы и какие у них сроки действия?'
   ]
 
   const sendQuestion = async (value) => {
