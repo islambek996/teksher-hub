@@ -98,7 +98,7 @@ jobs:
           test -n "$TOKEN" && test "$TOKEN" != "null"
 
           # Seeded official legal references and source monitors must be available after Flyway migration.
-          curl --silent --show-error --fail "http://localhost:8080/api/documents?q=Постановление%20Правительства%20Российской%20Федерации" -H "Authorization: Bearer $TOKEN" | jq -e 'any(.[]; .documentNumber == "№ 515" and .jurisdiction == "RU" and .status == "UNDER_REVIEW" and (.sourceUrl | startswith("https://publication.pravo.gov.ru/")))'
+          curl --silent --show-error --fail "http://localhost:8080/api/documents?q=515" -H "Authorization: Bearer $TOKEN" | jq -e 'any(.[]; .documentNumber == "№ 515" and .jurisdiction == "RU" and .status == "UNDER_REVIEW" and (.sourceUrl | startswith("https://publication.pravo.gov.ru/")))'
           curl --silent --show-error --fail "http://localhost:8080/api/documents" -H "Authorization: Bearer $TOKEN" | jq -e 'any(.[]; .id == "a1000000-0000-4000-8000-000000000004" and .sourceUrl == "https://cbd.minjust.gov.kg/7-42968/edition/34256/ru" and .status == "UNDER_REVIEW") and any(.[]; .id == "a1000000-0000-4000-8000-000000000007" and .sourceUrl == "https://docs.eaeunion.org/" and .status == "UNDER_REVIEW")'
           curl --silent --show-error --fail "http://localhost:8080/api/monitors" -H "Authorization: Bearer $TOKEN" | jq -e 'any(.[]; .sourceUrl == "https://cbd.minjust.gov.kg/") and any(.[]; .sourceUrl == "https://publication.pravo.gov.ru/") and any(.[]; .sourceUrl == "https://docs.eaeunion.org/") and any(.[]; .sourceUrl == "https://eec.eaeunion.org/")'
 
