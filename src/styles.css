@@ -3296,3 +3296,82 @@ html[data-theme="dark"] .reg-comparison .reg-result-count {
     border-top: 1px solid #30465f;
   }
 }
+
+/* Regulatory comparison – final dark theme polish */
+html[data-theme="dark"] .reg-comparison .reg-comparison-heading,
+html[data-theme="dark"] .reg-comparison .reg-comparison-section-title,
+html[data-theme="dark"] .reg-comparison .reg-source-heading,
+html[data-theme="dark"] .reg-comparison .reg-ai-heading {
+  color: #e5eef9;
+}
+html[data-theme="dark"] .reg-comparison .reg-comparison-notice span,
+html[data-theme="dark"] .reg-comparison .reg-comparison-footer-note span {
+  color: #b9c9dc;
+}
+html[data-theme="dark"] .reg-comparison .reg-region-card {
+  color: #dce7f5 !important;
+  background: #17283c !important;
+  border-color: #30465f !important;
+}
+html[data-theme="dark"] .reg-comparison .reg-region-card .reg-region-copy strong {
+  color: #e6effb !important;
+}
+html[data-theme="dark"] .reg-comparison .reg-region-card .reg-region-copy small {
+  color: #a9bdd3 !important;
+}
+html[data-theme="dark"] .reg-comparison .reg-region-card.is-selected {
+  background: #1b3550 !important;
+  border-color: #6794c5 !important;
+}
+html[data-theme="dark"] .reg-comparison .reg-region-card:focus-visible,
+html[data-theme="dark"] .reg-comparison .reg-source-filter button:focus-visible,
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card:focus-visible {
+  outline: 2px solid #82b7f2;
+  outline-offset: 2px;
+}
+html[data-theme="dark"] .reg-comparison .reg-source-card {
+  background: #17283c;
+  border-color: #30465f;
+}
+html[data-theme="dark"] .reg-comparison .reg-source-card-top .reg-source-region {
+  filter: brightness(.82) saturate(.9);
+}
+html[data-theme="dark"] .reg-comparison .reg-source-label {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  color: #c3d2e4;
+  background: #223a55;
+  border: 1px solid #354f6b;
+}
+html[data-theme="dark"] .reg-comparison .reg-source-card a {
+  color: #a9ceff;
+  overflow-wrap: anywhere;
+}
+html[data-theme="dark"] .reg-comparison .reg-source-card a:hover {
+  color: #d0e4ff;
+}
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card {
+  background: #17283c;
+  border-color: #30465f;
+}
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card > strong {
+  color: #e6effb;
+}
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card > small {
+  color: #b2c3d7;
+}
+html[data-theme="dark"] .reg-comparison .reg-comparison-select select option {
+  color: #e0eaf6;
+  background: #101d2c;
+}
+html[data-theme="dark"] .reg-comparison .reg-comparison-search input:-webkit-autofill {
+  -webkit-text-fill-color: #e0eaf6;
+  box-shadow: 0 0 0 1000px #101d2c inset;
+}
+html[data-theme="dark"] .reg-comparison .reg-comparison-filterbar,
+html[data-theme="dark"] .reg-comparison .reg-comparison-search,
+html[data-theme="dark"] .reg-comparison .reg-comparison-select {
+  color-scheme: dark;
+}
+
