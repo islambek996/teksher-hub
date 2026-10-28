@@ -4,12 +4,13 @@ import kg.teksherhub.document.StorageBackupController;
 import kg.teksherhub.web.AuditLogController;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -25,6 +26,7 @@ class SecurityRoleMethodEnforcementTest {
     private final AuditLogController auditLogController;
     private final StorageBackupController storageBackupController;
 
+    @Autowired
     SecurityRoleMethodEnforcementTest(AuditLogController auditLogController,
                                       StorageBackupController storageBackupController) {
         this.auditLogController = auditLogController;
