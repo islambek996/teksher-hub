@@ -58,6 +58,10 @@ public class SecurityConfig {
         if (!origins.contains("https://teksher-hub.netlify.app")) {
             origins.add("https://teksher-hub.netlify.app");
         }
+        // The Cloudflare Workers deployment is a second supported frontend.
+        if (!origins.contains("https://teksher-hub.islamzhakypbekov0.workers.dev")) {
+            origins.add("https://teksher-hub.islamzhakypbekov0.workers.dev");
+        }
         config.setAllowedOrigins(origins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
