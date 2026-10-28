@@ -962,6 +962,10 @@ function App() {
   }
 
   const handleSaveDocument = async (event) => {
+    if (API_ENABLED && !['ADMIN', 'EDITOR'].includes(currentUser?.role)) {
+      setActionError('У вас нет прав на изменение документов. Доступно только редактору и администратору.')
+      return
+    }
     event.preventDefault()
     const data = new FormData(event.currentTarget)
     const sourceValue = String(data.get('sourceUrl') || '').trim()
@@ -1072,6 +1076,10 @@ function App() {
   }
 
   const handleDeleteDocument = (doc) => {
+    if (API_ENABLED && currentUser?.role !== 'ADMIN') {
+      setActionError('Удалять документы может только администратор.')
+      return
+    }
     if (doc.isDemo) return
     setConfirmDialog({
       title: 'Удалить карточку документа?',
@@ -1100,14 +1108,14 @@ function App() {
   }
 
   const handleReviewDocument = (status) => {
-    if (!selectedDoc || !API_ENABLED) return
+    if (!selectedDoc || !API_ENABLED || !['ADMIN', 'EDITOR'].includes(currentUser?.role)) return
     setActionError('')
     setReviewNote('Проверено вручную')
     setReviewDialog({ status, documentId: selectedDoc.id, documentTitle: selectedDoc.title })
   }
 
   const handleSubmitReview = async () => {
-    if (!reviewDialog || !API_ENABLED || isReviewSaving) return
+    if (!reviewDialog || !API_ENABLED || !['ADMIN', 'EDITOR'].includes(currentUser?.role) || isReviewSaving) return
     setIsReviewSaving(true)
     setActionError('')
     try {
@@ -1327,7 +1335,13 @@ function App() {
   }
 
   const closeDocumentModal = () => { setShowCreateModal(false); setEditingDoc(null); setActionError('') }
-  const openNewDocumentModal = () => { setEditingDoc(null); setActionError(''); setShowCreateModal(true) }
+  const openNewDocumentModal = () => {
+    if (API_ENABLED && !['ADMIN', 'EDITOR'].includes(currentUser?.role)) {
+      setActionError('Создавать документы могут только редактор и администратор.')
+      return
+    }
+    setEditingDoc(null); setActionError(''); setShowCreateModal(true)
+  }
 
 
   if (API_ENABLED && authInitializing) return <LoginScreen loading />
