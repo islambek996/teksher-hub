@@ -27,7 +27,7 @@ public class BusinessProcessGuideController {
     }
 
     @GetMapping("/overview")
-    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    @PreAuthorize("hasRole('ADMIN')")
     public BusinessProcessGuideService.WorkflowOverview overview() {
         return service.overview();
     }
