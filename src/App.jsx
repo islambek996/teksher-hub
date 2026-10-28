@@ -720,6 +720,15 @@ function App() {
   }
 
   const openSection = (id) => {
+    const adminOnlySection = ['analytics', 'users', 'audit'].includes(id)
+    if (API_ENABLED && adminOnlySection && currentUser?.role !== 'ADMIN') {
+      syncRoute('home', null, true)
+      setActive('home')
+      setSelectedDoc(null)
+      setActionError('Раздел доступен только администраторам.')
+      setSuccessMessage('')
+      return
+    }
     syncRoute(id)
     setActive(id); setSelectedDoc(null); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы')
     setActionError(''); setSuccessMessage('')
@@ -1336,7 +1345,7 @@ function App() {
           const items = group.items.filter(item => {
             if (!API_ENABLED && ['monitoring', 'users', 'tasks', 'issues', 'notifications'].includes(item.id)) return false
             if (item.id === 'users' && currentUser?.role !== 'ADMIN') return false
-            if (item.id === 'audit' && (!API_ENABLED || currentUser?.role !== 'ADMIN')) return false
+            if (['analytics', 'audit'].includes(item.id) && (!API_ENABLED || currentUser?.role !== 'ADMIN')) return false
             return true
           })
           if (!items.length) return null
