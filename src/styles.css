@@ -2952,3 +2952,6 @@ html[data-theme="dark"] .issue-registry .issue-registry-note {
   border-color: #2b4057;
   background: #142236;
 }
+
+/* Delete action in document catalog rows */
+.document-row-delete{flex-shrink:0;width:32px;height:32px;color:#b94c4c;border-color:#f0d6d6}.document-row-delete:hover{background:#fff1f1;border-color:#e7bcbc;color:#a83232}
