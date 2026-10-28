@@ -1,7 +1,10 @@
 package kg.teksherhub.document;
 
 import org.springframework.data.domain.PageRequest;
+import kg.teksherhub.user.UserAccount;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,18 +25,21 @@ public class AttachmentIndexAdminController {
     private final DocumentFileRepository files;
     private final FileStorageService storage;
     private final DocumentTextExtractionService textExtraction;
+    private final JdbcTemplate jdbc;
 
     public AttachmentIndexAdminController(DocumentFileRepository files, FileStorageService storage,
-                                          DocumentTextExtractionService textExtraction) {
+                                          DocumentTextExtractionService textExtraction, JdbcTemplate jdbc) {
         this.files = files;
         this.storage = storage;
         this.textExtraction = textExtraction;
+        this.jdbc = jdbc;
     }
 
     @PostMapping("/reindex-unindexed")
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional
-    public BatchReindexResponse reindexUnindexed(@RequestParam(defaultValue = "25") int limit) {
+    public BatchReindexResponse reindexUnindexed(@RequestParam(defaultValue = "25") int limit,
+                                                  @AuthenticationPrincipal UserAccount user) {
         int batchSize = Math.max(1, Math.min(limit, 50));
         List<DocumentFile> batch = files.findAllByTextExtractionStatusOrderByUploadedAtAsc(
                 NOT_INDEXED, PageRequest.of(0, batchSize));
@@ -78,6 +84,13 @@ public class AttachmentIndexAdminController {
             }
         }
 
+        jdbc.update("""
+                INSERT INTO audit_log(username, action, entity_type, entity_id, entity_label, details, created_at)
+                VALUES (?, 'BATCH_REINDEX_ATTACHMENTS', 'DOCUMENT_FILE', NULL, 'Переиндексация вложений',
+                        ?, NOW())
+                """, user.getUsername(), "Обработано: " + batch.size() + "; успешно: " + indexed
+                + "; частично: " + partiallyIndexed + "; пустые/неподдерживаемые: " + emptyOrUnsupported
+                + "; ошибки: " + failed);
         return new BatchReindexResponse(batch.size(), indexed, partiallyIndexed, emptyOrUnsupported,
                 failed, files.countByTextExtractionStatus(NOT_INDEXED), List.copyOf(results));
     }
