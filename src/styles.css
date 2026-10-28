@@ -3215,3 +3215,84 @@ html[data-theme="dark"] .reg-comparison .empty-state {
 html[data-theme="dark"] .reg-comparison .reg-comparison-footer-note {
   color:#a9bbd1; background:#142338; border-color:#30465f;
 }
+
+
+/* Regulatory comparison: dark-theme contrast and surface fixes */
+html[data-theme="dark"] .reg-comparison .reg-comparison-section-title h2,
+html[data-theme="dark"] .reg-comparison .reg-matrix-area h3 {
+  color: #e6effb;
+}
+html[data-theme="dark"] .reg-comparison .section-kicker {
+  color: #91a8c2;
+}
+html[data-theme="dark"] .reg-comparison .reg-matrix-area {
+  background: #142338;
+  border-bottom-color: #30465f;
+}
+html[data-theme="dark"] .reg-comparison .reg-matrix-area > span {
+  color: #c7ddfa;
+  background: #263f5c;
+}
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell + .reg-matrix-cell {
+  border-left-color: #30465f;
+}
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell.region-kg,
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell.region-ru,
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell.region-eaeu {
+  background: #17283c;
+}
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell-title > span {
+  color: #dce9fa;
+  background: #263f5c;
+}
+html[data-theme="dark"] .reg-comparison .reg-region-card {
+  color: #dce7f5;
+}
+html[data-theme="dark"] .reg-comparison .reg-region-card:not(.is-selected) {
+  background: #17283c;
+}
+html[data-theme="dark"] .reg-comparison .reg-region-card.is-selected {
+  background: #1b3550;
+  border-color: #5b82ae;
+  box-shadow: 0 0 0 2px rgba(91,130,174,.16);
+}
+html[data-theme="dark"] .reg-comparison .reg-region-check {
+  color: #a9c7ec;
+}
+html[data-theme="dark"] .reg-comparison .reg-source-filter button {
+  color: #c3d2e4;
+  background: #142338;
+  border-color: #30465f;
+}
+html[data-theme="dark"] .reg-comparison .reg-source-filter button.is-active {
+  color: #e0edff;
+  background: #1d3550;
+  border-color: #567ba5;
+}
+html[data-theme="dark"] .reg-comparison .reg-source-label {
+  color: #c3d2e4;
+  background: #223a55;
+  border: 1px solid #354f6b;
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card em {
+  color: #a9ceff;
+}
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card > span {
+  color: #c5dcff;
+  background: #223a55;
+}
+html[data-theme="dark"] .reg-comparison .reg-comparison-footer-note svg {
+  color: #9fc5f5;
+}
+html[data-theme="dark"] .reg-comparison .reg-result-count {
+  background: #142338;
+  border-color: #30465f;
+}
+@media (max-width: 760px) {
+  html[data-theme="dark"] .reg-comparison .reg-matrix-cell + .reg-matrix-cell {
+    border-left: 0;
+    border-top: 1px solid #30465f;
+  }
+}
