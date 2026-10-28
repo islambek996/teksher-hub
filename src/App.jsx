@@ -474,6 +474,22 @@ function ManagerAnalyticsSection({ documents, monitors }) {
 }
 
 function App() {
+  if (import.meta.env.PROD && !API_ENABLED) {
+    return (
+      <main className="service-unavailable-page" role="status">
+        <section className="service-unavailable-card">
+          <div className="service-unavailable-brand">TEKSHER HUB</div>
+          <h1>Сервис временно недоступен</h1>
+          <p>Не удалось установить соединение с общей базой знаний. Обновите страницу позже или обратитесь к администратору.</p>
+          <button type="button" onClick={() => window.location.reload()}>Повторить подключение</button>
+        </section>
+      </main>
+    )
+  }
+  return <AppContent />
+}
+
+function AppContent() {
   const [theme, setTheme] = useState(loadTheme)
   const [showGlobalSearch, setShowGlobalSearch] = useState(false)
   const [globalSearchQuery, setGlobalSearchQuery] = useState('')
@@ -1373,10 +1389,6 @@ function App() {
             </button>)}
           </div>
         })}
-        <div className="sidebar-bottom">
-          <div className="status-indicator"><span /> Платформа в разработке</div>
-          <div className="sidebar-version">Версия 0.3 · MVP</div>
-        </div>
       </aside>
 
       <main className="main-area">
