@@ -4760,7 +4760,7 @@ function MarkingIssueRegistry({ currentUser, canManage }) {
   const filtered = issues.filter(issue => {
     const matchesStatus = statusFilter === 'ALL' || issue.status === statusFilter
     const matchesCategory = categoryFilter === 'ALL' || issue.category === categoryFilter
-    const haystack = [issue.title, issue.description, issue.resolution, issue.productGroup, issue.createdBy, issue.assignedTo, issue.solutionVerifiedBy, ISSUE_CATEGORY_LABELS[issue.category], ISSUE_SYSTEM_LABELS[issue.system]].join(' ').toLocaleLowerCase('ru-RU')
+    const haystack = [issue.title, issue.description, issue.resolution, issue.productGroup, issue.createdBy, issue.assignedTo, ISSUE_CATEGORY_LABELS[issue.category], ISSUE_SYSTEM_LABELS[issue.system]].join(' ').toLocaleLowerCase('ru-RU')
     return matchesStatus && matchesCategory && haystack.includes(query.trim().toLocaleLowerCase('ru-RU'))
   })
   const activeCount = issues.filter(issue => !['RESOLVED', 'CLOSED'].includes(issue.status)).length
@@ -4854,13 +4854,8 @@ function MarkingIssueRegistry({ currentUser, canManage }) {
           <button className="secondary-button issue-replies-trigger" type="button" onClick={() => toggleComments(issue)} title="Открыть обсуждение"><MessageCircle size={15}/>{Array.isArray(commentsByIssue[issue.id]) ? commentsByIssue[issue.id].length : 'Обсуждение'}</button>
         </div>
         {issue.description && <div className="issue-forum-body"><h3>Проблема</h3><p className="issue-card-description">{issue.description}</p></div>}
-        {issue.resolution && <div className={'issue-forum-solution' + (issue.solutionVerified ? ' issue-forum-solution-verified' : '')}>
-           <div className="issue-forum-section-title"><CheckCircle2 size={15}/><h3>Решение</h3><span className={'issue-solution-verification' + (issue.solutionVerified ? ' is-verified' : '')}>{issue.solutionVerified ? 'Проверено' : 'Не проверено'}</span></div>
-           <p>{issue.resolution}</p>
-           {issue.solutionVerified && <div className="issue-solution-verified-meta">Подтвердил: {issue.solutionVerifiedBy || 'редактор'}{issue.solutionVerifiedAt ? ' · ' + formatDateTime(issue.solutionVerifiedAt) : ''}</div>}
-           {canManage && <button className={'issue-solution-verify-button' + (issue.solutionVerified ? ' is-verified' : '')} type="button" onClick={() => updateIssue(issue, { solutionVerified: !issue.solutionVerified })}>{issue.solutionVerified ? 'Снять подтверждение' : 'Подтвердить решение'}</button>}
-         </div>}
-        {!issue.resolution && <div className="issue-forum-unsolved">Решение ещё не добавлено – можно поделиться опытом в комментариях.</div>}
+        {issue.resolution && <div className="issue-forum-solution"><div className="issue-forum-section-title"><CheckCircle2 size={15}/><h3>Решение</h3></div><p>{issue.resolution}</p></div>}
+         {!issue.resolution && <div className="issue-forum-unsolved">Решение ещё не добавлено – можно поделиться опытом в комментариях.</div>}
         <div className="issue-card-controls"><label className="form-field"><span>Статус</span><select value={issue.status} onChange={event => updateIssue(issue, { status: event.target.value })}>{Object.entries(ISSUE_STATUS_LABELS).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <label className="form-field"><span>Приоритет</span><select value={issue.priority} onChange={event => updateIssue(issue, { priority: event.target.value })}>{Object.entries(ISSUE_PRIORITY_LABELS).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           {canManage && <label className="form-field"><span>Ответственный</span><input key={issue.id + '-' + (issue.assignedTo || '')} defaultValue={issue.assignedTo || ''} maxLength={120} placeholder="Логин сотрудника" onBlur={event => { const value = event.target.value.trim(); if (value !== (issue.assignedTo || '')) updateIssue(issue, { assignedTo: value }) }}/></label>}
