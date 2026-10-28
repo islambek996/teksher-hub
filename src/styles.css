@@ -2952,27 +2952,3 @@ html[data-theme="dark"] .issue-registry .issue-registry-note {
   border-color: #2b4057;
   background: #142236;
 }
-
-
-/* Solution verification in the marking forum */
-.issue-registry .issue-forum-solution-verified { border-color: #a8dfbf; background: #f0faf4; }
-.issue-registry .issue-solution-verification {
-  display: inline-flex; align-items: center; margin-left: auto; padding: 4px 9px;
-  border: 1px solid #d8dee8; border-radius: 999px; color: #64748b; background: #f8fafc;
-  font-size: 11px; font-weight: 700; line-height: 1.3; white-space: nowrap;
-}
-.issue-registry .issue-solution-verification.is-verified { border-color: #b8e2c7; color: #187344; background: #e2f6e9; }
-.issue-registry .issue-solution-verified-meta { margin-top: 9px; color: #367653; font-size: 12px; }
-.issue-registry .issue-solution-verify-button {
-  margin-top: 12px; padding: 7px 11px; border: 1px solid #b9d8c5; border-radius: 8px;
-  color: #216c43; background: #fff; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
-}
-.issue-registry .issue-solution-verify-button:hover { background: #e2f6e9; }
-.issue-registry .issue-solution-verify-button.is-verified { border-color: #d8dee8; color: #64748b; }
-html[data-theme="dark"] .issue-registry .issue-forum-solution-verified { border-color: #2e684a; background: #142f25; }
-html[data-theme="dark"] .issue-registry .issue-solution-verification { border-color: #3b4c61; color: #b5c5d7; background: #202f40; }
-html[data-theme="dark"] .issue-registry .issue-solution-verification.is-verified { border-color: #2e684a; color: #a7e8bd; background: #1b4932; }
-html[data-theme="dark"] .issue-registry .issue-solution-verified-meta { color: #9ce0b6; }
-html[data-theme="dark"] .issue-registry .issue-solution-verify-button { border-color: #32684c; color: #b5edc7; background: #1a3b2b; }
-html[data-theme="dark"] .issue-registry .issue-solution-verify-button:hover { background: #225238; }
-html[data-theme="dark"] .issue-registry .issue-solution-verify-button.is-verified { border-color: #435368; color: #b5c5d7; background: #202f40; }
