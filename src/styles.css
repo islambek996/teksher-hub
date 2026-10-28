@@ -3528,3 +3528,119 @@ html[data-theme="dark"] .reg-comparison .secondary-button:hover {
 html[data-theme="dark"] .reg-comparison :focus-visible {
   outline-color: #82b7f2;
 }
+
+
+/* TEKSHER HUB – Regulatory comparison dark-theme contrast fix */
+html[data-theme="dark"] .reg-comparison {
+  color: #dbe7f5;
+}
+html[data-theme="dark"] .reg-comparison .reg-comparison-heading,
+html[data-theme="dark"] .reg-comparison .reg-comparison-section-title,
+html[data-theme="dark"] .reg-comparison .reg-comparison-section-title h2,
+html[data-theme="dark"] .reg-comparison .reg-matrix-area h3,
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell-title strong,
+html[data-theme="dark"] .reg-comparison .reg-source-card h3,
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card strong {
+  color: #edf4ff !important;
+}
+html[data-theme="dark"] .reg-comparison .reg-comparison-section-title p,
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell p,
+html[data-theme="dark"] .reg-comparison .reg-source-card p,
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card small,
+html[data-theme="dark"] .reg-comparison .reg-comparison-notice,
+html[data-theme="dark"] .reg-comparison .reg-comparison-footer-note,
+html[data-theme="dark"] .reg-comparison .reg-region-copy small {
+  color: #bdcce0 !important;
+}
+html[data-theme="dark"] .reg-comparison .reg-comparison-notice,
+html[data-theme="dark"] .reg-comparison .reg-comparison-footer-note,
+html[data-theme="dark"] .reg-comparison .reg-region-card,
+html[data-theme="dark"] .reg-comparison .reg-matrix-row,
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell,
+html[data-theme="dark"] .reg-comparison .reg-source-card,
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card {
+  background: #172537 !important;
+  color: #dbe7f5 !important;
+  border-color: #354b63 !important;
+  box-shadow: none;
+}
+html[data-theme="dark"] .reg-comparison .reg-matrix-area {
+  background: #112135 !important;
+  border-color: #354b63 !important;
+}
+html[data-theme="dark"] .reg-comparison .reg-matrix-area > span,
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell-title > span,
+html[data-theme="dark"] .reg-comparison .reg-source-label,
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card > span {
+  background: #263d57 !important;
+  color: #d9e9ff !important;
+  border-color: #405a77 !important;
+}
+html[data-theme="dark"] .reg-comparison .reg-region-card .reg-region-copy strong {
+  color: #edf4ff !important;
+}
+html[data-theme="dark"] .reg-comparison .reg-region-card.is-selected {
+  background: #203b58 !important;
+  border-color: #79a9df !important;
+}
+html[data-theme="dark"] .reg-comparison .reg-comparison-search,
+html[data-theme="dark"] .reg-comparison .reg-comparison-select {
+  background: #101d2c !important;
+  border-color: #40566e !important;
+  color: #c8d8eb !important;
+}
+html[data-theme="dark"] .reg-comparison .reg-comparison-search input,
+html[data-theme="dark"] .reg-comparison .reg-comparison-select select {
+  color: #edf4ff !important;
+  background: transparent !important;
+  -webkit-text-fill-color: #edf4ff;
+}
+html[data-theme="dark"] .reg-comparison .reg-comparison-search input::placeholder {
+  color: #91a5bd !important;
+  opacity: 1;
+}
+html[data-theme="dark"] .reg-comparison .reg-comparison-select option {
+  color: #edf4ff !important;
+  background: #101d2c !important;
+}
+html[data-theme="dark"] .reg-comparison .reg-source-filter button,
+html[data-theme="dark"] .reg-comparison .reg-result-count,
+html[data-theme="dark"] .reg-comparison .secondary-button,
+html[data-theme="dark"] .reg-comparison .empty-state {
+  background: #142338 !important;
+  color: #dbe7f5 !important;
+  border-color: #40566e !important;
+}
+html[data-theme="dark"] .reg-comparison .reg-source-filter button.is-active,
+html[data-theme="dark"] .reg-comparison .secondary-button:hover {
+  background: #24415f !important;
+  color: #ffffff !important;
+  border-color: #79a9df !important;
+}
+html[data-theme="dark"] .reg-comparison .reg-source-card a,
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card em {
+  color: #9fcaff !important;
+}
+html[data-theme="dark"] .reg-comparison .reg-source-card a:hover,
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card:hover em {
+  color: #d3e7ff !important;
+}
+html[data-theme="dark"] .reg-comparison .reg-region-card:hover,
+html[data-theme="dark"] .reg-comparison .reg-source-card:hover,
+html[data-theme="dark"] .reg-comparison .reg-ai-prompt-card:hover {
+  background: #20364e !important;
+  border-color: #587a9e !important;
+}
+html[data-theme="dark"] .reg-comparison :focus-visible {
+  outline: 2px solid #8bc0ff;
+  outline-offset: 3px;
+}
+html[data-theme="dark"] .reg-comparison .reg-matrix-cell + .reg-matrix-cell {
+  border-left-color: #354b63 !important;
+}
+@media (max-width: 760px) {
+  html[data-theme="dark"] .reg-comparison .reg-matrix-cell + .reg-matrix-cell {
+    border-left: 0 !important;
+    border-top: 1px solid #354b63 !important;
+  }
+}
