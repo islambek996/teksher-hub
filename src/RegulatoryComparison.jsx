@@ -27,6 +27,13 @@ const sourceCards = [
   },
   {
     region: 'KG',
+    title: 'Постановление Кабинета Министров КР № 385 от 01.07.2025',
+    description: 'Отдельный режим учётно-контрольных марок для предусмотренных перечнем товаров. Проверяйте актуальную редакцию, изменения и перечень применимости.',
+    label: 'Проверить отдельный режим',
+    url: 'https://cbd.minjust.gov.kg/',
+  },
+  {
+    region: 'KG',
     title: 'Официальный портал Кабинета Министров КР',
     description: 'Публикации и нормативные правовые акты. Используйте для поиска новых решений и постановлений.',
     label: 'Официальный портал',
@@ -143,8 +150,8 @@ export default function RegulatoryComparison({ onAskAI = () => {} }) {
   const filteredRows = useMemo(() => {
     const term = query.trim().toLocaleLowerCase('ru-RU')
     return comparisonRows.filter(row => {
-      const regionText = regionFilter === 'ALL' ? [row.KG, row.RU, row.EAEU].join(' ') : row[regionFilter]
-      return (!term || [row.area, row.keywords, regionText, row.KG, row.RU, row.EAEU].join(' ').toLocaleLowerCase('ru-RU').includes(term))
+      const regionTexts = regionFilter === 'ALL' ? [row.KG, row.RU, row.EAEU] : [row[regionFilter]]
+      return (!term || [row.area, row.keywords, ...regionTexts].join(' ').toLocaleLowerCase('ru-RU').includes(term))
     })
   }, [regionFilter, query])
 
