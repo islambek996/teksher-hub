@@ -144,6 +144,7 @@ public class SourceMonitorService {
                                 + previousHash.substring(0, Math.min(12, previousHash.length()))
                                 + "; новый SHA-256: " + hash.substring(0, 12)
                                 + ". Требуется ручная проверка юридического значения изменений.");
+                notifyUsersAboutChange(m);
             }
             m.setLastContentHash(hash);
             m.setLastError(null);
@@ -183,6 +184,20 @@ public class SourceMonitorService {
         String message = ex.getMessage();
         if (message == null || message.isBlank()) return ex.getClass().getSimpleName();
         return message.substring(0, Math.min(900, message.length()));
+    }
+
+    private void notifyUsersAboutChange(SourceMonitor monitor) {
+        String title = "Изменение официального источника: " + monitor.getName();
+        if (title.length() > 200) title = title.substring(0, 200);
+        String message = "Мониторинг обнаружил изменение содержимого страницы: " + monitor.getSourceUrl()
+                + ". Это не подтверждает изменение правового статуса акта. Проверьте опубликованный текст, текущую редакцию, дату вступления в силу и применимость к товарной группе.";
+        if (message.length() > 980) message = message.substring(0, 980);
+        jdbc.update("""
+                INSERT INTO hub_notifications(username, task_id, title, message, created_at)
+                SELECT username, NULL, ?, ?, NOW()
+                FROM users
+                WHERE enabled = TRUE
+                """, title, message);
     }
 
     private SourceMonitor find(Long id) {
