@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Size;
 import kg.teksherhub.user.UserAccount;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -68,6 +69,7 @@ public class MarkingIssueController {
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
     public IssueView update(@PathVariable long id, @Valid @RequestBody IssueUpdateRequest request,
                             @AuthenticationPrincipal UserAccount user) {
         IssueView old = getOne(id);
