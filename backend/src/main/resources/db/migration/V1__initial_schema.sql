@@ -6,8 +6,9 @@ CREATE TABLE users (
   role VARCHAR(20) NOT NULL DEFAULT 'READER',
   enabled BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT users_role_check CHECK (role IN ('ADMIN', 'EDITOR', 'READER'))
+  CONSTRAINT users_role_check CHECK (role IN ('ADMIN','EDITOR','READER'))
 );
+
 CREATE TABLE documents (
   id UUID PRIMARY KEY,
   title VARCHAR(240) NOT NULL,
@@ -28,21 +29,14 @@ CREATE TABLE documents (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   version_number INTEGER NOT NULL DEFAULT 1,
-  CONSTRAINT documents_jurisdiction_check CHECK (jurisdiction IN ('RU', 'KG', 'EAEU')),
-  CONSTRAINT documents_status_check CHECK (
-    status IN (
-      'DRAFT',
-      'UNDER_REVIEW',
-      'ACTIVE',
-      'EXPIRED',
-      'ARCHIVED'
-    )
-  )
+  CONSTRAINT documents_jurisdiction_check CHECK (jurisdiction IN ('RU','KG','EAEU')),
+  CONSTRAINT documents_status_check CHECK (status IN ('DRAFT','UNDER_REVIEW','ACTIVE','EXPIRED','ARCHIVED'))
 );
 CREATE INDEX idx_documents_title ON documents USING gin (to_tsvector('simple', title));
 CREATE INDEX idx_documents_jurisdiction ON documents(jurisdiction);
 CREATE INDEX idx_documents_status ON documents(status);
 CREATE INDEX idx_documents_updated_at ON documents(updated_at DESC);
+
 CREATE TABLE document_versions (
   id BIGSERIAL PRIMARY KEY,
   document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
@@ -61,9 +55,10 @@ CREATE TABLE document_versions (
   change_note VARCHAR(1000),
   changed_by VARCHAR(120) NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (document_id, version_number)
+  UNIQUE(document_id, version_number)
 );
 CREATE INDEX idx_document_versions_document ON document_versions(document_id, version_number DESC);
+
 CREATE TABLE document_files (
   id UUID PRIMARY KEY,
   document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
@@ -75,6 +70,7 @@ CREATE TABLE document_files (
   uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_document_files_document ON document_files(document_id);
+
 CREATE TABLE source_monitors (
   id BIGSERIAL PRIMARY KEY,
   name VARCHAR(180) NOT NULL,
@@ -90,6 +86,6 @@ CREATE TABLE source_monitors (
   created_by VARCHAR(120) NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT source_monitors_jurisdiction_check CHECK (jurisdiction IN ('RU', 'KG', 'EAEU')),
+  CONSTRAINT source_monitors_jurisdiction_check CHECK (jurisdiction IN ('RU','KG','EAEU')),
   CONSTRAINT source_monitors_interval_check CHECK (interval_hours BETWEEN 1 AND 720)
 );
