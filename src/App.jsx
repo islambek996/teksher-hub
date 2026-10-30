@@ -1854,12 +1854,13 @@ const TNVED_SEARCH_SYNONYMS = [
   { group: COSMETICS_TNVED_GROUP, scope: 'MZKM', matchGroup: false, sourceGroup: 'Бритвы', terms: ['бритва', 'бритвы', 'бритье', 'бритья', 'лезвие', 'лезвия', 'лезвие для бритья', 'бритвенный станок', 'станок для бритья'] },
   { group: 'Моторные масла, смазочные материалы, тормозные жидкости и антифризы', scope: 'MZKM', terms: ['моторное масло', 'масло моторное', 'антифриз', 'смазка', 'тормозная жидкость', 'техническая жидкость'] },
   { group: 'Игры и игрушки для детей', scope: 'MZKM', terms: ['игрушка', 'игрушки', 'кукла', 'конструктор', 'пазл', 'настольная игра', 'детская игрушка'] },
+  { group: 'Бакалея', scope: 'MZKM', terms: ['бакалея', 'крупа', 'крупы', 'макароны', 'чай', 'кофе', 'специи', 'пряности', 'мука', 'сахар', 'соль', 'какао', 'сухофрукты', 'орехи', 'растворимые напитки'] },
   { group: 'Алкоголь', scope: 'INTERNAL', terms: ['алкоголь', 'водка', 'вино', 'пиво', 'спиртные напитки'] },
   { group: 'Табак', scope: 'INTERNAL', terms: ['табак', 'сигареты', 'табачная продукция', 'табачные изделия'] },
 ]
 
 const PRODUCT_GROUPS_STORAGE_KEY = 'teksher-hub-product-groups-v1'
-const DEFAULT_MZKM_GROUPS = ['Обувные товары', 'Белье постельное, столовое, туалетное и кухонное', 'Предметы одежды', 'Духи и туалетная вода', 'Фотокамеры (кроме кинокамер), фотовспышки и лампы-вспышки', 'Молочная продукция', 'Продукты, используемые для кормления животных', 'Косметика, бытовая химия и товары личной гигиены', 'Моторные масла, смазочные материалы, тормозные жидкости и антифризы', 'Игры и игрушки для детей']
+const DEFAULT_MZKM_GROUPS = ['Обувные товары', 'Белье постельное, столовое, туалетное и кухонное', 'Предметы одежды', 'Духи и туалетная вода', 'Фотокамеры (кроме кинокамер), фотовспышки и лампы-вспышки', 'Молочная продукция', 'Продукты, используемые для кормления животных', 'Косметика, бытовая химия и товары личной гигиены', 'Моторные масла, смазочные материалы, тормозные жидкости и антифризы', 'Игры и игрушки для детей', 'Бакалея']
 const DEFAULT_INTERNAL_GROUPS = [
  { name: 'Алкоголь', description: 'Национальная внутренняя маркировка Кыргызской Республики. Применимость и способ маркировки проверять по действующим актам КР и официальным методическим правилам.', source: 'https://main.teksher.kg/internal-marking.html' },
  { name: 'Табак', description: 'Национальная внутренняя маркировка Кыргызской Республики. Для конкретного вида продукции проверять действующие требования и методические правила.', source: 'https://main.teksher.kg/internal-marking.html' }
@@ -1868,7 +1869,7 @@ function loadProductGroups() {
  try {
   const saved = JSON.parse(window.localStorage.getItem(PRODUCT_GROUPS_STORAGE_KEY) || 'null')
   if (saved && Array.isArray(saved.mzkmGroups) && Array.isArray(saved.internalGroups)) {
-   return { ...saved, mzkmDetails: saved.mzkmDetails && typeof saved.mzkmDetails === 'object' ? saved.mzkmDetails : {} }
+   return { ...saved, mzkmGroups: [...new Set([...DEFAULT_MZKM_GROUPS, ...saved.mzkmGroups])], mzkmDetails: saved.mzkmDetails && typeof saved.mzkmDetails === 'object' ? saved.mzkmDetails : {} }
   }
  } catch { /* defaults */ }
  return { mzkmGroups: DEFAULT_MZKM_GROUPS, internalGroups: DEFAULT_INTERNAL_GROUPS, mzkmDetails: {} }
