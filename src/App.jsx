@@ -1869,7 +1869,7 @@ function loadProductGroups() {
  try {
   const saved = JSON.parse(window.localStorage.getItem(PRODUCT_GROUPS_STORAGE_KEY) || 'null')
   if (saved && Array.isArray(saved.mzkmGroups) && Array.isArray(saved.internalGroups)) {
-   return { ...saved, mzkmDetails: saved.mzkmDetails && typeof saved.mzkmDetails === 'object' ? saved.mzkmDetails : {} }
+   return { ...saved, mzkmGroups: [...new Set([...DEFAULT_MZKM_GROUPS, ...saved.mzkmGroups])], mzkmDetails: saved.mzkmDetails && typeof saved.mzkmDetails === 'object' ? saved.mzkmDetails : {} }
   }
  } catch { /* defaults */ }
  return { mzkmGroups: DEFAULT_MZKM_GROUPS, internalGroups: DEFAULT_INTERNAL_GROUPS, mzkmDetails: {} }
