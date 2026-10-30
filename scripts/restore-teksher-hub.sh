@@ -5,8 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 if [[ $# -ne 2 ]]; then
-  echo "Использование: bash scripts/restore-teksher-hub.sh <database.dump> <uploads.tar.gz>" >&2
-  exit 2
+	echo "Использование: bash scripts/restore-teksher-hub.sh <database.dump> <uploads.tar.gz>" >&2
+	exit 2
 fi
 
 DB_BACKUP="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
@@ -17,27 +17,38 @@ DB_NAME="${DB_NAME:-}"
 DB_USERNAME="${DB_USERNAME:-}"
 BACKUP_DIR="${BACKUP_DIR:-$ROOT_DIR/backups}"
 
-[[ -s "$DB_BACKUP" ]] || { echo "Ошибка: дамп базы не найден или пуст: $DB_BACKUP" >&2; exit 1; }
-[[ -s "$UPLOADS_BACKUP" ]] || { echo "Ошибка: архив вложений не найден или пуст: $UPLOADS_BACKUP" >&2; exit 1; }
-command -v docker >/dev/null 2>&1 || { echo "Ошибка: Docker не найден." >&2; exit 1; }
-docker compose version >/dev/null 2>&1 || { echo "Ошибка: Docker Compose недоступен." >&2; exit 1; }
+[[ -s "$DB_BACKUP" ]] || {
+	echo "Ошибка: дамп базы не найден или пуст: $DB_BACKUP" >&2
+	exit 1
+}
+[[ -s "$UPLOADS_BACKUP" ]] || {
+	echo "Ошибка: архив вложений не найден или пуст: $UPLOADS_BACKUP" >&2
+	exit 1
+}
+command -v docker >/dev/null 2>&1 || {
+	echo "Ошибка: Docker не найден." >&2
+	exit 1
+}
+docker compose version >/dev/null 2>&1 || {
+	echo "Ошибка: Docker Compose недоступен." >&2
+	exit 1
+}
 docker compose ps --status running --services | grep -Fx "$DB_SERVICE" >/dev/null || {
-  echo "Ошибка: сервис базы данных '$DB_SERVICE' не запущен." >&2
-  exit 1
+	echo "Ошибка: сервис базы данных '$DB_SERVICE' не запущен." >&2
+	exit 1
 }
 if [[ -z "$DB_USERNAME" ]]; then
-  DB_USERNAME="$(docker compose exec -T "$DB_SERVICE" sh -c 'printf "%s" "${POSTGRES_USER:-teksher}"' | tr -d '\r')"
+	DB_USERNAME="$(docker compose exec -T "$DB_SERVICE" sh -c 'printf "%s" "${POSTGRES_USER:-teksher}"' | tr -d '\r')"
 fi
 if [[ -z "$DB_NAME" ]]; then
-  DB_NAME="$(docker compose exec -T "$DB_SERVICE" sh -c 'printf "%s" "${POSTGRES_DB:-teksher_hub}"' | tr -d '\r')"
+	DB_NAME="$(docker compose exec -T "$DB_SERVICE" sh -c 'printf "%s" "${POSTGRES_DB:-teksher_hub}"' | tr -d '\r')"
 fi
 
-
 echo "Проверяю структуру резервных копий..."
-docker compose exec -T "$DB_SERVICE" pg_restore --list < "$DB_BACKUP" >/dev/null
+docker compose exec -T "$DB_SERVICE" pg_restore --list <"$DB_BACKUP" >/dev/null
 python3 scripts/validate_uploads_archive.py "$UPLOADS_BACKUP" || {
-  echo "Ошибка: архив вложений не прошёл проверку безопасности." >&2
-  exit 1
+	echo "Ошибка: архив вложений не прошёл проверку безопасности." >&2
+	exit 1
 }
 
 cat <<'WARNING'
@@ -46,17 +57,20 @@ cat <<'WARNING'
 Сначала убедись, что выбраны правильные файлы и сервисы.
 WARNING
 read -r -p "Для продолжения введи RESTORE: " confirmation
-[[ "$confirmation" == "RESTORE" ]] || { echo "Восстановление отменено."; exit 1; }
+[[ "$confirmation" == "RESTORE" ]] || {
+	echo "Восстановление отменено."
+	exit 1
+}
 
 echo "Создаю аварийную копию текущей базы и вложений перед восстановлением..."
 DB_SERVICE="$DB_SERVICE" API_SERVICE="$API_SERVICE" BACKUP_DIR="$BACKUP_DIR" \
-  DB_NAME="$DB_NAME" DB_USERNAME="$DB_USERNAME" bash scripts/backup-teksher-hub.sh
+	DB_NAME="$DB_NAME" DB_USERNAME="$DB_USERNAME" bash scripts/backup-teksher-hub.sh
 
 api_stopped=0
 restart_api() {
-  if [[ "$api_stopped" -eq 1 ]]; then
-    docker compose start "$API_SERVICE" >/dev/null || true
-  fi
+	if [[ "$api_stopped" -eq 1 ]]; then
+		docker compose start "$API_SERVICE" >/dev/null || true
+	fi
 }
 trap restart_api EXIT
 
@@ -66,12 +80,12 @@ api_stopped=1
 
 echo "Восстанавливаю PostgreSQL..."
 docker compose exec -T "$DB_SERVICE" pg_restore --clean --if-exists --no-owner --no-acl --exit-on-error \
-  -U "$DB_USERNAME" -d "$DB_NAME" < "$DB_BACKUP"
+	-U "$DB_USERNAME" -d "$DB_NAME" <"$DB_BACKUP"
 
 echo "Заменяю архив вложений..."
 docker compose run -T --rm --no-deps --entrypoint sh "$API_SERVICE" -c \
-  'set -eu; mkdir -p /app/uploads; find /app/uploads -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +; tar -xzf - -C /app' \
-  < "$UPLOADS_BACKUP"
+	'set -eu; mkdir -p /app/uploads; find /app/uploads -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +; tar -xzf - -C /app' \
+	<"$UPLOADS_BACKUP"
 
 docker compose start "$API_SERVICE"
 api_stopped=0

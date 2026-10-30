@@ -1,13 +1,47 @@
 -- Add distinct national internal-marking group cards based on the current published Teksher registration page.
 -- These are not copied from the ten MZKM v2.1 product groups.
 -- Group entries start UNDER_REVIEW until the relevant national methodology and legal basis are verified.
-
-INSERT INTO documents (
- id,title,jurisdiction,kind,area,product_group,keywords,document_number,
- document_date,effective_from,effective_until,source_url,description,content,status,
- official_source_checked_at,source_check_note,created_by,updated_by,created_at,updated_at,version_number
-) VALUES
-('b7000000-0000-4000-8000-000000000001'::uuid,'Внутренняя товарная группа КР: алкоголь','KG','Товарная группа','Внутренняя маркировка КР','Алкоголь','внутренняя маркировка, алкоголь, КР, Кыргызская Республика, национальный перечень, DataMatrix, методические правила',NULL,NULL,NULL,NULL,'https://main.teksher.kg/register.html','Официальная страница регистрации «Текшер» перечисляет «Алкоголь» в разделе внутренней маркировки. Конкретный механизм маркировки и обязательность проверяются по действующим НПА и методическим правилам.','ОФИЦИАЛЬНЫЕ ИСТОЧНИКИ:
+INSERT INTO
+  documents (
+    id,
+    title,
+    jurisdiction,
+    kind,
+    area,
+    product_group,
+    keywords,
+    document_number,
+    document_date,
+    effective_from,
+    effective_until,
+    source_url,
+    description,
+    content,
+    status,
+    official_source_checked_at,
+    source_check_note,
+    created_by,
+    updated_by,
+    created_at,
+    updated_at,
+    version_number
+  )
+VALUES
+  (
+    'b7000000-0000-4000-8000-000000000001'::uuid,
+    'Внутренняя товарная группа КР: алкоголь',
+    'KG',
+    'Товарная группа',
+    'Внутренняя маркировка КР',
+    'Алкоголь',
+    'внутренняя маркировка, алкоголь, КР, Кыргызская Республика, национальный перечень, DataMatrix, методические правила',
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    'https://main.teksher.kg/register.html',
+    'Официальная страница регистрации «Текшер» перечисляет «Алкоголь» в разделе внутренней маркировки. Конкретный механизм маркировки и обязательность проверяются по действующим НПА и методическим правилам.',
+    'ОФИЦИАЛЬНЫЕ ИСТОЧНИКИ:
 • Регистрация «Текшер» – единый перечень групп по направлениям, где в блоке «Внутренняя маркировка» указан «Алкоголь»: https://main.teksher.kg/register.html
 • Страница «Внутренняя маркировка»: https://main.teksher.kg/internal-marking.html
 • Страница «О проекте» со ссылкой на методические правила для алкогольной продукции: https://main.teksher.kg/about.html
@@ -22,8 +56,31 @@ INSERT INTO documents (
 3. Проверить применимый механизм, требования к коду/марке, сроки и исключения.
 4. Не переносить правила российского «Честного ЗНАКА» или процесс МЗКМ на национальную процедуру КР без прямого правового/технического основания.
 
-Страница регистрации подтверждает наличие названия группы в опубликованном перечне оператора, но сама по себе не описывает полный порядок эмиссии, нанесения и отчетности. Эти детали нужно брать из актуальной методики и нормативных актов.','UNDER_REVIEW',NULL,'Перечень группы взят с официальной страницы «Текшер»; действующие требования/методику сверить перед применением.','internal-groups-seed','internal-groups-seed',NOW(),NOW(),1),
-('b7000000-0000-4000-8000-000000000002'::uuid,'Внутренняя товарная группа КР: табак','KG','Товарная группа','Внутренняя маркировка КР','Табак','внутренняя маркировка, табак, сигареты, нагреваемый табак, КР, Кыргызская Республика, национальный перечень, методические правила',NULL,NULL,NULL,NULL,'https://main.teksher.kg/register.html','Официальная страница регистрации «Текшер» перечисляет «Табак» в разделе внутренней маркировки. Для разных видов табачных изделий требования и порядок проверки по действующим НПА.','ОФИЦИАЛЬНЫЕ ИСТОЧНИКИ:
+Страница регистрации подтверждает наличие названия группы в опубликованном перечне оператора, но сама по себе не описывает полный порядок эмиссии, нанесения и отчетности. Эти детали нужно брать из актуальной методики и нормативных актов.',
+    'UNDER_REVIEW',
+    NULL,
+    'Перечень группы взят с официальной страницы «Текшер»; действующие требования/методику сверить перед применением.',
+    'internal-groups-seed',
+    'internal-groups-seed',
+    NOW(),
+    NOW(),
+    1
+  ),
+  (
+    'b7000000-0000-4000-8000-000000000002'::uuid,
+    'Внутренняя товарная группа КР: табак',
+    'KG',
+    'Товарная группа',
+    'Внутренняя маркировка КР',
+    'Табак',
+    'внутренняя маркировка, табак, сигареты, нагреваемый табак, КР, Кыргызская Республика, национальный перечень, методические правила',
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    'https://main.teksher.kg/register.html',
+    'Официальная страница регистрации «Текшер» перечисляет «Табак» в разделе внутренней маркировки. Для разных видов табачных изделий требования и порядок проверки по действующим НПА.',
+    'ОФИЦИАЛЬНЫЕ ИСТОЧНИКИ:
 • Регистрация «Текшер» – в блоке «Внутренняя маркировка» перечислен «Табак»: https://main.teksher.kg/register.html
 • Страница «Внутренняя маркировка»: https://main.teksher.kg/internal-marking.html
 • Страница «О проекте» со ссылкой на методические правила для сигарет и изделий с нагреваемым табаком: https://main.teksher.kg/about.html
@@ -38,18 +95,72 @@ INSERT INTO documents (
 3. Установить код ТН ВЭД, применимый способ маркировки, сроки и исключения.
 4. Не подменять национальные требования процедурами российского «Честного ЗНАКА» или общего перечня МЗКМ.
 
-Публичная страница регистрации подтверждает название группы, но не заменяет нормативный акт и актуальную техническую инструкцию оператора.','UNDER_REVIEW',NULL,'Перечень группы взят с официальной страницы «Текшер»; действующие требования/методику сверить перед применением.','internal-groups-seed','internal-groups-seed',NOW(),NOW(),1)
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO document_versions (
- document_id,version_number,title,jurisdiction,kind,area,product_group,keywords,
- document_number,document_date,effective_from,effective_until,source_url,description,content,status,
- related_document_ids,change_note,changed_by,created_at
-)
-SELECT id,version_number,title,jurisdiction,kind,area,product_group,keywords,
- document_number,document_date,effective_from,effective_until,source_url,description,content,status,
- '', 'Первичное добавление отдельной внутренней товарной группы КР по официальному перечню оператора; методику и правовую применимость проверить.',
- 'internal-groups-seed', NOW()
-FROM documents
-WHERE id IN ('b7000000-0000-4000-8000-000000000001'::uuid,'b7000000-0000-4000-8000-000000000002'::uuid)
-ON CONFLICT (document_id,version_number) DO NOTHING;
+Публичная страница регистрации подтверждает название группы, но не заменяет нормативный акт и актуальную техническую инструкцию оператора.',
+    'UNDER_REVIEW',
+    NULL,
+    'Перечень группы взят с официальной страницы «Текшер»; действующие требования/методику сверить перед применением.',
+    'internal-groups-seed',
+    'internal-groups-seed',
+    NOW(),
+    NOW(),
+    1
+  )
+ON CONFLICT
+  (id)
+DO NOTHING
+;
+INSERT INTO
+  document_versions (
+    document_id,
+    version_number,
+    title,
+    jurisdiction,
+    kind,
+    area,
+    product_group,
+    keywords,
+    document_number,
+    document_date,
+    effective_from,
+    effective_until,
+    source_url,
+    description,
+    content,
+    status,
+    related_document_ids,
+    change_note,
+    changed_by,
+    created_at
+  )
+SELECT
+  id,
+  version_number,
+  title,
+  jurisdiction,
+  kind,
+  area,
+  product_group,
+  keywords,
+  document_number,
+  document_date,
+  effective_from,
+  effective_until,
+  source_url,
+  description,
+  content,
+  status,
+  '',
+  'Первичное добавление отдельной внутренней товарной группы КР по официальному перечню оператора; методику и правовую применимость проверить.',
+  'internal-groups-seed',
+  NOW()
+FROM
+  documents
+WHERE
+  id IN (
+    'b7000000-0000-4000-8000-000000000001'::uuid,
+    'b7000000-0000-4000-8000-000000000002'::uuid
+  )
+ON CONFLICT
+  (document_id, version_number)
+DO NOTHING
+;

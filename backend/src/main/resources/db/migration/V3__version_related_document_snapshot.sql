@@ -1,1 +1,4 @@
-ALTER TABLE document_versions ADD COLUMN related_document_ids TEXT NOT NULL DEFAULT '';
+ALTER TABLE
+  document_versions
+ADD
+  COLUMN related_document_ids TEXT NOT NULL DEFAULT '';

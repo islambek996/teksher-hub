@@ -7,19 +7,35 @@ import { fileURLToPath } from "node:url";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
-const fixturePath = path.join(repoRoot, "backend/src/test/resources/ai-golden-set.json");
+const fixturePath = path.join(
+  repoRoot,
+  "backend/src/test/resources/ai-golden-set.json",
+);
 const reportPath = path.join(repoRoot, "backend/target/ai-golden-results.json");
-const baseUrl = (process.env.TEKSHER_API_BASE_URL || "http://localhost:8080").replace(/\/$/, "");
+const baseUrl = (
+  process.env.TEKSHER_API_BASE_URL || "http://localhost:8080"
+).replace(/\/$/, "");
 const token = process.env.TEKSHER_API_TOKEN || "";
-const rateLimitCooldownMs = Math.max(1_000, Number(process.env.TEKSHER_AI_RATE_LIMIT_COOLDOWN_MS || 65_000));
-const maxRateLimitRetries = Math.max(0, Number(process.env.TEKSHER_AI_RATE_LIMIT_RETRIES ?? 1));
+const rateLimitCooldownMs = Math.max(
+  1_000,
+  Number(process.env.TEKSHER_AI_RATE_LIMIT_COOLDOWN_MS || 65_000),
+);
+const maxRateLimitRetries = Math.max(
+  0,
+  Number(process.env.TEKSHER_AI_RATE_LIMIT_RETRIES ?? 1),
+);
 
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const isRateLimitResponse = (status, body) =>
-  status === 429 || /ограничил запросы|rate.?limit|too many requests|\b429\b/i.test(String(body || ""));
+  status === 429 ||
+  /ограничил запросы|rate.?limit|too many requests|\b429\b/i.test(
+    String(body || ""),
+  );
 
 if (!token) {
-  console.error("TEKSHER_API_TOKEN is required. Supply a temporary bearer token for a test account.");
+  console.error(
+    "TEKSHER_API_TOKEN is required. Supply a temporary bearer token for a test account.",
+  );
   process.exit(2);
 }
 
@@ -28,31 +44,51 @@ const validCitationPattern = /\[(\d{1,2})\]/g;
 const staleStatuses = new Set(["DRAFT", "UNDER_REVIEW", "EXPIRED", "ARCHIVED"]);
 const officialHosts = {
   KG: ["cbd.minjust.gov.kg", "minjust.gov.kg", "gov.kg", "teksher.kg"],
-  RU: ["publication.pravo.gov.ru", "pravo.gov.ru", "government.ru", "xn--80ajghhoc2aj1c8b.xn--p1ai", "docs.crpt.ru"],
-  EAEU: ["eec.eaeunion.org", "docs.eaeunion.org"]
+  RU: [
+    "publication.pravo.gov.ru",
+    "pravo.gov.ru",
+    "government.ru",
+    "xn--80ajghhoc2aj1c8b.xn--p1ai",
+    "docs.crpt.ru",
+  ],
+  EAEU: ["eec.eaeunion.org", "docs.eaeunion.org"],
 };
 
 function isHostIn(host, allowedHosts) {
-  return allowedHosts.some(allowed => host === allowed || host.endsWith("." + allowed));
+  return allowedHosts.some(
+    (allowed) => host === allowed || host.endsWith("." + allowed),
+  );
 }
 
 function isOfficialWebEvidence(source, jurisdiction) {
-  if (source?.sourceType !== "WEB" || !officialHosts[jurisdiction]) return false;
+  if (source?.sourceType !== "WEB" || !officialHosts[jurisdiction])
+    return false;
   try {
     const url = new URL(source.sourceUrl);
-    return url.protocol === "https:" && isHostIn(url.hostname.toLowerCase(), officialHosts[jurisdiction]);
+    return (
+      url.protocol === "https:" &&
+      isHostIn(url.hostname.toLowerCase(), officialHosts[jurisdiction])
+    );
   } catch {
     return false;
   }
 }
 
 function hasInsufficientEvidenceLanguage(answer) {
-  const text = String(answer || "").toLowerCase().replaceAll("ё", "е");
+  const text = String(answer || "")
+    .toLowerCase()
+    .replaceAll("ё", "е");
   return [
-    "не нашлось материалов", "не подтверждено", "недостаточно данных",
-    "недостаточно информации", "не удалось найти", "нет подтверждения",
-    "не указано в источниках", "информация отсутствует", "маалымат жетишсиз"
-  ].some(phrase => text.includes(phrase));
+    "не нашлось материалов",
+    "не подтверждено",
+    "недостаточно данных",
+    "недостаточно информации",
+    "не удалось найти",
+    "нет подтверждения",
+    "не указано в источниках",
+    "информация отсутствует",
+    "маалымат жетишсиз",
+  ].some((phrase) => text.includes(phrase));
 }
 
 async function evaluateCase(item, index) {
@@ -64,12 +100,12 @@ async function evaluateCase(item, index) {
       response = await fetch(baseUrl + "/api/ai/ask", {
         method: "POST",
         headers: {
-          "Authorization": "Bearer " + token,
+          Authorization: "Bearer " + token,
           "Content-Type": "application/json",
-          "Accept": "application/json"
+          Accept: "application/json",
         },
         body: JSON.stringify({ question: item.question, history: [] }),
-        signal: AbortSignal.timeout(75_000)
+        signal: AbortSignal.timeout(75_000),
       });
       responseText = await response.text();
     } catch (error) {
@@ -78,21 +114,23 @@ async function evaluateCase(item, index) {
         question: item.question,
         expectedJurisdiction: item.expectedJurisdiction,
         automatedPass: false,
-        error: String(error)
+        error: String(error),
       };
     }
 
-    const rateLimited = !response.ok && isRateLimitResponse(response.status, responseText);
+    const rateLimited =
+      !response.ok && isRateLimitResponse(response.status, responseText);
     if (!rateLimited || rateLimitRetries >= maxRateLimitRetries) break;
 
     rateLimitRetries++;
     const retryAfterSeconds = Number(response.headers.get("retry-after"));
-    const retryDelay = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
-      ? Math.max(rateLimitCooldownMs, retryAfterSeconds * 1_000)
-      : rateLimitCooldownMs;
+    const retryDelay =
+      Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+        ? Math.max(rateLimitCooldownMs, retryAfterSeconds * 1_000)
+        : rateLimitCooldownMs;
     console.warn(
       `[RATE LIMIT] ${item.id}: retrying in ${Math.ceil(retryDelay / 1_000)}s ` +
-      `(retry ${rateLimitRetries}/${maxRateLimitRetries}).`
+        `(retry ${rateLimitRetries}/${maxRateLimitRetries}).`,
     );
     await sleep(retryDelay);
   }
@@ -104,7 +142,7 @@ async function evaluateCase(item, index) {
       expectedJurisdiction: item.expectedJurisdiction,
       automatedPass: false,
       httpStatus: response.status,
-      error: responseText.slice(0, 2_000)
+      error: responseText.slice(0, 2_000),
     };
   }
 
@@ -118,63 +156,103 @@ async function evaluateCase(item, index) {
       expectedJurisdiction: item.expectedJurisdiction,
       automatedPass: false,
       error: "The API returned a non-JSON response",
-      responseText: responseText.slice(0, 2_000)
+      responseText: responseText.slice(0, 2_000),
     };
   }
 
   const answer = typeof data.answer === "string" ? data.answer : "";
   const sources = Array.isArray(data.sources) ? data.sources : [];
-  const availableNumbers = new Set(sources.map(source => Number(source.number)).filter(Number.isFinite));
-  const citedNumbers = [...answer.matchAll(validCitationPattern)].map(match => Number(match[1]));
-  const invalidCitations = citedNumbers.filter(number => !availableNumbers.has(number));
-  const citationGuardWarning = answer.includes("не удалось сопоставить с найденными материалами");
+  const availableNumbers = new Set(
+    sources.map((source) => Number(source.number)).filter(Number.isFinite),
+  );
+  const citedNumbers = [...answer.matchAll(validCitationPattern)].map((match) =>
+    Number(match[1]),
+  );
+  const invalidCitations = citedNumbers.filter(
+    (number) => !availableNumbers.has(number),
+  );
+  const citationGuardWarning = answer.includes(
+    "не удалось сопоставить с найденными материалами",
+  );
   const answerExplicitlyAbstains = hasInsufficientEvidenceLanguage(answer);
-  const noCitationButConfident = !answerExplicitlyAbstains && citedNumbers.length === 0;
-  const documentSources = sources.filter(source => source.sourceType === "DOCUMENT");
-  const flaggedDocumentSources = documentSources.filter(source => staleStatuses.has(String(source.status || "").toUpperCase()));
+  const noCitationButConfident =
+    !answerExplicitlyAbstains && citedNumbers.length === 0;
+  const documentSources = sources.filter(
+    (source) => source.sourceType === "DOCUMENT",
+  );
+  const flaggedDocumentSources = documentSources.filter((source) =>
+    staleStatuses.has(String(source.status || "").toUpperCase()),
+  );
   const requiresStatusWarning = flaggedDocumentSources.length > 0;
-  const statusWarningPresent = answer.includes("среди найденных материалов есть документы со статусом");
+  const statusWarningPresent = answer.includes(
+    "среди найденных материалов есть документы со статусом",
+  );
   const today = new Date().toISOString().slice(0, 10);
-  const activeDateConflicts = documentSources.filter(source => {
+  const activeDateConflicts = documentSources.filter((source) => {
     if (String(source.status || "").toUpperCase() !== "ACTIVE") return false;
     const from = source.effectiveFrom || null;
     const until = source.effectiveUntil || null;
-    return (from && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(from) || from > today)) ||
-      (until && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(until) || until < today));
+    return (
+      (from && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(from) || from > today)) ||
+      (until && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(until) || until < today))
+    );
   });
-  const dateWarningPresent = answer.includes("указанный период дат не покрывает текущую дату");
+  const dateWarningPresent = answer.includes(
+    "указанный период дат не покрывает текущую дату",
+  );
 
   let matchedJurisdictionSources = [];
   let jurisdictionMismatch = false;
   if (item.expectedJurisdiction && item.expectedJurisdiction !== "NONE") {
-    matchedJurisdictionSources = sources.filter(source =>
-      (source.sourceType === "DOCUMENT" &&
-        String(source.jurisdiction || "").toUpperCase() === item.expectedJurisdiction) ||
-      isOfficialWebEvidence(source, item.expectedJurisdiction)
+    matchedJurisdictionSources = sources.filter(
+      (source) =>
+        (source.sourceType === "DOCUMENT" &&
+          String(source.jurisdiction || "").toUpperCase() ===
+            item.expectedJurisdiction) ||
+        isOfficialWebEvidence(source, item.expectedJurisdiction),
     );
-    jurisdictionMismatch = matchedJurisdictionSources.length === 0 &&
+    jurisdictionMismatch =
+      matchedJurisdictionSources.length === 0 &&
       !(data.insufficientEvidence && hasInsufficientEvidenceLanguage(answer));
   }
 
-  const normalizedAnswer = answer.toLowerCase().replaceAll("ё", "е").replace(/[\\s\\u00a0]/g, "");
-  const claimsUnverifiedHighLimit = item.id === "LIMIT_MUST_NOT_BE_GUESSED" &&
+  const normalizedAnswer = answer
+    .toLowerCase()
+    .replaceAll("ё", "е")
+    .replace(/[\\s\\u00a0]/g, "");
+  const claimsUnverifiedHighLimit =
+    item.id === "LIMIT_MUST_NOT_BE_GUESSED" &&
     /(?:5000|5тысяч|пятьтысяч)/i.test(normalizedAnswer);
-  const claimsUnverifiedHighLimitWithoutCurrentEvidence = claimsUnverifiedHighLimit &&
-    !sources.some(source =>
-      source.sourceType === "DOCUMENT" &&
-      String(source.status || "").toUpperCase() === "ACTIVE" &&
-      /(?:лимит|заказ|код маркировки)/i.test(String(source.title || "") + " " + String(source.excerpt || ""))
+  const claimsUnverifiedHighLimitWithoutCurrentEvidence =
+    claimsUnverifiedHighLimit &&
+    !sources.some(
+      (source) =>
+        source.sourceType === "DOCUMENT" &&
+        String(source.status || "").toUpperCase() === "ACTIVE" &&
+        /(?:лимит|заказ|код маркировки)/i.test(
+          String(source.title || "") + " " + String(source.excerpt || ""),
+        ),
     );
 
   const checks = {
-    validResponseSchema: Boolean(answer) && Array.isArray(data.sources) && typeof data.insufficientEvidence === "boolean",
-    doesNotAssertUnverifiedFiveThousandCodeLimit: !claimsUnverifiedHighLimitWithoutCurrentEvidence,
-    citationNumbersMapToReturnedSources: invalidCitations.length === 0 && !citationGuardWarning,
+    validResponseSchema:
+      Boolean(answer) &&
+      Array.isArray(data.sources) &&
+      typeof data.insufficientEvidence === "boolean",
+    doesNotAssertUnverifiedFiveThousandCodeLimit:
+      !claimsUnverifiedHighLimitWithoutCurrentEvidence,
+    citationNumbersMapToReturnedSources:
+      invalidCitations.length === 0 && !citationGuardWarning,
     noConfidentAnswerWithoutCitation: !noCitationButConfident,
-    statusWarningWhenUsingUnreviewedOrArchivedDocuments: !requiresStatusWarning || statusWarningPresent,
-    dateWarningWhenActiveDocumentDatesConflict: activeDateConflicts.length === 0 || dateWarningPresent,
+    statusWarningWhenUsingUnreviewedOrArchivedDocuments:
+      !requiresStatusWarning || statusWarningPresent,
+    dateWarningWhenActiveDocumentDatesConflict:
+      activeDateConflicts.length === 0 || dateWarningPresent,
     jurisdictionHasSupportingSourceOrAssistantAbstains: !jurisdictionMismatch,
-    insufficientEvidenceFlagConsistentWithFallback: !(hasInsufficientEvidenceLanguage(answer) && data.insufficientEvidence === false)
+    insufficientEvidenceFlagConsistentWithFallback: !(
+      hasInsufficientEvidenceLanguage(answer) &&
+      data.insufficientEvidence === false
+    ),
   };
 
   return {
@@ -190,7 +268,7 @@ async function evaluateCase(item, index) {
     operationalReferenceNote: item.operationalReferenceNote || null,
     answer,
     insufficientEvidence: data.insufficientEvidence,
-    sources: sources.map(source => ({
+    sources: sources.map((source) => ({
       number: source.number,
       type: source.sourceType,
       title: source.title,
@@ -200,7 +278,7 @@ async function evaluateCase(item, index) {
       effectiveFrom: source.effectiveFrom,
       effectiveUntil: source.effectiveUntil,
       excerpt: source.excerpt,
-      sourceUrl: source.sourceUrl
+      sourceUrl: source.sourceUrl,
     })),
     automatedChecks: checks,
     automatedPass: Object.values(checks).every(Boolean),
@@ -208,20 +286,31 @@ async function evaluateCase(item, index) {
     debug: {
       citedNumbers,
       invalidCitations,
-      flaggedDocumentSources: flaggedDocumentSources.map(source => source.title),
-      activeDateConflicts: activeDateConflicts.map(source => source.title),
-      matchingJurisdictionSources: matchedJurisdictionSources.map(source => source.title),
+      flaggedDocumentSources: flaggedDocumentSources.map(
+        (source) => source.title,
+      ),
+      activeDateConflicts: activeDateConflicts.map((source) => source.title),
+      matchingJurisdictionSources: matchedJurisdictionSources.map(
+        (source) => source.title,
+      ),
       claimsUnverifiedHighLimit,
-      claimsUnverifiedHighLimitWithoutCurrentEvidence
-    }
+      claimsUnverifiedHighLimitWithoutCurrentEvidence,
+    },
   };
 }
 
 console.log("TEKSHER HUB AI golden-set evaluation");
 console.log("Base URL:", baseUrl);
 console.log("Cases:", cases.length);
-console.log("Rate-limit cooldown:", Math.ceil(rateLimitCooldownMs / 1_000), "seconds; retries per case:", maxRateLimitRetries);
-console.log("Note: automated checks do not replace a reviewer comparing each answer with the cited legal text.");
+console.log(
+  "Rate-limit cooldown:",
+  Math.ceil(rateLimitCooldownMs / 1_000),
+  "seconds; retries per case:",
+  maxRateLimitRetries,
+);
+console.log(
+  "Note: automated checks do not replace a reviewer comparing each answer with the cited legal text.",
+);
 
 const results = [];
 for (let index = 0; index < cases.length; index++) {
@@ -236,7 +325,11 @@ for (let index = 0; index < cases.length; index++) {
       if (!passed) console.log("  Failed check:", name);
     }
   }
-  if (result.answer) console.log("  Answer preview:", result.answer.replace(/\s+/g, " ").slice(0, 240));
+  if (result.answer)
+    console.log(
+      "  Answer preview:",
+      result.answer.replace(/\s+/g, " ").slice(0, 240),
+    );
   console.log("  Sources:", result.sources?.length ?? 0);
 }
 
@@ -244,14 +337,16 @@ const summary = {
   generatedAt: new Date().toISOString(),
   baseUrl,
   total: results.length,
-  passed: results.filter(result => result.automatedPass).length,
-  failed: results.filter(result => !result.automatedPass).length,
+  passed: results.filter((result) => result.automatedPass).length,
+  failed: results.filter((result) => !result.automatedPass).length,
   manualFactReviewRequired: true,
   note: "Each answer must still be compared with expectedFacts, forbiddenClaims, reviewCriterion and the actual source text.",
-  results
+  results,
 };
 await mkdir(path.dirname(reportPath), { recursive: true });
 await writeFile(reportPath, JSON.stringify(summary, null, 2) + "\n", "utf8");
 console.log(`Report written to ${reportPath}`);
-console.log(`Summary: ${summary.passed}/${summary.total} automated checks passed`);
+console.log(
+  `Summary: ${summary.passed}/${summary.total} automated checks passed`,
+);
 if (summary.failed > 0) process.exit(1);

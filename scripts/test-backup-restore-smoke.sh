@@ -12,9 +12,9 @@ source_db="teksher_restore_smoke_source"
 target_db="teksher_restore_smoke_target"
 work_dir="$(mktemp -d)"
 cleanup() {
-  psql -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "DROP DATABASE IF EXISTS $target_db" >/dev/null 2>&1 || true
-  psql -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "DROP DATABASE IF EXISTS $source_db" >/dev/null 2>&1 || true
-  rm -rf "$work_dir"
+	psql -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "DROP DATABASE IF EXISTS $target_db" >/dev/null 2>&1 || true
+	psql -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "DROP DATABASE IF EXISTS $source_db" >/dev/null 2>&1 || true
+	rm -rf "$work_dir"
 }
 trap cleanup EXIT
 
@@ -32,11 +32,14 @@ psql -v ON_ERROR_STOP=1 -d "$PGDATABASE" -c "CREATE DATABASE $target_db" >/dev/n
 echo "Restoring PostgreSQL backup into a clean database..."
 docker run --rm --network host --env PGPASSWORD --env PGHOST --env PGPORT --env PGUSER --volume "$work_dir:/backup" postgres:16-alpine pg_restore --no-owner --no-acl --exit-on-error --dbname="$target_db" /backup/database.dump
 restored_value="$(psql -v ON_ERROR_STOP=1 -At -d "$target_db" -c "SELECT marker FROM recovery_probe WHERE id = 1")"
-[[ "$restored_value" == "restored-row-ok" ]] || { echo "Database recovery verification failed." >&2; exit 1; }
+[[ "$restored_value" == "restored-row-ok" ]] || {
+	echo "Database recovery verification failed." >&2
+	exit 1
+}
 
 echo "Creating and validating uploads archive..."
 mkdir -p "$work_dir/source/uploads/nested"
-printf '%s\n' "attachment-recovery-ok" > "$work_dir/source/uploads/nested/probe.txt"
+printf '%s\n' "attachment-recovery-ok" >"$work_dir/source/uploads/nested/probe.txt"
 tar -C "$work_dir/source" -czf "$work_dir/uploads.tar.gz" uploads
 python3 scripts/validate_uploads_archive.py "$work_dir/uploads.tar.gz"
 mkdir -p "$work_dir/restored"

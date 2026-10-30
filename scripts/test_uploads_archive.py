@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Unit tests for safe uploads archive validation."""
+
 import io
 import pathlib
 import tarfile
@@ -36,19 +37,23 @@ class UploadsArchiveValidationTest(unittest.TestCase):
         return str(path)
 
     def test_accepts_normal_uploads_archive(self):
-        path = self.create_archive([
-            ("uploads/", "dir", ""),
-            ("uploads/abc.txt", "file", ""),
-            ("uploads/nested/", "dir", ""),
-            ("uploads/nested/def.pdf", "file", ""),
-        ])
+        path = self.create_archive(
+            [
+                ("uploads/", "dir", ""),
+                ("uploads/abc.txt", "file", ""),
+                ("uploads/nested/", "dir", ""),
+                ("uploads/nested/def.pdf", "file", ""),
+            ]
+        )
         validate_archive(path)
 
     def test_rejects_parent_traversal(self):
-        path = self.create_archive([
-            ("uploads/", "dir", ""),
-            ("uploads/../../etc/evil", "file", ""),
-        ])
+        path = self.create_archive(
+            [
+                ("uploads/", "dir", ""),
+                ("uploads/../../etc/evil", "file", ""),
+            ]
+        )
         with self.assertRaises(ValueError):
             validate_archive(path)
 
@@ -62,10 +67,12 @@ class UploadsArchiveValidationTest(unittest.TestCase):
     def test_rejects_symbolic_and_hard_links(self):
         for kind in ("symlink", "hardlink"):
             with self.subTest(kind=kind):
-                path = self.create_archive([
-                    ("uploads/", "dir", ""),
-                    ("uploads/link", kind, "../../etc/passwd"),
-                ])
+                path = self.create_archive(
+                    [
+                        ("uploads/", "dir", ""),
+                        ("uploads/link", kind, "../../etc/passwd"),
+                    ]
+                )
                 with self.assertRaises(ValueError):
                     validate_archive(path)
 
