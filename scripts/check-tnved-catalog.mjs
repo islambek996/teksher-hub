@@ -28,7 +28,7 @@ if (rows.length !== 954) throw new Error(`Expected 954 base normalized records, 
 const bakaleiaRows = JSON.parse(gunzipSync(Buffer.from(fs.readFileSync(bakaleiaFile, 'utf8').trim(), 'base64')).toString('utf8'))
 if (bakaleiaRows.length !== 118) throw new Error(`Expected 118 Bakaleia records, found ${bakaleiaRows.length}`)
 rows = [...rows, ...bakaleiaRows]
-const duplicateCodes = rows.filter((row, index) => rows.findIndex(candidate => candidate.t === row.t && candidate.c === row.c) !== index)
+const duplicateCodes = bakaleiaRows.filter((row, index) => bakaleiaRows.findIndex(candidate => candidate.t === row.t && candidate.c === row.c) !== index)
 if (duplicateCodes.length) throw new Error(`Duplicate TN VED codes after adding Bakaleia: ${duplicateCodes.map(row => row.c).join(', ')}`)
 
 const scopeCounts = rows.reduce((result, row) => {
