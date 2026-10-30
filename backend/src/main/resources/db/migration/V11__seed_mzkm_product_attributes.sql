@@ -1,47 +1,13 @@
 -- Group-specific MZKM product attributes transcribed from the official v0.8 user guide.
 -- This version has a 2025 change log and may not match every 2026 product group.
 -- Seeded as UNDER_REVIEW pending validation against the live form.
-INSERT INTO
-  documents (
-    id,
-    title,
-    jurisdiction,
-    kind,
-    area,
-    product_group,
-    keywords,
-    document_number,
-    document_date,
-    effective_from,
-    effective_until,
-    source_url,
-    description,
-    content,
-    status,
-    official_source_checked_at,
-    source_check_note,
-    created_by,
-    updated_by,
-    created_at,
-    updated_at,
-    version_number
-  )
-VALUES
-  (
-    'b5000000-0000-4000-8000-000000000001'::uuid,
-    'МЗКМ v0.8: атрибуты карточек обуви, одежды и текстиля',
-    'KG',
-    'Техническая документация',
-    'МЗКМ / товарные атрибуты',
-    'Обувь; предметы одежды; постельное и бытовое белье',
-    'обувь, одежда, белье, атрибуты карточки, цвет, состав, размер, материал, модель, артикул',
-    'МЗКМ v0.8, раздел 4.3',
-    NULL,
-    NULL,
-    NULL,
-    'https://main.teksher.kg/files/rukovodstva-polzovatelyz-mzkm-v0.8.pdf',
-    'Поля специфических атрибутов для обуви, предметов одежды и белья по опубликованному руководству МЗКМ; актуальность набора полей проверять в интерфейсе.',
-    'ПЕРВОИСТОЧНИК: официальное руководство пользователя МЗКМ v0.8, раздел 4.3, стр. PDF 16–17: https://main.teksher.kg/files/rukovodstva-polzovatelyz-mzkm-v0.8.pdf (просмотрено 23.10.2026).
+
+INSERT INTO documents (
+ id,title,jurisdiction,kind,area,product_group,keywords,document_number,
+ document_date,effective_from,effective_until,source_url,description,content,status,
+ official_source_checked_at,source_check_note,created_by,updated_by,created_at,updated_at,version_number
+) VALUES
+('b5000000-0000-4000-8000-000000000001'::uuid,'МЗКМ v0.8: атрибуты карточек обуви, одежды и текстиля','KG','Техническая документация','МЗКМ / товарные атрибуты','Обувь; предметы одежды; постельное и бытовое белье','обувь, одежда, белье, атрибуты карточки, цвет, состав, размер, материал, модель, артикул','МЗКМ v0.8, раздел 4.3',NULL,NULL,NULL,'https://main.teksher.kg/files/rukovodstva-polzovatelyz-mzkm-v0.8.pdf','Поля специфических атрибутов для обуви, предметов одежды и белья по опубликованному руководству МЗКМ; актуальность набора полей проверять в интерфейсе.','ПЕРВОИСТОЧНИК: официальное руководство пользователя МЗКМ v0.8, раздел 4.3, стр. PDF 16–17: https://main.teksher.kg/files/rukovodstva-polzovatelyz-mzkm-v0.8.pdf (просмотрено 23.10.2026).
 
 ОБУВНЫЕ ТОВАРЫ – в карточке, помимо общих сведений, руководство указывает: материал верха; материал низа/подошвы; вид обуви; цвет; материал подкладки; модель/артикул производителя; тип; размер в штрихмассовой системе. Некоторые значения выбираются из справочника, материалы и артикул вводятся вручную. Если цвета нет в справочнике, руководство описывает возможность ввести его вручную и добавить значение.
 
@@ -50,31 +16,8 @@ VALUES
 ПРЕДМЕТЫ ОДЕЖДЫ – целевой пол; вид товара; цвет; состав; размер одежды/изделия; тип; модель/артикул производителя; номер регламента/стандарта.
 
 ПЕРЕД ПУБЛИКАЦИЕЙ
-Сверить товарную группу, код ТН ВЭД и обязательность каждого поля в текущей форме. Не подменять атрибутами из старой инструкции текущую схему другой группы (например, игрушек или косметики). Все сведения в этой карточке относятся к набору полей из МЗКМ v0.8; не обязательно, что это актуальная полная схема на 2026 год.',
-    'UNDER_REVIEW',
-    NULL,
-    'Атрибуты переписаны из официального руководства МЗКМ v0.8; проверить по актуальной форме.',
-    'official-manual-seed',
-    'official-manual-seed',
-    NOW(),
-    NOW(),
-    1
-  ),
-  (
-    'b5000000-0000-4000-8000-000000000002'::uuid,
-    'МЗКМ v0.8: атрибуты парфюмерии, фотооборудования и молочной продукции КР',
-    'KG',
-    'Техническая документация',
-    'МЗКМ / товарные атрибуты',
-    'Парфюмерия; фотооборудование; молочная продукция',
-    'духи, туалетная вода, фотоаппараты, фотовспышки, молочная продукция, срок годности, жирность, состав, упаковка',
-    'МЗКМ v0.8, раздел 4.3',
-    NULL,
-    NULL,
-    NULL,
-    'https://main.teksher.kg/files/rukovodstva-polzovatelyz-mzkm-v0.8.pdf',
-    'Поля специфических атрибутов для парфюмерии, фотооборудования и молочной продукции Кыргызской Республики в руководстве МЗКМ v0.8.',
-    'ПЕРВОИСТОЧНИК: официальное руководство пользователя МЗКМ v0.8, раздел 4.3, стр. PDF 17–19: https://main.teksher.kg/files/rukovodstva-polzovatelyz-mzkm-v0.8.pdf (просмотрено 23.10.2026).
+Сверить товарную группу, код ТН ВЭД и обязательность каждого поля в текущей форме. Не подменять атрибутами из старой инструкции текущую схему другой группы (например, игрушек или косметики). Все сведения в этой карточке относятся к набору полей из МЗКМ v0.8; не обязательно, что это актуальная полная схема на 2026 год.','UNDER_REVIEW',NULL,'Атрибуты переписаны из официального руководства МЗКМ v0.8; проверить по актуальной форме.','official-manual-seed','official-manual-seed',NOW(),NOW(),1),
+('b5000000-0000-4000-8000-000000000002'::uuid,'МЗКМ v0.8: атрибуты парфюмерии, фотооборудования и молочной продукции КР','KG','Техническая документация','МЗКМ / товарные атрибуты','Парфюмерия; фотооборудование; молочная продукция','духи, туалетная вода, фотоаппараты, фотовспышки, молочная продукция, срок годности, жирность, состав, упаковка','МЗКМ v0.8, раздел 4.3',NULL,NULL,NULL,'https://main.teksher.kg/files/rukovodstva-polzovatelyz-mzkm-v0.8.pdf','Поля специфических атрибутов для парфюмерии, фотооборудования и молочной продукции Кыргызской Республики в руководстве МЗКМ v0.8.','ПЕРВОИСТОЧНИК: официальное руководство пользователя МЗКМ v0.8, раздел 4.3, стр. PDF 17–19: https://main.teksher.kg/files/rukovodstva-polzovatelyz-mzkm-v0.8.pdf (просмотрено 23.10.2026).
 
 ДУХИ И ТУАЛЕТНАЯ ВОДА – заявленный объем; тип объема; тип парфюмерии; тип упаковки; материал упаковки; номер регламента/стандарта.
 
@@ -86,72 +29,18 @@ VALUES
 В руководстве v0.8 указано: при «Товар с переменным количеством = Да» заполняются диапазоны веса «от» и «до»; при значении «Нет» обязательным становится заявленный объем/вес нетто. Это правило относится к конкретной схеме формы из PDF.
 
 ОГРАНИЧЕНИЕ ВЕРСИИ
-Руководство содержит историю изменений до 2025 года. Текущие поля могут меняться; сверять инструкцию текущего контурa и форму МЗКМ, а для ГАИС МТ использовать отдельные национальные инструкции.',
-    'UNDER_REVIEW',
-    NULL,
-    'Атрибуты переписаны из официального руководства МЗКМ v0.8; проверить по актуальной форме.',
-    'official-manual-seed',
-    'official-manual-seed',
-    NOW(),
-    NOW(),
-    1
-  )
-ON CONFLICT
-  (id)
-DO NOTHING
-;
-INSERT INTO
-  document_versions (
-    document_id,
-    version_number,
-    title,
-    jurisdiction,
-    kind,
-    area,
-    product_group,
-    keywords,
-    document_number,
-    document_date,
-    effective_from,
-    effective_until,
-    source_url,
-    description,
-    content,
-    status,
-    related_document_ids,
-    change_note,
-    changed_by,
-    created_at
-  )
-SELECT
-  id,
-  version_number,
-  title,
-  jurisdiction,
-  kind,
-  area,
-  product_group,
-  keywords,
-  document_number,
-  document_date,
-  effective_from,
-  effective_until,
-  source_url,
-  description,
-  content,
-  status,
-  '',
-  'Добавлено из руководства МЗКМ v0.8; сверить с актуальной формой до применения.',
-  'official-manual-seed',
-  NOW()
-FROM
-  documents
-WHERE
-  id IN (
-    'b5000000-0000-4000-8000-000000000001'::uuid,
-    'b5000000-0000-4000-8000-000000000002'::uuid
-  )
-ON CONFLICT
-  (document_id, version_number)
-DO NOTHING
-;
+Руководство содержит историю изменений до 2025 года. Текущие поля могут меняться; сверять инструкцию текущего контурa и форму МЗКМ, а для ГАИС МТ использовать отдельные национальные инструкции.','UNDER_REVIEW',NULL,'Атрибуты переписаны из официального руководства МЗКМ v0.8; проверить по актуальной форме.','official-manual-seed','official-manual-seed',NOW(),NOW(),1)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO document_versions (
+ document_id,version_number,title,jurisdiction,kind,area,product_group,keywords,
+ document_number,document_date,effective_from,effective_until,source_url,description,content,status,
+ related_document_ids,change_note,changed_by,created_at
+)
+SELECT id,version_number,title,jurisdiction,kind,area,product_group,keywords,
+ document_number,document_date,effective_from,effective_until,source_url,description,content,status,
+ '', 'Добавлено из руководства МЗКМ v0.8; сверить с актуальной формой до применения.',
+ 'official-manual-seed', NOW()
+FROM documents
+WHERE id IN ('b5000000-0000-4000-8000-000000000001'::uuid,'b5000000-0000-4000-8000-000000000002'::uuid)
+ON CONFLICT (document_id,version_number) DO NOTHING;
