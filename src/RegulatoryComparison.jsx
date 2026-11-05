@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import CustomSelect from './CustomSelect.jsx'
 import {
   ArrowLeftRight, ArrowUpRight, BookOpen, CheckCircle2, ExternalLink,
   FileText, Filter, Globe2, Landmark, Search, ShieldCheck, Sparkles, Scale
@@ -215,12 +216,12 @@ export default function RegulatoryComparison({ onAskAI = () => {} }) {
         </label>
         <label className="reg-comparison-select">
           <Filter size={15}/>
-          <select value={regionFilter} onChange={event => setRegionFilter(event.target.value)} aria-label="Фильтр по юрисдикции">
+          <CustomSelect value={regionFilter} onChange={event => setRegionFilter(event.target.value)} aria-label="Фильтр по юрисдикции">
             <option value="ALL">Все юрисдикции</option>
             <option value="KG">Кыргызская Республика</option>
             <option value="RU">Российская Федерация</option>
             <option value="EAEU">ЕАЭС</option>
-          </select>
+          </CustomSelect>
         </label>
       </div>
 
