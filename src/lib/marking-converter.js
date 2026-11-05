@@ -117,16 +117,16 @@ function stripCodeQuotes(value) {
 
 function getCodePattern(group, packaging) {
   if (group === 'tobacco' && packaging === 'individual') {
-    return /^(\d{14})([^\u001D\r\n]{7})([^\u001D\r\n]{8})$/
+    return /^(0\d{13})([!-~]{7})([!-~]{8})$/
   }
   if (group === 'tobacco' && packaging === 'group') {
-    return /^01(\d{14})21([^\u001D\r\n]{7})\u001D93([^\u001D\r\n]{8})$/
+    return /^01(0\d{13})21([!-~]{7})\u001D93([!-~]{8})$/
   }
   if ((group === 'alcohol' || group === 'beer') && packaging === 'individual') {
-    return /^01(\d{14})21([^\u001D\r\n]{7})\u001D93([^\u001D\r\n]{4})$/
+    return /^01(0\d{13})21([!-~]{7})\u001D93([^\u001D\r\n]{4})$/
   }
   if ((group === 'alcohol' || group === 'beer') && packaging === 'group') {
-    return /^01(\d{14})21([^\u001D\r\n]{13})\u001D93([^\u001D\r\n]{4})$/
+    return /^01(0\d{13})21([!-~]{13})\u001D93([^\u001D\r\n]{4})$/
   }
   throw new Error('Выберите товарную группу и тип упаковки.')
 }
@@ -227,6 +227,8 @@ export async function convertCsv({
       await new Promise(resolve => setTimeout(resolve, 0))
     }
   }
+
+  if (processed === 0) throw new Error('В CSV-файле не обнаружены непустые коды маркировки.')
 
   if (errors.length) {
     return {
