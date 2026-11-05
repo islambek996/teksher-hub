@@ -2,11 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { API_ENABLED, API_BASE, apiRequest, clearStoredToken, getStoredToken, storeToken } from './lib/api.js'
 import { loadTnvedCatalog } from './data/tnved-catalog.js'
 import RegulatoryComparison from './RegulatoryComparison.jsx'
+import ConverterSection from './ConverterSection.jsx'
 import {
   ArrowDownRight, ArrowUpRight, BookOpen, Boxes, CalendarDays, ChevronDown,
   CircleHelp, ExternalLink, FileCheck2, FilePlus2, FileText, Globe2, Home, Star, Scale,
   Landmark, Layers3, LibraryBig, Link2, Search, ShieldCheck, SlidersHorizontal,
-  Sparkles, Bot, Send, Workflow, X, Pencil, Trash2, RefreshCw, UsersRound, LogOut, Paperclip, Download, History, CheckCircle2, UserPlus, Moon, Sun, Copy, ListTree, Clock3, Printer, ThumbsUp, ThumbsDown, Bell, MessageCircle, ClipboardList
+  Sparkles, Bot, Send, Workflow, X, Pencil, Trash2, RefreshCw, UsersRound, LogOut, Paperclip, Download, History, CheckCircle2, UserPlus, Moon, Sun, Copy, ListTree, Clock3, Printer, ThumbsUp, ThumbsDown, Bell, MessageCircle, ClipboardList, FileSpreadsheet
 } from 'lucide-react'
 
 const demoDocuments = [
@@ -33,6 +34,7 @@ function isMzkmCatalogDocument(doc) {
 const navGroups = [
   { title: 'ПЛАТФОРМА', items: [
     { id: 'home', label: 'Главная', icon: Home },
+    { id: 'converter', label: 'Конвертер кодов', icon: FileSpreadsheet },
     { id: 'assistant', label: 'ИИ-помощник', icon: Bot },
     { id: 'documents', label: 'Все документы', icon: LibraryBig },
     { id: 'favorites', label: 'Избранное', icon: Star },
@@ -730,7 +732,7 @@ function AppContent() {
     : active === 'home' ? 'База знаний оператора маркировки'
     : active === 'RU' ? 'МЗКМ · материалы для маркировки в РФ'
     : active === 'KG' ? 'ГАИС МТ · национальные материалы КР'
-    : ({ compare: 'Сравнение требований КР, РФ и ЕАЭС' }[active] || jurisdictions[active]?.label || ({ assistant: 'ИИ-помощник', documents: 'Все документы', favorites: 'Избранные материалы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний', monitoring: 'Мониторинг официальных источников', users: 'Управление пользователями', audit: 'Журнал действий', tasks: 'Задачи команды', issues: 'Реестр проблем маркировки', notifications: 'Уведомления' }[active] || 'TEKSHER HUB'))
+    : ({ compare: 'Сравнение требований КР, РФ и ЕАЭС' }[active] || jurisdictions[active]?.label || ({ assistant: 'ИИ-помощник', documents: 'Все документы', favorites: 'Избранные материалы', groups: 'Товарные группы', processes: 'Бизнес-процессы', knowledge: 'Инструкции и база знаний', monitoring: 'Мониторинг официальных источников', users: 'Управление пользователями', audit: 'Журнал действий', tasks: 'Задачи команды', issues: 'Реестр проблем маркировки', notifications: 'Уведомления', converter: 'Конвертер кодов' }[active] || 'TEKSHER HUB'))
 
   const syncRoute = (section, docId = null, replace = false) => {
     const route = { app: 'teksher-hub', section, docId }
@@ -1575,6 +1577,7 @@ function AppContent() {
               canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'}
               canReview={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)}
               files={API_ENABLED ? apiFiles : localAttachmentFiles} versions={documentVersions} documents={documents} onOpenRelated={docId => { const related = documents.find(item => item.id === docId); if (related) openDocument(related) }} onDownload={handleDownloadFile} onUploadFile={handleUploadAttachment} uploadingFile={isUploadingAttachment} canUploadFiles={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} onReview={handleReviewDocument} canReindex={API_ENABLED && ['ADMIN','EDITOR'].includes(currentUser?.role)} onReindexFile={handleReindexFile} reindexingFileId={reindexingFileId} />
+            : active === 'converter' ? <ConverterSection />
             : active === 'compare' ? <RegulatoryComparison onAskAI={prompt => { setAssistantPrompt(prompt); openSection('assistant') }} />
             : active === 'assistant' ? <AiAssistantSection apiEnabled={API_ENABLED} isAdmin={currentUser?.role === 'ADMIN'} initialPrompt={assistantPrompt} onOpenDocument={docId => { const target = documents.find(item => String(item.id) === String(docId)); if (target) { setActive('documents'); setSelectedDoc(target); setQuery(''); setFilter('Все типы'); setStatusFilter('Все статусы'); syncRoute('documents', target.id) } }} />
             : active === 'knowledge' ? <KnowledgeCenterSection documents={documents} onSelectKind={(kind) => { setActive('documents'); setSelectedDoc(null); setQuery(''); setFilter(kind); setStatusFilter('Все статусы'); syncRoute('documents') }} onOpenAll={() => openSection('documents')} onAdd={openNewDocumentModal} canAdd={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} />
