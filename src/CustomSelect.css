@@ -227,3 +227,105 @@ html[data-theme="dark"] .hub-select-option.is-selected svg {
   .hub-select-trigger, .hub-select-chevron, .hub-select-option { transition-duration: .01ms; }
   .hub-select-menu { animation: none; }
 }
+
+
+/* Searchable menus and multi-select document relation picker */
+.hub-select-search {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 9px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e8eef5;
+  color: #8293a7;
+}
+.hub-select-search input {
+  width: 100%;
+  min-width: 0;
+  min-height: 27px !important;
+  padding: 3px 2px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  color: #263b53 !important;
+  box-shadow: none !important;
+  font: inherit;
+  font-size: 11px;
+}
+.hub-select-search input:focus {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.hub-select-search input::placeholder { color: #98a6b6; }
+.hub-select-options { overflow: auto; padding: 5px; }
+.hub-select-empty {
+  padding: 15px 11px;
+  color: #8797a9;
+  font-size: 11px;
+  text-align: center;
+}
+.hub-select-menu-footer {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-top: 1px solid #e8eef5;
+  color: #7b8da2;
+  font-size: 10px;
+  font-weight: 650;
+}
+.hub-select.is-multiple .hub-select-trigger {
+  min-height: 46px;
+}
+.hub-select.is-multiple .hub-select-option.is-selected {
+  background: #eaf2fc;
+}
+html[data-theme="dark"] .hub-select-search {
+  border-bottom-color: #2c4058;
+  color: #91a7bf;
+}
+html[data-theme="dark"] .hub-select-search input {
+  color: #e0eaf5 !important;
+}
+html[data-theme="dark"] .hub-select-search input::placeholder,
+html[data-theme="dark"] .hub-select-empty {
+  color: #7f94ac;
+}
+html[data-theme="dark"] .hub-select-menu-footer {
+  border-top-color: #2c4058;
+  color: #91a5bd;
+}
+html[data-theme="dark"] .hub-select.is-multiple .hub-select-option.is-selected {
+  background: #294a6b;
+}
+.reg-comparison-select .hub-select {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+.reg-comparison-select .hub-select-trigger {
+  min-height: 40px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0 3px;
+}
+.reg-comparison-select .hub-select-trigger:hover,
+.reg-comparison-select .hub-select[data-open="true"] .hub-select-trigger {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.home-task-actions .hub-select {
+  width: auto;
+  min-width: 125px;
+  max-width: 160px;
+}
+.home-task-actions .hub-select-trigger {
+  min-height: 36px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  font-size: 12px;
+}
+.process-overview-status-filter .hub-select {
+  min-width: 170px;
+}
