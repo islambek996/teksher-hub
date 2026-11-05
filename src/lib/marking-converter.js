@@ -250,11 +250,11 @@ export async function convertCsv({
   }
 }
 
-export function serializeCsv(rows, delimiter = ';', forceQuoteColumns = []) {
+export function serializeCsv(rows, delimiter = ';', forceQuoteColumns = [], skipForcedRows = 0) {
   const force = new Set(forceQuoteColumns)
-  return rows.map(row => row.map((value, index) => {
+  return rows.map((row, rowIndex) => row.map((value, index) => {
     const text = String(value ?? '')
-    const quote = force.has(index) || text.includes('"') || text.includes('\r') || text.includes('\n') || text.includes(delimiter)
+    const quote = (rowIndex >= skipForcedRows && force.has(index)) || text.includes('"') || text.includes('\r') || text.includes('\n') || text.includes(delimiter)
     return quote ? '"' + text.replace(/"/g, '""') + '"' : text
   }).join(delimiter)).join('\r\n') + '\r\n'
 }
@@ -418,7 +418,7 @@ export function createXlsxBlob(rows) {
 export function createOutputBlob(result, format) {
   if (!result?.ok) throw new Error('Нельзя сформировать файл: сначала исправьте ошибки в кодах маркировки.')
   if (format === 'xlsx') return createXlsxBlob(result.rows)
-  const content = '\uFEFF' + serializeCsv(result.rows, result.delimiter, result.forceQuoteColumns)
+  const content = '\uFEFF' + serializeCsv(result.rows, result.delimiter, result.forceQuoteColumns, result.hasHeader ? 1 : 0)
   return new Blob([content], { type: 'text/csv;charset=utf-8;' })
 }
 
