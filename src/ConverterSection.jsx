@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import CustomSelect from './CustomSelect.jsx'
 import {
   AlertCircle, ArrowDownToLine, CheckCircle2, FileSpreadsheet, FileText,
   Info, LoaderCircle, ShieldCheck, Upload, X,
@@ -148,25 +149,25 @@ export default function ConverterSection() {
         <div className="converter-fields-grid">
           <label className="converter-field">
             <span>Товарная группа <b>*</b></span>
-            <select value={group} onChange={event => { setGroup(event.target.value); resetResult() }}>
+            <CustomSelect value={group} onChange={event => { setGroup(event.target.value); resetResult() }}>
               <option value="">Выберите товарную группу</option>
               {productGroups.map(item => <option value={item.id} key={item.id}>{item.label}</option>)}
-            </select>
+            </CustomSelect>
           </label>
           <label className="converter-field">
             <span>Тип упаковки <b>*</b></span>
-            <select value={packaging} onChange={event => { setPackaging(event.target.value); resetResult() }}>
+            <CustomSelect value={packaging} onChange={event => { setPackaging(event.target.value); resetResult() }}>
               <option value="">Выберите тип упаковки</option>
               {packagingTypes.map(item => <option value={item.id} key={item.id}>{item.label}</option>)}
-            </select>
+            </CustomSelect>
           </label>
           {mode === 'trim' && (
             <label className="converter-field">
               <span>Формат выгружаемого файла <b>*</b></span>
-              <select value={format} onChange={event => setFormat(event.target.value)}>
+              <CustomSelect value={format} onChange={event => setFormat(event.target.value)}>
                 <option value="csv">CSV</option>
                 <option value="xlsx">XLSX (Microsoft Excel)</option>
-              </select>
+              </CustomSelect>
             </label>
           )}
         </div>
