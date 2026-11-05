@@ -44,7 +44,7 @@ test('RFC 4180 mode forces quoting of code columns', async () => {
   const source = 'КМ;Примечание\r\n010123456789012321SERIAL1' + '\u001D' + '93AB12;строка\r\n'
   const result = await convertCsv({ input: source, mode: 'addQuotes', group: 'alcohol', packaging: 'individual' })
   assert.equal(result.ok, true)
-  const output = serializeCsv(result.rows, result.delimiter, result.forceQuoteColumns)
+  const output = serializeCsv(result.rows, result.delimiter, result.forceQuoteColumns, result.hasHeader ? 1 : 0)
   assert.match(output, /^КМ;Примечание\r\n"010123456789012321SERIAL1/)
 })
 
