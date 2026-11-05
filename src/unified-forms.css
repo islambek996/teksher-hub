@@ -28,9 +28,9 @@ html[data-theme="dark"] {
 }
 
 /* Text fields, selects and text areas */
-.app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]),
-.app-shell select,
-.app-shell textarea {
+:is(.app-shell, .auth-screen) input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]),
+:is(.app-shell, .auth-screen) select,
+:is(.app-shell, .auth-screen) textarea {
   box-sizing: border-box;
   max-width: 100%;
   border: 1px solid var(--form-border);
@@ -45,20 +45,20 @@ html[data-theme="dark"] {
   transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
 }
 
-.app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]),
-.app-shell select {
+:is(.app-shell, .auth-screen) input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]),
+:is(.app-shell, .auth-screen) select {
   min-height: 42px;
   padding: 9px 13px;
 }
 
-.app-shell textarea {
+:is(.app-shell, .auth-screen) textarea {
   min-height: 96px;
   padding: 11px 13px;
   resize: vertical;
   line-height: 1.6;
 }
 
-.app-shell select {
+:is(.app-shell, .auth-screen) select {
   appearance: none;
   -webkit-appearance: none;
   padding-right: 40px;
@@ -69,45 +69,45 @@ html[data-theme="dark"] {
   background-size: 15px;
 }
 
-.app-shell select option,
-.app-shell select optgroup {
+:is(.app-shell, .auth-screen) select option,
+:is(.app-shell, .auth-screen) select optgroup {
   background: var(--form-bg);
   color: var(--form-text);
 }
 
-.app-shell input::placeholder,
-.app-shell textarea::placeholder {
+:is(.app-shell, .auth-screen) input::placeholder,
+:is(.app-shell, .auth-screen) textarea::placeholder {
   color: var(--form-placeholder);
   opacity: 1;
 }
 
-.app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]):hover,
-.app-shell select:hover,
-.app-shell textarea:hover {
+:is(.app-shell, .auth-screen) input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]):hover,
+:is(.app-shell, .auth-screen) select:hover,
+:is(.app-shell, .auth-screen) textarea:hover {
   border-color: var(--form-border-hover);
   background-color: var(--form-bg-hover);
 }
 
-.app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]):focus,
-.app-shell select:focus,
-.app-shell textarea:focus {
+:is(.app-shell, .auth-screen) input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]):focus,
+:is(.app-shell, .auth-screen) select:focus,
+:is(.app-shell, .auth-screen) textarea:focus {
   outline: none;
   border-color: var(--form-focus);
   background-color: var(--form-bg);
   box-shadow: 0 0 0 3px var(--form-focus-ring), 0 1px 3px rgba(22, 43, 67, .04);
 }
 
-.app-shell input[aria-invalid="true"],
-.app-shell select[aria-invalid="true"],
-.app-shell textarea[aria-invalid="true"],
-.app-shell .is-invalid {
+:is(.app-shell, .auth-screen) input[aria-invalid="true"],
+:is(.app-shell, .auth-screen) select[aria-invalid="true"],
+:is(.app-shell, .auth-screen) textarea[aria-invalid="true"],
+:is(.app-shell, .auth-screen) .is-invalid {
   border-color: #d96b6b !important;
   box-shadow: 0 0 0 3px rgba(217, 107, 107, .11) !important;
 }
 
-.app-shell input:disabled,
-.app-shell select:disabled,
-.app-shell textarea:disabled {
+:is(.app-shell, .auth-screen) input:disabled,
+:is(.app-shell, .auth-screen) select:disabled,
+:is(.app-shell, .auth-screen) textarea:disabled {
   cursor: not-allowed;
   color: var(--form-disabled-text);
   background-color: var(--form-disabled);
@@ -116,7 +116,7 @@ html[data-theme="dark"] {
 }
 
 /* Keep compact inline filters integrated with their existing input shells */
-.app-shell .filter-wrap select {
+:is(.app-shell, .auth-screen) .filter-wrap select {
   width: auto;
   min-width: 0;
   min-height: 0;
@@ -128,14 +128,14 @@ html[data-theme="dark"] {
   box-shadow: none;
   font-size: inherit;
 }
-.app-shell .filter-wrap select:hover,
-.app-shell .filter-wrap select:focus {
+:is(.app-shell, .auth-screen) .filter-wrap select:hover,
+:is(.app-shell, .auth-screen) .filter-wrap select:focus {
   background-color: transparent;
   box-shadow: none;
   border-color: transparent;
 }
-.app-shell .search-input-wrap input,
-.app-shell .date-input input {
+:is(.app-shell, .auth-screen) .search-input-wrap input,
+:is(.app-shell, .auth-screen) .date-input input {
   min-height: 0;
   padding: 0;
   border: 0;
@@ -143,41 +143,41 @@ html[data-theme="dark"] {
   background: transparent;
   box-shadow: none;
 }
-.app-shell .search-input-wrap input:hover,
-.app-shell .search-input-wrap input:focus,
-.app-shell .date-input input:hover,
-.app-shell .date-input input:focus {
+:is(.app-shell, .auth-screen) .search-input-wrap input:hover,
+:is(.app-shell, .auth-screen) .search-input-wrap input:focus,
+:is(.app-shell, .auth-screen) .date-input input:hover,
+:is(.app-shell, .auth-screen) .date-input input:focus {
   border: 0;
   background: transparent;
   box-shadow: none;
 }
 
 /* Form labels, helper text and spacing */
-.app-shell .form-field,
-.app-shell .converter-field {
+:is(.app-shell, .auth-screen) .form-field,
+:is(.app-shell, .auth-screen) .converter-field {
   gap: 8px;
   color: var(--form-muted);
   font-size: 11px;
   font-weight: 650;
 }
-.app-shell .form-field > span,
-.app-shell .converter-field > span {
+:is(.app-shell, .auth-screen) .form-field > span,
+:is(.app-shell, .auth-screen) .converter-field > span {
   color: var(--form-text);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .005em;
 }
-.app-shell .form-help,
-.app-shell .field-help,
-.app-shell .form-field small {
+:is(.app-shell, .auth-screen) .form-help,
+:is(.app-shell, .auth-screen) .field-help,
+:is(.app-shell, .auth-screen) .form-field small {
   color: var(--form-muted);
   font-size: 10px;
   line-height: 1.55;
 }
 
 /* Checkboxes, radio buttons and range controls */
-.app-shell input[type="checkbox"],
-.app-shell input[type="radio"] {
+:is(.app-shell, .auth-screen) input[type="checkbox"],
+:is(.app-shell, .auth-screen) input[type="radio"] {
   width: 17px;
   height: 17px;
   flex: 0 0 auto;
@@ -186,23 +186,23 @@ html[data-theme="dark"] {
   cursor: pointer;
   vertical-align: middle;
 }
-.app-shell input[type="checkbox"]:focus-visible,
-.app-shell input[type="radio"]:focus-visible {
+:is(.app-shell, .auth-screen) input[type="checkbox"]:focus-visible,
+:is(.app-shell, .auth-screen) input[type="radio"]:focus-visible {
   outline: 3px solid var(--form-focus-ring);
   outline-offset: 2px;
 }
-.app-shell input[type="range"] {
+:is(.app-shell, .auth-screen) input[type="range"] {
   width: 100%;
   accent-color: #356fa7;
   cursor: pointer;
 }
-.app-shell input[type="file"] {
+:is(.app-shell, .auth-screen) input[type="file"] {
   max-width: 100%;
   color: var(--form-muted);
   font: inherit;
   font-size: 11px;
 }
-.app-shell input[type="file"]::file-selector-button {
+:is(.app-shell, .auth-screen) input[type="file"]::file-selector-button {
   min-height: 36px;
   margin-right: 10px;
   padding: 7px 12px;
@@ -214,15 +214,15 @@ html[data-theme="dark"] {
   font-weight: 650;
   cursor: pointer;
 }
-.app-shell input[type="file"]::file-selector-button:hover {
+:is(.app-shell, .auth-screen) input[type="file"]::file-selector-button:hover {
   border-color: var(--form-border-hover);
   background: var(--form-bg-hover);
 }
 
 /* Buttons used in forms and dialogs */
-.app-shell .primary-button,
-.app-shell .secondary-button,
-.app-shell .danger-button {
+:is(.app-shell, .auth-screen) .primary-button,
+:is(.app-shell, .auth-screen) .secondary-button,
+:is(.app-shell, .auth-screen) .danger-button {
   min-height: 39px;
   border-radius: 9px;
   font-family: inherit;
@@ -230,53 +230,53 @@ html[data-theme="dark"] {
   font-weight: 700;
   transition: transform .15s ease, border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
 }
-.app-shell .primary-button:focus-visible,
-.app-shell .secondary-button:focus-visible,
-.app-shell .danger-button:focus-visible {
+:is(.app-shell, .auth-screen) .primary-button:focus-visible,
+:is(.app-shell, .auth-screen) .secondary-button:focus-visible,
+:is(.app-shell, .auth-screen) .danger-button:focus-visible {
   outline: 3px solid var(--form-focus-ring);
   outline-offset: 2px;
 }
-.app-shell .primary-button:disabled,
-.app-shell .secondary-button:disabled,
-.app-shell .danger-button:disabled {
+:is(.app-shell, .auth-screen) .primary-button:disabled,
+:is(.app-shell, .auth-screen) .secondary-button:disabled,
+:is(.app-shell, .auth-screen) .danger-button:disabled {
   cursor: not-allowed;
   opacity: .55;
   transform: none;
   box-shadow: none;
 }
-.app-shell .icon-button {
+:is(.app-shell, .auth-screen) .icon-button {
   border-radius: 9px;
   transition: background-color .15s ease, border-color .15s ease, color .15s ease;
 }
-.app-shell .modal-actions {
+:is(.app-shell, .auth-screen) .modal-actions {
   gap: 10px;
   padding-top: 18px;
 }
 
 /* Native dropdown popup – browsers control some popup rendering themselves */
-html[data-theme="dark"] .app-shell select {
+html[data-theme="dark"] :is(.app-shell, .auth-screen) select {
   color-scheme: dark;
 }
-html:not([data-theme="dark"]) .app-shell select {
+html:not([data-theme="dark"]) :is(.app-shell, .auth-screen) select {
   color-scheme: light;
 }
-html[data-theme="dark"] .app-shell input:-webkit-autofill,
-html[data-theme="dark"] .app-shell textarea:-webkit-autofill {
+html[data-theme="dark"] :is(.app-shell, .auth-screen) input:-webkit-autofill,
+html[data-theme="dark"] :is(.app-shell, .auth-screen) textarea:-webkit-autofill {
   -webkit-text-fill-color: var(--form-text);
   box-shadow: 0 0 0 1000px var(--form-bg) inset;
 }
 @media (max-width: 760px) {
-  .app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]),
-  .app-shell select,
-  .app-shell textarea {
+  :is(.app-shell, .auth-screen) input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]),
+  :is(.app-shell, .auth-screen) select,
+  :is(.app-shell, .auth-screen) textarea {
     font-size: 13px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .app-shell input,
-  .app-shell select,
-  .app-shell textarea,
-  .app-shell button {
+  :is(.app-shell, .auth-screen) input,
+  :is(.app-shell, .auth-screen) select,
+  :is(.app-shell, .auth-screen) textarea,
+  :is(.app-shell, .auth-screen) button {
     transition-duration: .01ms !important;
   }
 }
