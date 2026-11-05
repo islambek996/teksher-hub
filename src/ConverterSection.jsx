@@ -9,8 +9,6 @@ import {
 } from './lib/marking-converter.js'
 import './ConverterSection.css'
 
-const MAX_FILE_BYTES = 50 * 1024 * 1024
-
 export default function ConverterSection() {
   const inputRef = useRef(null)
   const [mode, setMode] = useState('trim')
@@ -45,11 +43,6 @@ export default function ConverterSection() {
     if (!/\.csv$/i.test(nextFile.name)) {
       setFile(null)
       setError('Загрузите файл с расширением .csv.')
-      return
-    }
-    if (nextFile.size > MAX_FILE_BYTES) {
-      setFile(null)
-      setError('Размер файла превышает 50 МБ. Разделите файл на несколько частей.')
       return
     }
     setFile(nextFile)
@@ -202,7 +195,7 @@ export default function ConverterSection() {
           {file ? (
             <span className="converter-file-copy"><strong>{file.name}</strong><small>{(file.size / 1024 / 1024).toFixed(2)} МБ · Файл готов к обработке</small></span>
           ) : (
-            <span className="converter-file-copy"><strong>Перетащите CSV-файл сюда</strong><small>или нажмите, чтобы выбрать файл на компьютере · до 50 МБ</small></span>
+            <span className="converter-file-copy"><strong>Перетащите CSV-файл сюда</strong><small>или нажмите, чтобы выбрать файл на компьютере · формат CSV · до 150 000 кодов</small></span>
           )}
           {file && <span className="converter-file-change">Изменить файл</span>}
         </button>
