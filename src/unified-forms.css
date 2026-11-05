@@ -335,3 +335,59 @@ html body #root .auth-screen select option {
   background-color: var(--form-bg) !important;
   color: var(--form-text) !important;
 }
+
+
+/* Final high-specificity layer – controls in every Hub section */
+html body #root .app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]):not(.hub-select-native),
+html body #root .app-shell textarea,
+html body #root .auth-screen input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]),
+html body #root .auth-screen textarea {
+  border: 1px solid var(--form-border) !important;
+  border-radius: 10px !important;
+  background: var(--form-bg) !important;
+  color: var(--form-text) !important;
+  box-shadow: 0 1px 2px rgba(22,43,67,.035) !important;
+  font-family: inherit !important;
+}
+html body #root .app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]):not(.hub-select-native):focus,
+html body #root .app-shell textarea:focus,
+html body #root .auth-screen input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]):focus,
+html body #root .auth-screen textarea:focus {
+  border-color: var(--form-focus) !important;
+  box-shadow: 0 0 0 3px var(--form-focus-ring) !important;
+  outline: none !important;
+}
+html body #root .app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]):not(.hub-select-native)::placeholder,
+html body #root .app-shell textarea::placeholder,
+html body #root .auth-screen input::placeholder,
+html body #root .auth-screen textarea::placeholder {
+  color: var(--form-placeholder) !important;
+  opacity: 1;
+}
+html body #root .app-shell .search-input-wrap input,
+html body #root .app-shell .date-input input {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+html body #root .app-shell select[multiple] {
+  min-height: 126px !important;
+  padding: 9px !important;
+  border: 1px solid var(--form-border) !important;
+  border-radius: 10px !important;
+  background: var(--form-bg) !important;
+  color: var(--form-text) !important;
+}
+html body #root .app-shell select[multiple] option {
+  padding: 7px 9px;
+  border-radius: 5px;
+}
+html body #root .app-shell select[multiple] option:checked {
+  background: #dceafa linear-gradient(0deg, #dceafa, #dceafa);
+  color: #214e7a;
+}
+html[data-theme="dark"] body #root .app-shell select[multiple] option:checked {
+  background: #294a6b linear-gradient(0deg, #294a6b, #294a6b);
+  color: #f0f6ff;
+}
