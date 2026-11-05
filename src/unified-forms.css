@@ -280,3 +280,58 @@ html[data-theme="dark"] :is(.app-shell, .auth-screen) textarea:-webkit-autofill 
     transition-duration: .01ms !important;
   }
 }
+
+
+/* High-specificity final pass: override section-level form styles consistently */
+html body #root .app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]),
+html body #root .app-shell select,
+html body #root .app-shell textarea,
+html body #root .auth-screen input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]),
+html body #root .auth-screen select,
+html body #root .auth-screen textarea {
+  border: 1px solid var(--form-border) !important;
+  border-radius: 10px !important;
+  background-color: var(--form-bg) !important;
+  color: var(--form-text) !important;
+  font-family: inherit !important;
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+  box-shadow: 0 1px 2px rgba(22, 43, 67, .04) !important;
+}
+
+html body #root .app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]),
+html body #root .app-shell select,
+html body #root .auth-screen input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]),
+html body #root .auth-screen select {
+  min-height: 42px !important;
+  padding: 9px 13px !important;
+}
+
+html body #root .app-shell select,
+html body #root .auth-screen select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  padding-right: 38px !important;
+  cursor: pointer !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23788da5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 13px center !important;
+  background-size: 15px !important;
+}
+
+html body #root .app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]):focus,
+html body #root .app-shell select:focus,
+html body #root .app-shell textarea:focus,
+html body #root .auth-screen input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]):focus,
+html body #root .auth-screen select:focus,
+html body #root .auth-screen textarea:focus {
+  border-color: var(--form-focus) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px var(--form-focus-ring) !important;
+}
+
+html body #root .app-shell select option,
+html body #root .auth-screen select option {
+  background-color: var(--form-bg) !important;
+  color: var(--form-text) !important;
+}
