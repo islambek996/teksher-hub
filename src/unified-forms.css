@@ -1,0 +1,282 @@
+/* TEKSHER HUB – unified form controls across all sections */
+:root {
+  --form-bg: #ffffff;
+  --form-bg-hover: #fbfdff;
+  --form-text: #263b53;
+  --form-muted: #7c8da2;
+  --form-border: #d7e1ec;
+  --form-border-hover: #a9bfd7;
+  --form-focus: #4c83b8;
+  --form-focus-ring: rgba(76, 131, 184, .15);
+  --form-placeholder: #98a6b6;
+  --form-disabled: #f2f5f8;
+  --form-disabled-text: #9aa7b5;
+}
+
+html[data-theme="dark"] {
+  --form-bg: #15263a;
+  --form-bg-hover: #192d43;
+  --form-text: #e0eaf5;
+  --form-muted: #a1b3c8;
+  --form-border: #354b63;
+  --form-border-hover: #587a9f;
+  --form-focus: #78a9dd;
+  --form-focus-ring: rgba(104, 157, 211, .19);
+  --form-placeholder: #8298b1;
+  --form-disabled: #1b2a3d;
+  --form-disabled-text: #71869d;
+}
+
+/* Text fields, selects and text areas */
+.app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]),
+.app-shell select,
+.app-shell textarea {
+  box-sizing: border-box;
+  max-width: 100%;
+  border: 1px solid var(--form-border);
+  border-radius: 10px;
+  background-color: var(--form-bg);
+  color: var(--form-text);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 450;
+  line-height: 1.45;
+  box-shadow: 0 1px 2px rgba(22, 43, 67, .035);
+  transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+
+.app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]),
+.app-shell select {
+  min-height: 42px;
+  padding: 9px 13px;
+}
+
+.app-shell textarea {
+  min-height: 96px;
+  padding: 11px 13px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.app-shell select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 40px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23788da5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 13px center;
+  background-size: 15px;
+}
+
+.app-shell select option,
+.app-shell select optgroup {
+  background: var(--form-bg);
+  color: var(--form-text);
+}
+
+.app-shell input::placeholder,
+.app-shell textarea::placeholder {
+  color: var(--form-placeholder);
+  opacity: 1;
+}
+
+.app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]):hover,
+.app-shell select:hover,
+.app-shell textarea:hover {
+  border-color: var(--form-border-hover);
+  background-color: var(--form-bg-hover);
+}
+
+.app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]):focus,
+.app-shell select:focus,
+.app-shell textarea:focus {
+  outline: none;
+  border-color: var(--form-focus);
+  background-color: var(--form-bg);
+  box-shadow: 0 0 0 3px var(--form-focus-ring), 0 1px 3px rgba(22, 43, 67, .04);
+}
+
+.app-shell input[aria-invalid="true"],
+.app-shell select[aria-invalid="true"],
+.app-shell textarea[aria-invalid="true"],
+.app-shell .is-invalid {
+  border-color: #d96b6b !important;
+  box-shadow: 0 0 0 3px rgba(217, 107, 107, .11) !important;
+}
+
+.app-shell input:disabled,
+.app-shell select:disabled,
+.app-shell textarea:disabled {
+  cursor: not-allowed;
+  color: var(--form-disabled-text);
+  background-color: var(--form-disabled);
+  border-color: var(--form-border);
+  opacity: .82;
+}
+
+/* Keep compact inline filters integrated with their existing input shells */
+.app-shell .filter-wrap select {
+  width: auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 11px 28px 11px 0;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  font-size: inherit;
+}
+.app-shell .filter-wrap select:hover,
+.app-shell .filter-wrap select:focus {
+  background-color: transparent;
+  box-shadow: none;
+  border-color: transparent;
+}
+.app-shell .search-input-wrap input,
+.app-shell .date-input input {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.app-shell .search-input-wrap input:hover,
+.app-shell .search-input-wrap input:focus,
+.app-shell .date-input input:hover,
+.app-shell .date-input input:focus {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Form labels, helper text and spacing */
+.app-shell .form-field,
+.app-shell .converter-field {
+  gap: 8px;
+  color: var(--form-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+.app-shell .form-field > span,
+.app-shell .converter-field > span {
+  color: var(--form-text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .005em;
+}
+.app-shell .form-help,
+.app-shell .field-help,
+.app-shell .form-field small {
+  color: var(--form-muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+/* Checkboxes, radio buttons and range controls */
+.app-shell input[type="checkbox"],
+.app-shell input[type="radio"] {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  margin: 0;
+  accent-color: #356fa7;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.app-shell input[type="checkbox"]:focus-visible,
+.app-shell input[type="radio"]:focus-visible {
+  outline: 3px solid var(--form-focus-ring);
+  outline-offset: 2px;
+}
+.app-shell input[type="range"] {
+  width: 100%;
+  accent-color: #356fa7;
+  cursor: pointer;
+}
+.app-shell input[type="file"] {
+  max-width: 100%;
+  color: var(--form-muted);
+  font: inherit;
+  font-size: 11px;
+}
+.app-shell input[type="file"]::file-selector-button {
+  min-height: 36px;
+  margin-right: 10px;
+  padding: 7px 12px;
+  border: 1px solid var(--form-border);
+  border-radius: 8px;
+  background: var(--form-bg);
+  color: var(--form-text);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.app-shell input[type="file"]::file-selector-button:hover {
+  border-color: var(--form-border-hover);
+  background: var(--form-bg-hover);
+}
+
+/* Buttons used in forms and dialogs */
+.app-shell .primary-button,
+.app-shell .secondary-button,
+.app-shell .danger-button {
+  min-height: 39px;
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  transition: transform .15s ease, border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
+}
+.app-shell .primary-button:focus-visible,
+.app-shell .secondary-button:focus-visible,
+.app-shell .danger-button:focus-visible {
+  outline: 3px solid var(--form-focus-ring);
+  outline-offset: 2px;
+}
+.app-shell .primary-button:disabled,
+.app-shell .secondary-button:disabled,
+.app-shell .danger-button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+  transform: none;
+  box-shadow: none;
+}
+.app-shell .icon-button {
+  border-radius: 9px;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+.app-shell .modal-actions {
+  gap: 10px;
+  padding-top: 18px;
+}
+
+/* Native dropdown popup – browsers control some popup rendering themselves */
+html[data-theme="dark"] .app-shell select {
+  color-scheme: dark;
+}
+html:not([data-theme="dark"]) .app-shell select {
+  color-scheme: light;
+}
+html[data-theme="dark"] .app-shell input:-webkit-autofill,
+html[data-theme="dark"] .app-shell textarea:-webkit-autofill {
+  -webkit-text-fill-color: var(--form-text);
+  box-shadow: 0 0 0 1000px var(--form-bg) inset;
+}
+@media (max-width: 760px) {
+  .app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="hidden"]),
+  .app-shell select,
+  .app-shell textarea {
+    font-size: 13px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell input,
+  .app-shell select,
+  .app-shell textarea,
+  .app-shell button {
+    transition-duration: .01ms !important;
+  }
+}
