@@ -4,6 +4,10 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import {
+  containsNumericMarkingOrderLimit,
+  normalizeGoldenAnswer,
+} from "./ai-golden-set-utils.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
@@ -216,14 +220,10 @@ async function evaluateCase(item, index) {
       !(data.insufficientEvidence && hasInsufficientEvidenceLanguage(answer));
   }
 
-  const normalizedAnswer = answer
-    .normalize("NFKC")
-    .toLowerCase()
-    .replaceAll("ё", "е")
-    .replace(/[\p{White_Space}\u200B]/gu, "");
+  const normalizedAnswer = normalizeGoldenAnswer(answer);
   const claimsNumericOrderLimit =
     item.id === "LIMIT_MUST_NOT_BE_GUESSED" &&
-    /\d{1,6}(?:км|код(?:а|ов)?)/i.test(normalizedAnswer);
+    containsNumericMarkingOrderLimit(answer);
   const hasCurrentOrderLimitEvidence = sources.some((source) => {
     const trustedStatus =
       (source.sourceType === "DOCUMENT" &&
@@ -231,12 +231,9 @@ async function evaluateCase(item, index) {
       (source.sourceType === "BUSINESS_PROCESS" &&
         String(source.status || "").toUpperCase() === "PUBLISHED");
     if (!trustedStatus) return false;
-    const sourceText = [source.title, source.excerpt]
-      .filter(Boolean)
-      .join(" ")
-      .normalize("NFKC")
-      .toLowerCase()
-      .replace(/[\p{White_Space}\u200B]/gu, "");
+    const sourceText = normalizeGoldenAnswer(
+      [source.title, source.excerpt].filter(Boolean).join(" "),
+    );
     return /(?:лимит|максимум|неболее|до)\d{1,6}(?:км|код(?:а|ов)?).{0,80}(?:заказ|одинзаказ)/i.test(
       sourceText,
     );
