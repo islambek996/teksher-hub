@@ -217,21 +217,84 @@ async function evaluateCase(item, index) {
   }
 
   const normalizedAnswer = answer
+    .normalize("NFKC")
     .toLowerCase()
     .replaceAll("ё", "е")
-    .replace(/[\\s\\u00a0]/g, "");
-  const claimsUnverifiedHighLimit =
+    .replace(/[\\p{White_Space}\\u200B]/gu, "");
+  const claimsNumericOrderLimit =
     item.id === "LIMIT_MUST_NOT_BE_GUESSED" &&
-    /(?:5000|5тысяч|пятьтысяч)/i.test(normalizedAnswer);
-  const claimsUnverifiedHighLimitWithoutCurrentEvidence =
-    claimsUnverifiedHighLimit &&
-    !sources.some(
-      (source) =>
-        source.sourceType === "DOCUMENT" &&
-        String(source.status || "").toUpperCase() === "ACTIVE" &&
-        /(?:лимит|заказ|код маркировки)/i.test(
-          String(source.title || "") + " " + String(source.excerpt || ""),
-        ),
+    /\\d{1,6}(?:км|код(?:а|ов)?)/i.test(normalizedAnswer);
+  const hasCurrentOrderLimitEvidence = sources.some((source) => {
+    const trustedStatus =
+      (source.sourceType === "DOCUMENT" &&
+        String(source.status || "").toUpperCase() === "ACTIVE") ||
+      (source.sourceType === "BUSINESS_PROCESS" &&
+        String(source.status || "").toUpperCase() === "PUBLISHED");
+    if (!trustedStatus) return false;
+    const sourceText = [source.title, source.excerpt]
+      .filter(Boolean)
+      .join(" ")
+      .normalize("NFKC")
+      .toLowerCase()
+      .replace(/[\\p{White_Space}\\u200B]/gu, "");
+    return /(?:лимит|максимум|неболее|до)\\d{1,6}(?:км|код(?:а|ов)?).{0,80}(?:заказ|одинзаказ)/i.test(
+      sourceText,
+    );
+  });
+  const claimsUnverifiedNumericOrderLimit =
+    claimsNumericOrderLimit && !hasCurrentOrderLimitEvidence;
+
+  const ru1944Source = sources.some(
+    (source) =>
+      source.sourceType === "DOCUMENT" &&
+      String(source.jurisdiction || "").toUpperCase() === "RU" &&
+      /1944|0001202311270058/i.test(
+        String(source.title || "") + " " + String(source.sourceUrl || ""),
+      ),
+  );
+  const ru1944Answer =
+    /1944/.test(normalizedAnswer) &&
+    /запрет.*продаж|продаж.*запрет/i.test(answer);
+  const assistantAbstains =
+    data.insufficientEvidence && hasInsufficientEvidenceLanguage(answer);
+  const ruSpecificActMatchesQuestion =
+    item.id !== "RU_OFFICIAL_RULE" ||
+    (ru1944Source && ru1944Answer) ||
+    assistantAbstains;
+
+  const mzkmRussianEvidence = sources.some(
+    (source) =>
+      source.sourceType === "DOCUMENT" &&
+      String(source.jurisdiction || "").toUpperCase() === "RU",
+  );
+  const mzkmClarifiesJurisdiction =
+    /уточните.{0,80}(стран|юрисдикц|систем|контур)|само сокращение.{0,100}не определ/i.test(
+      answer,
+    );
+  const mzkmDoesNotInferCountry =
+    item.id !== "MZKM_NO_IMPLICIT_COUNTRY" ||
+    (!mzkmRussianEvidence && mzkmClarifiesJurisdiction && assistantAbstains);
+
+  const eaeuFrameworkFacts =
+    item.id !== "EAEU_FRAMEWORK" ||
+    ((/29[. ]марта[. ]2019/i.test(answer) ||
+      /29\\.03\\.2019/.test(answer)) &&
+      /отдельн\\w* решени|решени\\w* совет/i.test(answer)) ||
+    assistantAbstains;
+
+  const ucm385CurrentScope =
+    item.id !== "KG_UCM_RESOLUTION_385" ||
+    (/2201/.test(normalizedAnswer) &&
+      /639/.test(normalizedAnswer) &&
+      /2026/.test(normalizedAnswer) &&
+      /л[её]д/.test(answer)) ||
+    assistantAbstains;
+
+  const cosmeticsNoBlanketClaim =
+    item.id !== "KG_COSMETICS" ||
+    !/косметик\\w*.{0,80}подпада\\w*.{0,40}общ\\w* правил/i.test(answer) ||
+    /не вс[её]|не автоматически|не подтвержден|нельзя считать|точн\\w* товарн\\w* категори|тн вэд/i.test(
+      answer,
     );
 
   const checks = {
@@ -239,8 +302,18 @@ async function evaluateCase(item, index) {
       Boolean(answer) &&
       Array.isArray(data.sources) &&
       typeof data.insufficientEvidence === "boolean",
-    doesNotAssertUnverifiedFiveThousandCodeLimit:
-      !claimsUnverifiedHighLimitWithoutCurrentEvidence,
+    doesNotAssertUnverifiedNumericOrderLimit:
+      !claimsUnverifiedNumericOrderLimit,
+    requestedRussianRuleUsesResolution1944OrAbstains:
+      ruSpecificActMatchesQuestion,
+    ambiguousMZKMQuestionDoesNotAssumeRussianJurisdiction:
+      mzkmDoesNotInferCountry,
+    EAEUFrameworkSeparatesAgreementAndCategoryDecisions:
+      eaeuFrameworkFacts,
+    resolution385UsesCurrentAmendmentAndProductScope:
+      ucm385CurrentScope,
+    cosmeticsAreNotTreatedAsBlanketMandatoryCategory:
+      cosmeticsNoBlanketClaim,
     citationNumbersMapToReturnedSources:
       invalidCitations.length === 0 && !citationGuardWarning,
     noConfidentAnswerWithoutCitation: !noCitationButConfident,
