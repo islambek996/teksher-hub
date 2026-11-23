@@ -81,6 +81,8 @@ jobs:
           UPLOAD_DIR: /tmp/teksher-hub-uploads
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
+          set -E
+          trap 'status=$?; echo "::error::API smoke test failed at line ${LINENO}; command: ${BASH_COMMAND}"; if [ -f /tmp/teksher-hub-api.log ]; then tail -n 250 /tmp/teksher-hub-api.log; fi; exit "$status"' ERR
           java -jar backend/target/teksher-hub-api-1.0.0.jar > /tmp/teksher-hub-api.log 2>&1 &
           echo $! > /tmp/teksher-hub-api.pid
           for i in {1..60}; do
