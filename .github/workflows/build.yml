@@ -26,7 +26,7 @@ jobs:
       - name: Validate AI evaluation runner syntax
         run: node --check scripts/evaluate-ai-golden-set.mjs
       - name: Validate backup, restore and MCP smoke-test scripts
-        run: bash -n scripts/backup-teksher-hub.sh scripts/restore-teksher-hub.sh scripts/test-mcp-tools-smoke.sh
+        run: bash -n scripts/backup-teksher-hub.sh scripts/restore-teksher-hub.sh scripts/test-mcp-tools-smoke.sh scripts/test-mcp-role-access.sh
       - name: Test uploads archive validation
         run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
 
@@ -163,11 +163,14 @@ jobs:
             echo "SKIP: GROQ_API_KEY is not configured in this CI environment."
           fi
 
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] && [ -n "$GROQ_API_KEY" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ -n "$GROQ_API_KEY" ]; then
+            echo "Running the one-time full 11-case Golden Set on this push."
+            TEKSHER_API_BASE_URL=http://localhost:8080 TEKSHER_API_TOKEN="$TOKEN" node scripts/evaluate-ai-golden-set.mjs
+          elif [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] && [ -n "$GROQ_API_KEY" ]; then
             echo "Manual workflow dispatch and GROQ_API_KEY are configured; running live AI golden-set evaluation."
             TEKSHER_API_BASE_URL=http://localhost:8080 TEKSHER_API_TOKEN="$TOKEN" node scripts/evaluate-ai-golden-set.mjs
           else
-            echo "Skipping live AI golden-set evaluation during normal CI. Run this workflow manually to evaluate live Groq responses."
+            echo "Skipping live AI golden-set evaluation for this event."
           fi
 
 
@@ -232,6 +235,9 @@ jobs:
           READER_LOGIN=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/auth/login -H 'Content-Type: application/json' -d '{"username":"ci-reader","password":"ci-password-rotated-987654"}')
           READER_TOKEN=$(echo "$READER_LOGIN" | jq -r '.token')
           test -n "$READER_TOKEN" && test "$READER_TOKEN" != "null"
+
+          # Verify MCP tool output respects the authenticated ADMIN / EDITOR / READER role.
+          MCP_URL=http://localhost:8080/mcp MCP_ADMIN_TOKEN="$TOKEN" MCP_EDITOR_TOKEN="$EDITOR_TOKEN" MCP_READER_TOKEN="$READER_TOKEN" MCP_DRAFT_PROCESS_ID="$PROCESS_ID" bash scripts/test-mcp-role-access.sh
 
           curl --silent --show-error --fail "http://localhost:8080/api/business-processes" -H "Authorization: Bearer $READER_TOKEN" | jq -e --arg id "$PROCESS_ID" 'all(.[]; .id != $id)'
           curl --silent --show-error --fail -X POST "http://localhost:8080/api/business-processes/$PROCESS_ID/submit-for-review" -H "Authorization: Bearer $EDITOR_TOKEN" | jq -e '.workflowStatus == "IN_REVIEW"'
