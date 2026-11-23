@@ -45,6 +45,27 @@ class McpKnowledgeServiceTest {
     }
 
     @Test
+    void searchesNpaByNumberWithoutFreeTextQuery() {
+        DocumentRepository documents = mock(DocumentRepository.class);
+        DocumentRecord matching = document("Постановление Правительства РФ № 515", "RU", "Нормативный акт",
+                DocumentStatus.ACTIVE, "№ 515", LocalDate.of(2019, 4, 26), "Система маркировки товаров");
+        when(documents.findAllByOrderByUpdatedAtDesc()).thenReturn(List.of(matching));
+
+        McpKnowledgeService.ToolResult result = service(documents).searchNpa(
+                null, null, "515", null, "ADMIN");
+
+        assertEquals(1, result.sources().size());
+        assertEquals(matching.getId().toString(), result.sources().getFirst().id());
+    }
+
+    @Test
+    void rejectsNpaSearchWithoutAnyFilter() {
+        McpKnowledgeService knowledge = service(mock(DocumentRepository.class));
+        assertThrows(IllegalArgumentException.class,
+                () -> knowledge.searchNpa(null, null, null, null, "ADMIN"));
+    }
+
+    @Test
     void readerDoesNotReceiveNonPublicOperatorCardsButCanUseSharedCodeCatalog() {
         DocumentRepository documents = mock(DocumentRepository.class);
         DocumentRecord underReview = document("Справочный перечень 9503005500", "KG", "Справочная информация",
