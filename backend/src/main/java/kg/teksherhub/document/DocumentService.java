@@ -40,15 +40,69 @@ public class DocumentService {
     @Transactional(readOnly = true)
     public List<DocumentResponse> list(String query, String jurisdiction, String kind, String status) {
         String q = query == null ? "" : query.trim().toLowerCase(java.util.Locale.ROOT);
-        java.util.Set<UUID> attachmentMatches = q.isBlank() ? java.util.Set.of()
-                : new java.util.HashSet<>(files.findDocumentIdsWithExtractedTextContaining(q));
-        return documents.findAllByOrderByUpdatedAtDesc().stream()
-                .filter(d -> q.isBlank() || searchableMetadata(d).contains(q) || attachmentMatches.contains(d.getId()))
+        if (q.isBlank()) {
+            return documents.findAllByOrderByUpdatedAtDesc().stream()
+                    .filter(d -> jurisdiction == null || jurisdiction.isBlank() || jurisdiction.equalsIgnoreCase(d.getJurisdiction()))
+                    .filter(d -> kind == null || kind.isBlank() || kind.equalsIgnoreCase(d.getKind()))
+                    .filter(d -> status == null || status.isBlank() || status.equalsIgnoreCase(d.getStatus().name()))
+                    .map(this::toResponse)
+                    .toList();
+        }
+
+        // Search metadata and document body in PostgreSQL first. Attachment text remains
+        // indexed separately because it is stored outside the documents table.
+        List<UUID> metadataMatches = findMatchingDocumentIds(q);
+        java.util.Set<UUID> attachmentMatches = new java.util.HashSet<>(
+                files.findDocumentIdsWithExtractedTextContaining(q));
+        java.util.LinkedHashSet<UUID> candidateIds = new java.util.LinkedHashSet<>(metadataMatches);
+        candidateIds.addAll(attachmentMatches);
+        if (candidateIds.isEmpty()) return List.of();
+
+        java.util.Map<UUID, Integer> searchOrder = new java.util.HashMap<>();
+        for (int i = 0; i < metadataMatches.size(); i++) {
+            searchOrder.put(metadataMatches.get(i), i);
+        }
+
+        List<DocumentRecord> matchedDocuments = new java.util.ArrayList<>();
+        documents.findAllById(candidateIds).forEach(matchedDocuments::add);
+        return matchedDocuments.stream()
                 .filter(d -> jurisdiction == null || jurisdiction.isBlank() || jurisdiction.equalsIgnoreCase(d.getJurisdiction()))
                 .filter(d -> kind == null || kind.isBlank() || kind.equalsIgnoreCase(d.getKind()))
                 .filter(d -> status == null || status.isBlank() || status.equalsIgnoreCase(d.getStatus().name()))
-                .map(d -> toResponse(d, !q.isBlank() && attachmentMatches.contains(d.getId())))
+                .sorted((left, right) -> {
+                    int leftPosition = searchOrder.getOrDefault(left.getId(), Integer.MAX_VALUE);
+                    int rightPosition = searchOrder.getOrDefault(right.getId(), Integer.MAX_VALUE);
+                    if (leftPosition != rightPosition) return Integer.compare(leftPosition, rightPosition);
+                    return right.getUpdatedAt().compareTo(left.getUpdatedAt());
+                })
+                .map(d -> toResponse(d, attachmentMatches.contains(d.getId())))
                 .toList();
+    }
+
+    private List<UUID> findMatchingDocumentIds(String query) {
+        return jdbc.queryForList("""
+                WITH search_query AS (
+                    SELECT websearch_to_tsquery('russian', ?) AS ts_query
+                )
+                SELECT d.id
+                FROM documents d
+                CROSS JOIN search_query
+                WHERE (
+                    (numnode(search_query.ts_query) > 0 AND d.search_vector @@ search_query.ts_query)
+                    OR position(lower(?) IN lower(concat_ws(' ',
+                        d.title, d.description, d.area, d.kind, d.jurisdiction,
+                        d.product_group, d.keywords, d.document_number, d.source_url, d.content
+                    ))) > 0
+                )
+                ORDER BY
+                    CASE
+                        WHEN numnode(search_query.ts_query) > 0
+                             AND d.search_vector @@ search_query.ts_query
+                        THEN ts_rank_cd(d.search_vector, search_query.ts_query)
+                        ELSE 0
+                    END DESC,
+                    d.updated_at DESC
+                """, UUID.class, query, query);
     }
 
 
@@ -295,13 +349,6 @@ public class DocumentService {
             link.setCreatedAt(Instant.now());
             links.save(link);
         }
-    }
-
-    private static String searchableMetadata(DocumentRecord d) {
-        return (d.getTitle() + " " + d.getDescription() + " " + d.getArea() + " " + d.getKind() + " "
-                + d.getJurisdiction() + " " + value(d.getProductGroup()) + " " + value(d.getKeywords()) + " "
-                + value(d.getDocumentNumber()) + " " + value(d.getSourceUrl()) + " " + value(d.getContent()))
-                .toLowerCase(java.util.Locale.ROOT);
     }
 
     private boolean hasReviewRelevantChanges(DocumentRecord document, DocumentRequest request) {
