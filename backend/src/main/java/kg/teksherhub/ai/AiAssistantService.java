@@ -230,9 +230,9 @@ public class AiAssistantService {
                 .distinct()
                 .toList();
         if (!reviewStatuses.isEmpty()) {
-            answer = answer.stripTrailing() + "\n\nВажно: среди найденных материалов есть документы со статусом "
+            answer = answer.stripTrailing() + "\n\nВажно: среди найденных материалов есть материалы со статусом "
                     + String.join(", ", reviewStatuses)
-                    + ". Их сведения нельзя считать подтверждёнными действующими требованиями без дополнительной проверки.";
+                    + ". Их сведения нельзя считать подтверждёнными действующими требованиями или опубликованными инструкциями без дополнительной проверки.";
         }
         List<String> dateConflicts = evidence.stream()
                 .filter(item -> "DOCUMENT".equals(item.sourceType()) && "ACTIVE".equals(item.status()))
