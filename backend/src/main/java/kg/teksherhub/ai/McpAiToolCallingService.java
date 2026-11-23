@@ -30,8 +30,8 @@ public class McpAiToolCallingService {
     private static final URI CHAT_COMPLETIONS_URI = URI.create("https://api.groq.com/openai/v1/chat/completions");
     private static final Pattern TOOL_TRIGGER = Pattern.compile(
             "(?Uiu)(нпа|норматив|постановлен|приказ|закон"
-                    + "|тн\\s*вед|тнвед"
-                    + "|коды?\\s*(?:тн\\s*вед)?\\s*[:№-]?\\s*\\d{4,10}"
+                    + "|тн\\s*вэд|тнвэд"
+                    + "|коды?\\s*(?:тн\\s*вэд)?\\s*[:№-]?\\s*\\d{4,10}"
                     + "|код\\s+товар|товарн\\w*\\s+групп"
                     + "|бизнес[- ]процесс|процесс|инструкц"
                     + "|регистрац|созда\\w*\\s+карточк|карточк\\w*\\s+товар"
@@ -119,7 +119,7 @@ public class McpAiToolCallingService {
         if (question == null || question.isBlank()) return false;
         String normalized = question.toLowerCase(Locale.ROOT).replace('ё', 'е');
         // Some common marking abbreviations are written with variable spacing and punctuation.
-        if (normalized.contains("тн") && normalized.contains("вед")) return true;
+        if (normalized.contains("тн") && normalized.contains("вэд")) return true;
         return TOOL_TRIGGER.matcher(normalized).find();
     }
 
