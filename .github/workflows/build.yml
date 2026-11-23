@@ -25,8 +25,8 @@ jobs:
         run: node scripts/check-tnved-catalog.mjs
       - name: Validate AI evaluation runner syntax
         run: node --check scripts/evaluate-ai-golden-set.mjs
-      - name: Validate backup and restore scripts
-        run: bash -n scripts/backup-teksher-hub.sh scripts/restore-teksher-hub.sh
+      - name: Validate backup, restore and MCP smoke-test scripts
+        run: bash -n scripts/backup-teksher-hub.sh scripts/restore-teksher-hub.sh scripts/test-mcp-tools-smoke.sh
       - name: Test uploads archive validation
         run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
 
