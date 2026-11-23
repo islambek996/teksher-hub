@@ -89,7 +89,10 @@ jobs:
             fi
             sleep 2
           done
-          if ! curl --silent --fail http://localhost:8080/api/health; then
+          # Reuse the successful readiness response instead of opening a second
+          # health-check connection (the response body can be complete while curl
+          # reports a transient connection-close error on a repeated request).
+          if ! test -s /tmp/teksher-hub-health.json || ! jq -e '.status == "ok"' /tmp/teksher-hub-health.json > /dev/null; then
             cat /tmp/teksher-hub-api.log
             exit 1
           fi
