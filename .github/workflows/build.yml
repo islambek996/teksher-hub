@@ -23,8 +23,11 @@ jobs:
         run: npm run build
       - name: Validate TN VED spreadsheet catalogue
         run: node scripts/check-tnved-catalog.mjs
-      - name: Validate AI evaluation runner syntax
-        run: node --check scripts/evaluate-ai-golden-set.mjs
+      - name: Validate AI evaluation scripts and Unicode regression cases
+        run: |
+          node --check scripts/evaluate-ai-golden-set.mjs
+          node --check scripts/ai-golden-set-utils.mjs
+          node scripts/test-ai-golden-set-utils.mjs
       - name: Validate backup, restore and MCP smoke-test scripts
         run: bash -n scripts/backup-teksher-hub.sh scripts/restore-teksher-hub.sh scripts/test-mcp-tools-smoke.sh scripts/test-mcp-role-access.sh
       - name: Test uploads archive validation
