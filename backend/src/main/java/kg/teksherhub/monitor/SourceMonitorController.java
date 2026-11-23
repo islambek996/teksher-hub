@@ -37,6 +37,37 @@ public class SourceMonitorController {
         return service.checkNow(id, user.getUsername());
     }
 
+
+    @GetMapping("/{id}/targets")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    public SourceMonitorTargetsResponse targets(@PathVariable Long id) {
+        return service.targets(id);
+    }
+
+    @PutMapping("/{id}/targets")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    public SourceMonitorTargetsResponse replaceTargets(@PathVariable Long id,
+            @Valid @RequestBody SourceMonitorTargetsRequest request,
+            @AuthenticationPrincipal UserAccount user) {
+        return service.replaceTargets(id, request, user.getUsername());
+    }
+
+    @GetMapping("/{id}/changes")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    public List<SourceMonitorChangeResponse> changes(@PathVariable Long id) {
+        return service.changes(id);
+    }
+
+    @PostMapping("/{id}/changes/{changeId}/acknowledge")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    public SourceMonitorChangeResponse acknowledgeChange(@PathVariable Long id, @PathVariable Long changeId,
+            @RequestBody(required = false) ChangeReviewRequest request,
+            @AuthenticationPrincipal UserAccount user) {
+        return service.acknowledgeChange(id, changeId, request == null ? null : request.note(), user.getUsername());
+    }
+
+    public record ChangeReviewRequest(String note) {}
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public void delete(@PathVariable Long id, @AuthenticationPrincipal UserAccount user) {

@@ -29,6 +29,10 @@ public class SourceMonitor {
     private Integer lastHttpStatus;
     @Column(name = "last_content_hash", length = 128)
     private String lastContentHash;
+    @Column(name = "last_content_type", length = 160)
+    private String lastContentType;
+    @Column(name = "last_content_snapshot", columnDefinition = "text")
+    private String lastContentSnapshot;
     @Column(name = "last_change_detected_at")
     private Instant lastChangeDetectedAt;
     @Column(name = "last_error", length = 1000)

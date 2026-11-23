@@ -102,6 +102,13 @@ jobs:
           curl --silent --show-error --fail "http://localhost:8080/api/documents" -H "Authorization: Bearer $TOKEN" | jq -e 'any(.[]; .id == "a1000000-0000-4000-8000-000000000004" and .sourceUrl == "https://cbd.minjust.gov.kg/7-42968/edition/34256/ru" and .status == "UNDER_REVIEW") and any(.[]; .id == "a1000000-0000-4000-8000-000000000007" and .sourceUrl == "https://docs.eaeunion.org/" and .status == "UNDER_REVIEW")'
           curl --silent --show-error --fail "http://localhost:8080/api/monitors" -H "Authorization: Bearer $TOKEN" | jq -e 'any(.[]; .sourceUrl == "https://cbd.minjust.gov.kg/") and any(.[]; .sourceUrl == "https://publication.pravo.gov.ru/") and any(.[]; .sourceUrl == "https://docs.eaeunion.org/") and any(.[]; .sourceUrl == "https://eec.eaeunion.org/")'
 
+          # Source monitors can be explicitly linked to affected knowledge cards and business processes.
+          MONITOR_ID=$(curl --silent --show-error --fail "http://localhost:8080/api/monitors" -H "Authorization: Bearer $TOKEN" | jq -r '.[] | select(.sourceUrl == "https://cbd.minjust.gov.kg/") | .id' | head -n 1)
+          test -n "$MONITOR_ID"
+          curl --silent --show-error --fail -X PUT "http://localhost:8080/api/monitors/$MONITOR_ID/targets" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"documentIds":["a1000000-0000-4000-8000-000000000004"],"processIds":["registration"]}' | jq -e '.documents | any(.[]; .id == "a1000000-0000-4000-8000-000000000004")'
+          curl --silent --show-error --fail "http://localhost:8080/api/monitors/$MONITOR_ID/targets" -H "Authorization: Bearer $TOKEN" | jq -e '.businessProcesses | any(.[]; .id == "registration")'
+          curl --silent --show-error --fail "http://localhost:8080/api/monitors/$MONITOR_ID/changes" -H "Authorization: Bearer $TOKEN" | jq -e 'type == "array"'
+
           AI_GREETING=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/ai/ask -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"question":"привет"}')
           echo "$AI_GREETING" | jq -e '.answer | contains("TEKSHER AI")'
           AI_IDENTITY=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/ai/ask -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"question":"кто тебя создал"}')

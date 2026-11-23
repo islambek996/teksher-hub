@@ -29,6 +29,9 @@ The initial admin is created only if `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_A
 - `POST /api/documents/{id}/review` – record manual status/source review.
 - `GET/POST /api/documents/{id}/files`, `GET /api/documents/{id}/files/{fileId}/download`.
 - `GET/POST/PUT/DELETE /api/monitors`, `POST /api/monitors/{id}/check`.
+- `GET/PUT /api/monitors/{id}/targets` – explicitly link source monitors to documents and business processes (ADMIN/EDITOR).
+- `GET /api/monitors/{id}/changes` – source-change history, hashes and saved text snapshots where the response is textual.
+- `POST /api/monitors/{id}/changes/{changeId}/acknowledge` – record that a signal was reviewed, with a required note (ADMIN/EDITOR).
 - `GET/POST /api/users`, `PATCH /api/users/{id}/enabled` and `PUT /api/users/{id}/password` – administrator only.
 - `GET /api/health`.
 
@@ -79,3 +82,12 @@ Outbound checks are restricted by `MONITOR_ALLOWED_HOSTS`; redirects are not fol
 - Keep secrets in the hosting platform's secret/environment settings, never in Git.
 - Use HTTPS, restrict admin access, monitor backups and test restore procedures.
 - The local Docker Compose setup is an installation baseline, not an automatic production deployment.
+
+
+## Official source change history
+
+- Each monitor can be explicitly linked to the exact knowledge documents and business processes it supports. Links are managed by ADMIN/EDITOR; no broad host-based guessing is used.
+- When a response hash changes, the backend stores a change event with previous/current SHA-256 values. Textual responses also retain bounded snapshots for comparison. Binary responses are represented by hashes only.
+- Notifications go to ADMIN/EDITOR users and authors/updaters of linked documents and processes.
+- Acknowledging an event records who reviewed the signal and the review note. It does **not** confirm that every linked document is legally current and does not automatically republish or change document statuses. Each document must be reviewed through its normal document-review workflow.
+- Changing a monitor URL clears its previous hash baseline, so the new URL is checked as a fresh source rather than being compared with unrelated content.
