@@ -192,7 +192,7 @@ public class McpAiToolCallingService {
                         property("query", "string", "Optional search phrase or act title", null),
                         property("jurisdiction", "string", "KG, RU or EAEU", new String[]{"KG","RU","EAEU"}),
                         property("document_number", "string", "Act/document number", null),
-                        property("document_date", "string", "Exact date YYYY-MM-DD", null)));
+                        property("document_date", "string", "Exact date YYYY-MM-DD", null))));
         tools.add(function("search_product_groups", "Find saved product groups and related knowledge cards",
                 List.of(property("query", "string", "Product group name or description", null)), "query"));
         tools.add(function("check_tnved_code", "Check a TN VED code in saved operator/reference lists",
