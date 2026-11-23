@@ -78,8 +78,8 @@ NPA=$(mcp_call 10 search_npa '{"query":"маркировка","jurisdiction":"RU
 printf '%s' "$NPA" | jq -e '.data.results | any(.[]; (.documentNumber // "" | contains("515")))'
 
 echo "Calling search_product_groups..." >&2
-GROUPS=$(mcp_call 11 search_product_groups '{"query":"детские игрушки"}')
-printf '%s' "$GROUPS" | jq -e '.data | has("mzkmGroups") and has("internalGroups") and has("groupDetails") and has("relatedKnowledgeCards")'
+PRODUCT_GROUPS=$(mcp_call 11 search_product_groups '{"query":"детские игрушки"}')
+printf '%s' "$PRODUCT_GROUPS" | jq -e '.data | has("mzkmGroups") and has("internalGroups") and has("groupDetails") and has("relatedKnowledgeCards")'
 
 echo "Calling check_tnved_code..." >&2
 TNVED=$(mcp_call 12 check_tnved_code '{"code":"9503005500"}')
