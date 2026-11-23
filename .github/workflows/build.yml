@@ -118,6 +118,9 @@ jobs:
             grep -q "$TOOL_NAME" /tmp/teksher-hub-mcp-tools.txt
           done
 
+          # Invoke each authenticated MCP tool against the migrated CI database.
+          MCP_URL=http://localhost:8080/mcp MCP_TOKEN="$TOKEN" MCP_SESSION_ID="$MCP_SESSION_ID" bash scripts/test-mcp-tools-smoke.sh
+
           # Seeded official legal references and source monitors must be available after Flyway migration.
           curl --silent --show-error --fail "http://localhost:8080/api/documents?q=515" -H "Authorization: Bearer $TOKEN" | jq -e 'any(.[]; .documentNumber == "№ 515" and .jurisdiction == "RU" and .status == "UNDER_REVIEW" and (.sourceUrl | startswith("https://publication.pravo.gov.ru/")))'
           curl --silent --show-error --fail "http://localhost:8080/api/documents" -H "Authorization: Bearer $TOKEN" | jq -e 'any(.[]; .id == "a1000000-0000-4000-8000-000000000004" and .sourceUrl == "https://cbd.minjust.gov.kg/7-42968/edition/34256/ru" and .status == "UNDER_REVIEW") and any(.[]; .id == "a1000000-0000-4000-8000-000000000007" and .sourceUrl == "https://docs.eaeunion.org/" and .status == "UNDER_REVIEW")'
