@@ -220,10 +220,10 @@ async function evaluateCase(item, index) {
     .normalize("NFKC")
     .toLowerCase()
     .replaceAll("ё", "е")
-    .replace(/[\\p{White_Space}\\u200B]/gu, "");
+    .replace(/[\p{White_Space}\u200B]/gu, "");
   const claimsNumericOrderLimit =
     item.id === "LIMIT_MUST_NOT_BE_GUESSED" &&
-    /\\d{1,6}(?:км|код(?:а|ов)?)/i.test(normalizedAnswer);
+    /\d{1,6}(?:км|код(?:а|ов)?)/i.test(normalizedAnswer);
   const hasCurrentOrderLimitEvidence = sources.some((source) => {
     const trustedStatus =
       (source.sourceType === "DOCUMENT" &&
@@ -236,8 +236,8 @@ async function evaluateCase(item, index) {
       .join(" ")
       .normalize("NFKC")
       .toLowerCase()
-      .replace(/[\\p{White_Space}\\u200B]/gu, "");
-    return /(?:лимит|максимум|неболее|до)\\d{1,6}(?:км|код(?:а|ов)?).{0,80}(?:заказ|одинзаказ)/i.test(
+      .replace(/[\p{White_Space}\u200B]/gu, "");
+    return /(?:лимит|максимум|неболее|до)\d{1,6}(?:км|код(?:а|ов)?).{0,80}(?:заказ|одинзаказ)/i.test(
       sourceText,
     );
   });
@@ -278,8 +278,8 @@ async function evaluateCase(item, index) {
   const eaeuFrameworkFacts =
     item.id !== "EAEU_FRAMEWORK" ||
     ((/29[. ]марта[. ]2019/i.test(answer) ||
-      /29\\.03\\.2019/.test(answer)) &&
-      /отдельн\\w* решени|решени\\w* совет/i.test(answer)) ||
+      /29\.03\.2019/.test(answer)) &&
+      /отдельн\w* решени|решени\w* совет/i.test(answer)) ||
     assistantAbstains;
 
   const ucm385CurrentScope =
@@ -292,8 +292,8 @@ async function evaluateCase(item, index) {
 
   const cosmeticsNoBlanketClaim =
     item.id !== "KG_COSMETICS" ||
-    !/косметик\\w*.{0,80}подпада\\w*.{0,40}общ\\w* правил/i.test(answer) ||
-    /не вс[её]|не автоматически|не подтвержден|нельзя считать|точн\\w* товарн\\w* категори|тн вэд/i.test(
+    !/косметик\w*.{0,80}подпада\w*.{0,40}общ\w* правил/i.test(answer) ||
+    /не вс[её]|не автоматически|не подтвержден|нельзя считать|точн\w* товарн\w* категори|тн вэд/i.test(
       answer,
     );
 
