@@ -216,8 +216,16 @@ public class AiAssistantService {
                     + "\n\nПримечание: ответ не содержит ссылок на найденные материалы. Проверьте выводы по источникам ниже перед использованием как инструкции.";
         }
         List<String> reviewStatuses = evidence.stream()
-                .filter(item -> "DOCUMENT".equals(item.sourceType()))
-                .filter(item -> Set.of("DRAFT", "UNDER_REVIEW", "EXPIRED", "ARCHIVED").contains(item.status()))
+                .filter(item -> {
+                    if ("DOCUMENT".equals(item.sourceType())) {
+                        return Set.of("DRAFT", "UNDER_REVIEW", "EXPIRED", "ARCHIVED")
+                                .contains(item.status());
+                    }
+                    if ("BUSINESS_PROCESS".equals(item.sourceType())) {
+                        return !Set.of("PUBLISHED").contains(item.status());
+                    }
+                    return false;
+                })
                 .map(item -> item.statusLabel())
                 .distinct()
                 .toList();
@@ -457,6 +465,10 @@ public class AiAssistantService {
             append(context, "Продолжительность или срок", guide.getTime());
             append(context, "Ключевые слова", guide.getSearchTerm());
             append(context, "Описание", guide.getSummary());
+            String workflowStatus = safe(guide.getWorkflowStatus()).toUpperCase(Locale.ROOT);
+            String workflowLabel = "PUBLISHED".equals(workflowStatus)
+                    ? "Опубликован" : "Не опубликован – требуется проверка/утверждение";
+            append(context, "Статус публикации", workflowStatus + " (" + workflowLabel + ")");
             String sourceUrl = "";
             try {
                 JsonNode sources = objectMapper.readTree(safe(guide.getSourcesJson()).isBlank() ? "[]" : guide.getSourcesJson());
@@ -482,9 +494,6 @@ public class AiAssistantService {
             }
             String excerpt = safe(guide.getSummary());
             if (excerpt.isBlank()) excerpt = truncate(context.toString(), 360);
-            String workflowStatus = safe(guide.getWorkflowStatus()).toUpperCase(Locale.ROOT);
-            String workflowLabel = "PUBLISHED".equals(workflowStatus)
-                    ? "Опубликованный бизнес-процесс" : "Внутренний материал – не опубликован";
             result.add(new Evidence(number, guide.getId(), "BUSINESS_PROCESS", safe(guide.getTitle()),
                     "KG", "Бизнес-процесс", workflowStatus, workflowLabel,
                     sourceUrl, "", "", "", excerpt, truncate(context.toString(), 4_500), row.score()));
