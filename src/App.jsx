@@ -1584,7 +1584,7 @@ function AppContent() {
             : active === 'knowledge' ? <KnowledgeCenterSection documents={documents} onSelectKind={(kind) => { setActive('documents'); setSelectedDoc(null); setQuery(''); setFilter(kind); setStatusFilter('Все статусы'); syncRoute('documents') }} onOpenAll={() => openSection('documents')} onAdd={openNewDocumentModal} canAdd={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} />
             : active === 'groups' ? <ProductGroupsSection onOpen={openSection} onSearchGroup={searchProductGroupMaterials} canManage={!API_ENABLED || ["ADMIN", "EDITOR"].includes(currentUser?.role)} />
             : active === 'processes' ? <ProcessGuidesSection key={currentUser?.username || 'local'} progressStorageKey={API_ENABLED ? PROCESS_PROGRESS_KEY + ':' + (currentUser?.username || 'anonymous') : PROCESS_PROGRESS_KEY} onSearchMaterials={searchProductGroupMaterials} canEdit={!API_ENABLED || ['ADMIN','EDITOR'].includes(currentUser?.role)} canDelete={!API_ENABLED || currentUser?.role === 'ADMIN'} canApprove={!API_ENABLED || currentUser?.role === 'ADMIN'} canViewDashboard={API_ENABLED && currentUser?.role === 'ADMIN'} />
-            : active === 'monitoring' ? <MonitorSection monitors={monitors} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
+            : active === 'monitoring' ? <MonitorSection monitors={monitors} documents={apiDocuments} canManage={['ADMIN','EDITOR'].includes(currentUser?.role)}
                 onAdd={() => { setActionError(''); setMonitorModalOpen(true) }} onCheck={handleCheckMonitor} onDelete={handleDeleteMonitor} />
             : active === 'users' && currentUser?.role === 'ADMIN' ? <UsersSection users={users} onAdd={() => { setActionError(''); setUserModalOpen(true) }} onToggle={handleToggleUser} onReset={user => { setActionError(''); setPasswordResetTarget(user) }} />
             : active === 'audit' && currentUser?.role === 'ADMIN' ? <AuditLogSection />
@@ -4455,21 +4455,179 @@ function AiAssistantSection({ apiEnabled, isAdmin, onOpenDocument, initialPrompt
   )
 }
 
-function MonitorSection({ monitors, canManage, onAdd, onCheck, onDelete }) {
+function MonitorSection({ monitors, documents, canManage, onAdd, onCheck, onDelete }) {
+  const [detailsMonitor, setDetailsMonitor] = useState(null)
+  const [targets, setTargets] = useState({ documents: [], businessProcesses: [] })
+  const [changes, setChanges] = useState([])
+  const [processGuides, setProcessGuides] = useState([])
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState([])
+  const [selectedProcessIds, setSelectedProcessIds] = useState([])
+  const [documentSearch, setDocumentSearch] = useState('')
+  const [processSearch, setProcessSearch] = useState('')
+  const [reviewNotes, setReviewNotes] = useState({})
+  const [detailsLoading, setDetailsLoading] = useState(false)
+  const [savingTargets, setSavingTargets] = useState(false)
+  const [savingChangeId, setSavingChangeId] = useState(null)
+  const [detailsError, setDetailsError] = useState('')
+  const [detailsMessage, setDetailsMessage] = useState('')
+
+  const openDetails = async monitor => {
+    setDetailsMonitor(monitor)
+    setDetailsLoading(true)
+    setDetailsError('')
+    setDetailsMessage('')
+    setDocumentSearch('')
+    setProcessSearch('')
+    try {
+      const [targetData, changeData, processData] = await Promise.all([
+        apiRequest('/api/monitors/' + monitor.id + '/targets'),
+        apiRequest('/api/monitors/' + monitor.id + '/changes'),
+        apiRequest('/api/business-processes'),
+      ])
+      setTargets(targetData || { documents: [], businessProcesses: [] })
+      setSelectedDocumentIds((targetData?.documents || []).map(item => String(item.id)))
+      setSelectedProcessIds((targetData?.businessProcesses || []).map(item => String(item.id)))
+      setChanges(Array.isArray(changeData) ? changeData : [])
+      setProcessGuides(Array.isArray(processData) ? processData : [])
+      setReviewNotes({})
+    } catch (error) {
+      setDetailsError(error.message || 'Не удалось загрузить связи и историю источника.')
+    } finally {
+      setDetailsLoading(false)
+    }
+  }
+
+  const saveTargets = async () => {
+    if (!detailsMonitor || savingTargets) return
+    setSavingTargets(true)
+    setDetailsError('')
+    setDetailsMessage('')
+    try {
+      const updated = await apiRequest('/api/monitors/' + detailsMonitor.id + '/targets', {
+        method: 'PUT',
+        body: { documentIds: selectedDocumentIds, processIds: selectedProcessIds },
+      })
+      setTargets(updated || { documents: [], businessProcesses: [] })
+      setSelectedDocumentIds((updated?.documents || []).map(item => String(item.id)))
+      setSelectedProcessIds((updated?.businessProcesses || []).map(item => String(item.id)))
+      setDetailsMessage('Связанные материалы сохранены.')
+    } catch (error) {
+      setDetailsError(error.message || 'Не удалось сохранить связи.')
+    } finally {
+      setSavingTargets(false)
+    }
+  }
+
+  const acknowledgeChange = async change => {
+    const note = String(reviewNotes[change.id] || '').trim()
+    if (!detailsMonitor || !note || savingChangeId) return
+    setSavingChangeId(change.id)
+    setDetailsError('')
+    setDetailsMessage('')
+    try {
+      const updated = await apiRequest('/api/monitors/' + detailsMonitor.id + '/changes/' + change.id + '/acknowledge', {
+        method: 'POST', body: { note },
+      })
+      setChanges(current => current.map(item => item.id === updated.id ? updated : item))
+      setDetailsMessage('Сигнал отмечен как просмотренный. Карточки документов проверяйте отдельно.')
+      setReviewNotes(current => ({ ...current, [change.id]: '' }))
+    } catch (error) {
+      setDetailsError(error.message || 'Не удалось отметить сигнал просмотренным.')
+    } finally {
+      setSavingChangeId(null)
+    }
+  }
+
+  const toggleDocument = id => setSelectedDocumentIds(current =>
+    current.includes(String(id)) ? current.filter(value => value !== String(id)) : [...current, String(id)])
+  const toggleProcess = id => setSelectedProcessIds(current =>
+    current.includes(String(id)) ? current.filter(value => value !== String(id)) : [...current, String(id)])
+
+  const visibleDocuments = useMemo(() => {
+    const term = documentSearch.trim().toLocaleLowerCase('ru-RU')
+    return [...(documents || [])].filter(item => !term || [item.title, item.documentNumber, item.productGroup, item.kind]
+      .filter(Boolean).join(' ').toLocaleLowerCase('ru-RU').includes(term))
+      .sort((a, b) => (a.title || '').localeCompare(b.title || '', 'ru-RU'))
+  }, [documents, documentSearch])
+
+  const visibleProcesses = useMemo(() => {
+    const term = processSearch.trim().toLocaleLowerCase('ru-RU')
+    return [...processGuides].filter(item => !term || [item.title, item.category, item.summary]
+      .filter(Boolean).join(' ').toLocaleLowerCase('ru-RU').includes(term))
+      .sort((a, b) => (a.title || '').localeCompare(b.title || '', 'ru-RU'))
+  }, [processGuides, processSearch])
+
   return <section className="management-page">
-    <div className="page-heading"><div><div className="section-kicker">КОНТРОЛЬ ИЗМЕНЕНИЙ / ИСТОЧНИКИ</div><h1>Мониторинг официальных источников</h1><p>Система периодически проверяет содержимое разрешённых официальных сайтов и фиксирует изменение контрольной суммы. Найденное изменение требует проверки специалистом и само по себе не означает изменения юридической силы документа.</p></div>{canManage && <button className="primary-button" onClick={onAdd}><FilePlus2 size={16} /> Добавить источник</button>}</div>
-    <div className="notice"><ShieldCheck size={17} /><div><b>Защита исходящих запросов</b><span>Автоматическая проверка ограничена доменами в MONITOR_ALLOWED_HOSTS. Перенаправления отключены, локальные IP-адреса блокируются. Если официальный сайт не входит в список, администратор должен добавить его в allowlist после проверки.</span></div></div>
-    {!monitors.length ? <div className="empty-state management-empty"><RefreshCw size={28} /><b>Источники ещё не добавлены</b><span>Добавь официальный портал, который нужно периодически перепроверять.</span>{canManage && <button className="primary-button" onClick={onAdd}>Добавить первый источник</button>}</div> :
+    <div className="page-heading"><div><div className="section-kicker">КОНТРОЛЬ ИЗМЕНЕНИЙ / ИСТОЧНИКИ</div><h1>Мониторинг официальных источников</h1><p>Система проверяет разрешённые официальные сайты, сохраняет историю обнаруженных изменений и показывает связанные НПА, инструкции и бизнес-процессы. Изменение источника требует проверки специалистом и само по себе не означает изменения юридической силы документа.</p></div>{canManage && <button className="primary-button" onClick={onAdd}><FilePlus2 size={16} /> Добавить источник</button>}</div>
+    <div className="notice"><ShieldCheck size={17} /><div><b>Защита исходящих запросов</b><span>Автоматическая проверка ограничена доменами в MONITOR_ALLOWED_HOSTS. Перенаправления отключены, локальные IP-адреса блокируются. Если официальный сайт не входит в список, администратор должен добавить домен в allowlist после проверки.</span></div></div>
+    {!monitors.length ? <div className="empty-state management-empty"><RefreshCw size={28} /><b>Источники ещё не добавлены</b><span>Добавьте официальный портал, который нужно периодически перепроверять.</span>{canManage && <button className="primary-button" onClick={onAdd}>Добавить первый источник</button>}</div> :
       <div className="monitor-list">{monitors.map(monitor => <article className="monitor-card" key={monitor.id}>
         <div className="monitor-icon"><Globe2 size={19} /></div>
         <div className="monitor-main"><div className="monitor-title-row"><h3>{monitor.name}</h3><span className={`status-pill ${monitor.lastError ? 'draft-status' : monitor.lastChangeDetectedAt ? 'review-status' : monitor.lastCheckedAt ? 'source-status' : 'demo-status'}`}>{monitor.lastError ? 'Ошибка проверки' : monitor.lastChangeDetectedAt ? 'Обнаружено изменение' : monitor.lastCheckedAt ? 'Проверено' : 'Ожидает первой проверки'}</span></div>
           <div className="monitor-url">{monitor.sourceUrl}</div>
           <div className="monitor-meta"><span>{jurisdictions[monitor.jurisdiction]?.short || monitor.jurisdiction}</span><span>Интервал: {monitor.intervalHours} ч</span><span>HTTP: {monitor.lastHttpStatus || '–'}</span><span>Последняя проверка: {formatDateTime(monitor.lastCheckedAt)}</span></div>
           {monitor.lastError && <div className="monitor-error">{monitor.lastError}</div>}
-          {monitor.lastChangeDetectedAt && <div className="monitor-change"><AlertTriangleIcon /> Изменение контрольной суммы: {formatDateTime(monitor.lastChangeDetectedAt)}. Проверьте источник вручную.</div>}
+          {monitor.lastChangeDetectedAt && <div className="monitor-change"><AlertTriangleIcon /> Изменение контрольной суммы: {formatDateTime(monitor.lastChangeDetectedAt)}. Откройте историю и проверьте связанные материалы.</div>}
         </div>
-        <div className="monitor-actions">{canManage && <button type="button" className="secondary-button" onClick={() => onCheck(monitor)}><RefreshCw size={14} /> Проверить</button>}{canManage && <button type="button" className="danger-button compact-danger" onClick={() => onDelete(monitor)}><Trash2 size={14} /> Удалить</button>}</div>
+        <div className="monitor-actions">
+          {canManage && <button type="button" className="secondary-button" onClick={() => openDetails(monitor)}><Link2 size={14} /> Связи и история</button>}
+          {canManage && <button type="button" className="secondary-button" onClick={() => onCheck(monitor)}><RefreshCw size={14} /> Проверить</button>}
+          {canManage && <button type="button" className="danger-button compact-danger" onClick={() => onDelete(monitor)}><Trash2 size={14} /> Удалить</button>}
+        </div>
       </article>)}</div>}
+    {detailsMonitor && <div className="modal-backdrop monitor-details-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !savingTargets && !savingChangeId) setDetailsMonitor(null) }}>
+      <section className="create-modal monitor-details-modal" role="dialog" aria-modal="true" aria-labelledby="monitor-details-title">
+        <header className="modal-header">
+          <div><div className="section-kicker">ИСТОЧНИК / ЗАВИСИМОСТИ</div><h2 id="monitor-details-title">{detailsMonitor.name}</h2><p>{detailsMonitor.sourceUrl}</p></div>
+          <button className="icon-button" type="button" onClick={() => setDetailsMonitor(null)} disabled={savingTargets || Boolean(savingChangeId)} aria-label="Закрыть"><X size={20}/></button>
+        </header>
+        {detailsLoading ? <div className="empty-state"><RefreshCw size={20} className="spin"/><span>Загрузка связей и истории…</span></div> : <>
+          <div className="monitor-dependency-grid">
+            <section className="monitor-target-panel">
+              <div className="monitor-target-heading"><div><b>Связанные документы</b><small>НПА, инструкции и справочные карточки · сохранено: {targets.documents.length}</small></div><span>{selectedDocumentIds.length}</span></div>
+              <input className="monitor-target-search" value={documentSearch} onChange={event => setDocumentSearch(event.target.value)} placeholder="Поиск документа или номера…" />
+              <div className="monitor-target-list">
+                {visibleDocuments.map(document => <label className="monitor-target-option" key={document.id}>
+                  <input type="checkbox" checked={selectedDocumentIds.includes(String(document.id))} onChange={() => toggleDocument(document.id)}/>
+                  <span><b>{document.title}</b><small>{document.documentNumber || document.kind} · {jurisdictions[document.jurisdiction]?.short || document.jurisdiction}</small></span>
+                </label>)}
+                {!visibleDocuments.length && <div className="monitor-target-empty">Материалы не найдены</div>}
+              </div>
+            </section>
+            <section className="monitor-target-panel">
+              <div className="monitor-target-heading"><div><b>Связанные бизнес-процессы</b><small>Процессы, которые нужно пересмотреть при изменении источника · сохранено: {targets.businessProcesses.length}</small></div><span>{selectedProcessIds.length}</span></div>
+              <input className="monitor-target-search" value={processSearch} onChange={event => setProcessSearch(event.target.value)} placeholder="Поиск бизнес-процесса…" />
+              <div className="monitor-target-list">
+                {visibleProcesses.map(process => <label className="monitor-target-option" key={process.id}>
+                  <input type="checkbox" checked={selectedProcessIds.includes(String(process.id))} onChange={() => toggleProcess(process.id)}/>
+                  <span><b>{process.title}</b><small>{process.category} · {process.workflowStatus || 'PUBLISHED'}</small></span>
+                </label>)}
+                {!visibleProcesses.length && <div className="monitor-target-empty">Бизнес-процессы не найдены</div>}
+              </div>
+            </section>
+          </div>
+          <div className="monitor-detail-actions"><button type="button" className="primary-button" onClick={saveTargets} disabled={savingTargets}>{savingTargets ? 'Сохранение…' : 'Сохранить связи'}</button></div>
+          <div className="form-note monitor-snapshot-note"><ShieldCheck size={16}/><span>При изменении источника система создаёт событие и уведомляет администраторов, редакторов и авторов/обновлявших связанные материалы. Юридический статус карточек автоматически не меняется.</span></div>
+          <section className="monitor-history-section">
+            <div className="monitor-history-heading"><div><b>История изменений</b><small>Последние 50 событий по источнику</small></div><span>{changes.filter(change => change.status === 'OPEN').length} требуют просмотра</span></div>
+            {!changes.length ? <div className="monitor-target-empty">Изменения пока не обнаружены. Первый успешный запрос формирует контрольную точку.</div> :
+              <div className="monitor-change-list">{changes.map(change => <article className="monitor-change-item" key={change.id}>
+                <div className="monitor-change-head"><div><b>Событие #{change.id}</b><small>{formatDateTime(change.detectedAt)}</small></div><span className={`status-pill ${change.status === 'ACKNOWLEDGED' ? 'source-status' : 'review-status'}`}>{change.status === 'ACKNOWLEDGED' ? 'Сигнал просмотрен' : 'Требует просмотра'}</span></div>
+                <div className="monitor-hash-grid"><div><small>Предыдущий SHA-256</small><code>{change.previousHash}</code></div><div><small>Новый SHA-256</small><code>{change.currentHash}</code></div></div>
+                {change.comparisonAvailable ? <div className="monitor-snapshot-grid">
+                  <details><summary>Предыдущий снимок{change.previousContentTruncated ? ' (первые 20 000 символов)' : ''}</summary><pre>{change.previousContent}</pre></details>
+                  <details><summary>Текущий снимок{change.currentContentTruncated ? ' (первые 20 000 символов)' : ''}</summary><pre>{change.currentContent}</pre></details>
+                </div> : <div className="monitor-target-empty">Текстовое сравнение недоступно для этого ответа. Сохранены контрольные суммы; источник мог вернуть PDF или бинарный файл.</div>}
+                {change.status === 'ACKNOWLEDGED' ? <div className="monitor-review-note"><b>Просмотрел: {change.reviewedBy} · {formatDateTime(change.reviewedAt)}</b><span>{change.reviewNote}</span></div> :
+                  <div className="monitor-acknowledge"><textarea value={reviewNotes[change.id] || ''} onChange={event => setReviewNotes(current => ({ ...current, [change.id]: event.target.value }))} maxLength={1000} rows={2} placeholder="Запишите, что именно проверено и какие материалы требуют обновления…"/><button type="button" className="secondary-button" onClick={() => acknowledgeChange(change)} disabled={savingChangeId === change.id || !String(reviewNotes[change.id] || '').trim()}>{savingChangeId === change.id ? 'Сохранение…' : 'Отметить сигнал просмотренным'}</button></div>}
+              </article>)}</div>}
+          </section>
+        </>}
+        {detailsError && <div className="feedback feedback-error"><CircleHelp size={15}/><span>{detailsError}</span></div>}
+        {detailsMessage && <div className="feedback feedback-success"><CheckCircle2 size={15}/><span>{detailsMessage}</span></div>}
+        <div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setDetailsMonitor(null)} disabled={savingTargets || Boolean(savingChangeId)}>Закрыть</button></div>
+      </section>
+    </div>}
   </section>
 }
 
