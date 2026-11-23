@@ -45,7 +45,7 @@ mcp_call() {
   if jq -e . "$response_file" >/dev/null 2>&1; then
     rpc_response=$(cat "$response_file")
   else
-    rpc_response=$(sed -n 's/^data: //p' "$response_file" | tail -n 1)
+    rpc_response=$(sed -n 's/^data:[[:space:]]*//p' "$response_file" | tail -n 1)
   fi
 
   if [ -z "$rpc_response" ] || ! printf '%s' "$rpc_response" | jq -e \
