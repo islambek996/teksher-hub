@@ -50,6 +50,10 @@ public class AiAssistantService {
     private static final int MAX_DOCUMENT_BODY_CHARACTERS = 4_000;
     private static final int MAX_ATTACHMENT_CHARACTERS = 2_500;
     private static final Pattern WORD_SEPARATOR = Pattern.compile("[^\\p{L}\\p{N}]+");
+    private static final Pattern EXPLICIT_JURISDICTION = Pattern.compile(
+            "(?iu)(?<![\\p{L}\\p{N}])(?:кр|рф|еаэс)(?![\\p{L}\\p{N}])|кыргыз\\p{L}*|росси\\p{L}*");
+    private static final Pattern VERIFIED_ORDER_LIMIT = Pattern.compile(
+            "(?iu)(?:до|максимум|лимит|неболее)\\d[\\d.,]{0,6}(?:код(?:а|ов)?|км).{0,80}(?:заказ|одинзаказ)");
     private static final Set<String> SHORT_DOMAIN_TERMS = Set.of("км", "рф", "кр", "ип");
     private static final Set<String> STOP_WORDS = Set.of(
             "это", "как", "что", "где", "когда", "почему", "зачем", "какой", "какая", "какие", "какое",
@@ -135,6 +139,9 @@ public class AiAssistantService {
         if (identityReply != null) {
             return new AssistantResponse(identityReply, List.of(), false);
         }
+        if (requiresMzkmJurisdictionClarification(question)) {
+            return insufficient("Сокращение «МЗКМ» само по себе не определяет страну и конкретную информационную систему. Уточните юрисдикцию (Кыргызская Республика, Российская Федерация или ЕАЭС), название контура/системы, версию инструкции и полный текст ошибки. До уточнения нельзя переносить на ваш случай порядок, тарифы или лимиты другой системы.", List.of());
+        }
 
         if (apiKeys.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
@@ -160,7 +167,7 @@ public class AiAssistantService {
             log.warn("TEKSHER MCP tool selection failed; continuing with regular knowledge retrieval", ex);
         }
         if (evidence.size() < MAX_SOURCES) {
-            evidence.addAll(buildBusinessProcessEvidence(question, terms, evidence.size() + 1,
+            evidence.addAll(buildBusinessProcessEvidence(question, terms, role, evidence.size() + 1,
                     Math.min(2, MAX_SOURCES - evidence.size())));
         }
 
@@ -192,8 +199,14 @@ public class AiAssistantService {
             return insufficient("В базе знаний и доступных официальных интернет-источниках не нашлось материалов, которые подтверждают ответ на этот вопрос. Попробуйте другие ключевые слова или обратитесь к ответственному специалисту.", List.of());
         }
 
-        String answer = generateAnswer(question, evidence, history);
-        CitationCheck citationCheck = validateCitations(answer, evidence.stream().map(Evidence::number).collect(Collectors.toSet()));
+        boolean forcedOrderLimitAbstention = isOrderLimitQuestion(question)
+                && !hasVerifiedCurrentOrderLimitEvidence(evidence);
+        String answer = forcedOrderLimitAbstention
+                ? "В доступных материалах не найден подтверждённый действующий лимит количества кодов в одном заказе. Найденные сведения о лимитах относятся к материалам со статусом «На проверке» или к внутренним инструкциям без подтверждённого статуса публикации. Поэтому конкретное число называть нельзя; проверьте актуальный предел в текущем интерфейсе или у оператора."
+                : generateAnswer(question, evidence, history);
+        CitationCheck citationCheck = forcedOrderLimitAbstention
+                ? new CitationCheck(answer, false, false)
+                : validateCitations(answer, evidence.stream().map(Evidence::number).collect(Collectors.toSet()));
         answer = citationCheck.answer();
         if (citationCheck.invalidFound()) {
             answer = answer.stripTrailing()
@@ -408,10 +421,12 @@ public class AiAssistantService {
         return result;
     }
 
-    private List<Evidence> buildBusinessProcessEvidence(String question, List<String> terms, int firstNumber, int limit) {
+    private List<Evidence> buildBusinessProcessEvidence(
+            String question, List<String> terms, String role, int firstNumber, int limit) {
         List<RankedProcess> ranked = new ArrayList<>();
         String normalizedQuestion = normalizeText(question);
         for (BusinessProcessGuide guide : businessProcesses.findAllByOrderByOrderIndexAscTitleAsc()) {
+            if (!canReadBusinessProcess(role, guide.getWorkflowStatus())) continue;
             String title = normalizeText(guide.getTitle());
             String metadata = normalizeText(join(guide.getCategory(), guide.getSummary(), guide.getScope(),
                     guide.getTime(), guide.getSearchTerm()));
@@ -467,8 +482,11 @@ public class AiAssistantService {
             }
             String excerpt = safe(guide.getSummary());
             if (excerpt.isBlank()) excerpt = truncate(context.toString(), 360);
+            String workflowStatus = safe(guide.getWorkflowStatus()).toUpperCase(Locale.ROOT);
+            String workflowLabel = "PUBLISHED".equals(workflowStatus)
+                    ? "Опубликованный бизнес-процесс" : "Внутренний материал – не опубликован";
             result.add(new Evidence(number, guide.getId(), "BUSINESS_PROCESS", safe(guide.getTitle()),
-                    "KR/EAEU", "Бизнес-процесс", "INTERNAL", "Внутренняя инструкция",
+                    "KG", "Бизнес-процесс", workflowStatus, workflowLabel,
                     sourceUrl, "", "", "", excerpt, truncate(context.toString(), 4_500), row.score()));
             number++;
         }
@@ -753,6 +771,35 @@ public class AiAssistantService {
         int end = Math.min(candidate.length(), start + 360);
         if (end - start < 360) start = Math.max(0, end - 360);
         return (start > 0 ? "…" : "") + candidate.substring(start, end) + (end < candidate.length() ? "…" : "");
+    }
+
+    static boolean requiresMzkmJurisdictionClarification(String question) {
+        if (question == null || !question.toLowerCase(Locale.ROOT).contains("мзкм")) return false;
+        return !EXPLICIT_JURISDICTION.matcher(question).find();
+    }
+
+    static boolean isOrderLimitQuestion(String question) {
+        if (question == null) return false;
+        String normalized = question.toLowerCase(Locale.ROOT).replace('ё', 'е');
+        boolean markingCodes = normalized.contains("код") || normalized.contains("км");
+        boolean orderContext = normalized.contains("заказ") || normalized.contains("заказе");
+        boolean asksForLimit = normalized.contains("сколько") || normalized.contains("лимит")
+                || normalized.contains("максим") || normalized.contains("количество");
+        return markingCodes && orderContext && asksForLimit;
+    }
+
+    static boolean canReadBusinessProcess(String role, String workflowStatus) {
+        boolean privileged = "ADMIN".equalsIgnoreCase(role) || "EDITOR".equalsIgnoreCase(role);
+        return privileged || "PUBLISHED".equalsIgnoreCase(workflowStatus);
+    }
+
+    private static boolean hasVerifiedCurrentOrderLimitEvidence(List<Evidence> evidence) {
+        if (evidence == null || evidence.isEmpty()) return false;
+        return evidence.stream()
+                .filter(item -> ("DOCUMENT".equals(item.sourceType()) && "ACTIVE".equalsIgnoreCase(item.status()))
+                        || ("BUSINESS_PROCESS".equals(item.sourceType()) && "PUBLISHED".equalsIgnoreCase(item.status())))
+                .map(item -> normalizeText(join(item.title(), item.excerpt(), item.context())))
+                .anyMatch(text -> VERIFIED_ORDER_LIMIT.matcher(text.replace(" ", "")).find());
     }
 
     private static AssistantResponse insufficient(String answer, List<SourceReference> sources) {
