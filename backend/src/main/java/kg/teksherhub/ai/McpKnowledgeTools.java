@@ -24,7 +24,7 @@ public class McpKnowledgeTools {
             description = "Search normative legal acts by free-text query, jurisdiction KG/RU/EAEU, document number and/or exact document date YYYY-MM-DD.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true))
     public String searchNpa(
-            @McpToolParam(description = "Search text, topic or act title", required = true) String query,
+            @McpToolParam(description = "Optional search text, topic or act title; use another filter when searching by number or date", required = false) String query,
             @McpToolParam(description = "Jurisdiction: KG, RU or EAEU", required = false) String jurisdiction,
             @McpToolParam(description = "Act/document number, e.g. 470 or № 515", required = false) String documentNumber,
             @McpToolParam(description = "Exact document date in YYYY-MM-DD format", required = false) String documentDate) {
