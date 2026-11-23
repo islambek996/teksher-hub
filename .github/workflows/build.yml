@@ -166,14 +166,11 @@ jobs:
             echo "SKIP: GROQ_API_KEY is not configured in this CI environment."
           fi
 
-          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ -n "$GROQ_API_KEY" ]; then
-            echo "Running the one-time full 11-case Golden Set on this push."
-            TEKSHER_API_BASE_URL=http://localhost:8080 TEKSHER_API_TOKEN="$TOKEN" node scripts/evaluate-ai-golden-set.mjs
-          elif [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] && [ -n "$GROQ_API_KEY" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] && [ -n "$GROQ_API_KEY" ]; then
             echo "Manual workflow dispatch and GROQ_API_KEY are configured; running live AI golden-set evaluation."
             TEKSHER_API_BASE_URL=http://localhost:8080 TEKSHER_API_TOKEN="$TOKEN" node scripts/evaluate-ai-golden-set.mjs
           else
-            echo "Skipping live AI golden-set evaluation for this event."
+            echo "Skipping live AI golden-set evaluation during normal CI. Run this workflow manually to evaluate live Groq responses."
           fi
 
 
