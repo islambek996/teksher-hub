@@ -276,7 +276,7 @@ async function evaluateCase(item, index) {
     item.id !== "EAEU_FRAMEWORK" ||
     ((/29[. ]марта[. ]2019/i.test(answer) ||
       /29\.03\.2019/.test(answer)) &&
-      /отдельн\w* решени|решени\w* совет/i.test(answer)) ||
+      /отдельн.{0,20}решени|решени.{0,20}совет/i.test(answer)) ||
     assistantAbstains;
 
   const ucm385CurrentScope =
@@ -289,8 +289,8 @@ async function evaluateCase(item, index) {
 
   const cosmeticsNoBlanketClaim =
     item.id !== "KG_COSMETICS" ||
-    !/косметик\w*.{0,80}подпада\w*.{0,40}общ\w* правил/i.test(answer) ||
-    /не вс[её]|не автоматически|не подтвержден|нельзя считать|точн\w* товарн\w* категори|тн вэд/i.test(
+    !/косметик.{0,80}подпада.{0,40}общ.{0,20}правил/i.test(answer) ||
+    /не вс[её]|не автоматически|не подтвержден|нельзя считать|точн.{0,40}товарн.{0,20}категор|тн вэд/i.test(
       answer,
     );
 
