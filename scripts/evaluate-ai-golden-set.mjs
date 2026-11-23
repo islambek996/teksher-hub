@@ -197,8 +197,8 @@ async function evaluateCase(item, index) {
     const from = source.effectiveFrom || null;
     const until = source.effectiveUntil || null;
     return (
-      (from && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(from) || from > today)) ||
-      (until && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(until) || until < today))
+      (from && (!/^\d{4}-\d{2}-\d{2}$/.test(from) || from > today)) ||
+      (until && (!/^\d{4}-\d{2}-\d{2}$/.test(until) || until < today))
     );
   });
   const dateWarningPresent = answer.includes(
