@@ -87,7 +87,10 @@ public class McpAiToolCallingService {
                     }
                     try {
                         McpKnowledgeService.ToolResult result = dispatch(name, arguments, role);
-                        if (result != null) results.add(result);
+                        if (result != null) {
+                            results.add(result);
+                            log.info("MCP tool {} executed successfully for TEKSHER AI", name);
+                        }
                     } catch (IllegalArgumentException ex) {
                         log.info("MCP function {} returned a validation error: {}", name, ex.getMessage());
                     } catch (RuntimeException ex) {
