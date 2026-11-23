@@ -136,7 +136,7 @@ class AiAssistantRetrievalTest {
     }
 
     @Test
-    void missingEvidencePhrasesAreFlaggedAsInsufficient() {
+    void assistantReturnsPersonalizedCreatorReply() {
         String answer = AiAssistantService.assistantIdentityReply("кто тебя создал");
 
         assertTrue(answer != null);
