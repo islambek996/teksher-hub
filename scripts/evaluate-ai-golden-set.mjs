@@ -284,7 +284,7 @@ async function evaluateCase(item, index) {
     (/2201/.test(normalizedAnswer) &&
       /639/.test(normalizedAnswer) &&
       /2026/.test(normalizedAnswer) &&
-      /л[её]д/.test(answer)) ||
+      /льд|лед/.test(answer)) ||
     assistantAbstains;
 
   const cosmeticsNoBlanketClaim =
