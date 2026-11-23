@@ -33,7 +33,7 @@ public class TnvedCatalogService {
 
     public SearchResult search(String rawCode) {
         String code = rawCode == null ? "" : rawCode.replaceAll("[\\s.-]", "");
-        if (!code.matches("\\\\d{4,10}")) {
+        if (!code.matches("\\d{4,10}")) {
             throw new IllegalArgumentException("Укажите код ТН ВЭД длиной от 4 до 10 цифр.");
         }
         List<TnvedEntry> matches = entries.stream()
