@@ -131,7 +131,7 @@ printf '%s' "$EDITOR_NPA" | jq -e '.data.results | any(.[]; (.documentNumber // 
 printf '%s' "$READER_NPA" | jq -e '.data.results | length == 0'
 
 echo "Checking draft business-process visibility by role..." >&2
-PROCESS_QUERY=$(printf 'CI role access %s' "$MCP_DRAFT_PROCESS_ID")
+PROCESS_QUERY='CI business process guide'
 ARGS=$(jq -cn --arg q "$PROCESS_QUERY" '{query:$q}')
 ADMIN_PROCESS=$(call_role_tool ADMIN "$MCP_ADMIN_TOKEN" "$ADMIN_SESSION" 33 get_business_process "$ARGS")
 EDITOR_PROCESS=$(call_role_tool EDITOR "$MCP_EDITOR_TOKEN" "$EDITOR_SESSION" 34 get_business_process "$ARGS")
