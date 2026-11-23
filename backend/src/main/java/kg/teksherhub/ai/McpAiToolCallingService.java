@@ -115,7 +115,11 @@ public class McpAiToolCallingService {
     }
 
     static boolean isRelevantQuestion(String question) {
-        return question != null && TOOL_TRIGGER.matcher(question).find();
+        if (question == null || question.isBlank()) return false;
+        String normalized = question.toLowerCase(Locale.ROOT).replace('ё', 'е');
+        // Some common marking abbreviations are written with variable spacing and punctuation.
+        if (normalized.contains("тн") && normalized.contains("вед")) return true;
+        return TOOL_TRIGGER.matcher(normalized).find();
     }
 
     private JsonNode requestToolSelection(String question, String apiKey)

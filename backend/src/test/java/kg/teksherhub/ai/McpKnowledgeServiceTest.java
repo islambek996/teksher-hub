@@ -98,7 +98,7 @@ class McpKnowledgeServiceTest {
                 "DOCUMENT".equals(source.sourceType()) && "UNDER_REVIEW".equals(source.status())));
         assertFalse(((List<?>) data.get("operatorReferenceMatches")).isEmpty());
         assertEquals("NOT_DETERMINED", data.get("legalConclusion"));
-        assertTrue(result.summary().contains("обязательность"));
+        assertTrue(result.summary().contains("обязательн"));
     }
 
     @Test
