@@ -7,5 +7,11 @@ export function normalizeGoldenAnswer(value) {
 }
 
 export function containsNumericMarkingOrderLimit(value) {
-  return /\d{1,6}(?:км|код(?:а|ов)?)/i.test(normalizeGoldenAnswer(value));
+  const normalized = normalizeGoldenAnswer(value).replace(
+    /([0-9])[,.](?=[0-9]{3}(?:\D|$))/g,
+    "$1",
+  );
+  return /(?:\d{1,6}(?:тыс\.?|тысяч(?:а|и)?)?|(?:один|одна|два|две|три|четыре|пять|пяти|шесть|семь|восемь|девять)(?:тыс\.?|тысяч(?:а|и)?))(?:км|код(?:а|ов)?)/i.test(
+    normalized,
+  );
 }
