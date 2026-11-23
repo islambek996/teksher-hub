@@ -26,6 +26,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
+    protected boolean shouldNotFilterAsyncDispatch() {
+        // Streamable HTTP MCP responses use Servlet ASYNC redispatches. Re-validate
+        // the bearer token on each dispatch because the stateless security context
+        // from the initial REQUEST dispatch is not retained between servlet threads.
+        return false;
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         String header = request.getHeader("Authorization");
