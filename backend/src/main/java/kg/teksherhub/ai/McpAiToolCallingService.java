@@ -28,7 +28,7 @@ public class McpAiToolCallingService {
     private static final Logger log = LoggerFactory.getLogger(McpAiToolCallingService.class);
     private static final URI CHAT_COMPLETIONS_URI = URI.create("https://api.groq.com/openai/v1/chat/completions");
     private static final Pattern TOOL_TRIGGER = Pattern.compile(
-            "(?iu)(нпа|норматив|постановлен|приказ|закон"
+            "(?Uiu)(нпа|норматив|постановлен|приказ|закон"
                     + "|тн\\s*вед|тнвед"
                     + "|коды?\\s*(?:тн\\s*вед)?\\s*[:№-]?\\s*\\d{4,10}"
                     + "|код\\s+товар|товарн\\w*\\s+групп"

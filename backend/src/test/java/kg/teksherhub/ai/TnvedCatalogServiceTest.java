@@ -35,5 +35,6 @@ class TnvedCatalogServiceTest {
         TnvedCatalogService catalog = new TnvedCatalogService(new ObjectMapper());
         assertThrows(IllegalArgumentException.class, () -> catalog.search("123"));
         assertThrows(IllegalArgumentException.class, () -> catalog.search("ABC9503005500"));
+        assertThrows(IllegalArgumentException.class, () -> catalog.search("ABC9503"));
     }
 }
