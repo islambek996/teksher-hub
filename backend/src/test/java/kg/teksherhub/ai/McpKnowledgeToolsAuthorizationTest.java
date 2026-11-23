@@ -5,6 +5,7 @@ import kg.teksherhub.user.UserAccount;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springaicommunity.mcp.annotation.McpTool;
+import org.springaicommunity.mcp.annotation.McpToolParam;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -47,6 +48,13 @@ class McpKnowledgeToolsAuthorizationTest {
 
         assertTrue(result.contains("search_npa"));
         verify(knowledge).searchNpa("маркировка", "KG", null, null, "READER");
+    }
+
+    @Test
+    void npaFreeTextParameterIsOptional() throws Exception {
+        Method method = McpKnowledgeTools.class.getDeclaredMethod(
+                "searchNpa", String.class, String.class, String.class, String.class);
+        assertFalse(method.getParameters()[0].getAnnotation(McpToolParam.class).required());
     }
 
     @Test
