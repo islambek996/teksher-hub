@@ -34,6 +34,7 @@ The initial admin is created only if `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_A
 - `POST /api/monitors/{id}/changes/{changeId}/acknowledge` – record that a signal was reviewed, with a required note (ADMIN/EDITOR).
 - `GET/POST /api/users`, `PATCH /api/users/{id}/enabled` and `PUT /api/users/{id}/password` – administrator only.
 - `GET /api/health`.
+- `POST /mcp` – authenticated Streamable HTTP MCP server (JWT bearer required).
 
 ## Business process guides
 
@@ -91,3 +92,30 @@ Outbound checks are restricted by `MONITOR_ALLOWED_HOSTS`; redirects are not fol
 - Notifications go to ADMIN/EDITOR users and authors/updaters of linked documents and processes.
 - Acknowledging an event records who reviewed the signal and the review note. It does **not** confirm that every linked document is legally current and does not automatically republish or change document statuses. Each document must be reviewed through its normal document-review workflow.
 - Changing a monitor URL clears its previous hash baseline, so the new URL is checked as a fresh source rather than being compared with unrelated content.
+
+
+## TEKSHER MCP knowledge tools
+
+The backend exposes a read-only Model Context Protocol server over Streamable HTTP at `POST /mcp`.
+The endpoint is protected by the same stateless JWT authentication as the rest of the API. Do not add `/mcp` to public/permit-all routes.
+
+### Available tools
+
+- `search_npa` – search normative documents by query, jurisdiction, document number and/or document date.
+- `search_product_groups` – search the saved MZKM/internal product-group catalog and related knowledge cards.
+- `check_tnved_code` – search the complete 1,072-entry TN VED reference dataset already used by the frontend (869 MZKM and 203 internal-marking entries), plus separately identify matches in operator/reference cards. Exact 10-digit matches and shorter prefixes are distinguished; a hit is not a legal determination that marking is mandatory. The imported workbook is a classification reference, not a normative act.
+- `get_business_process` – read matching business processes, steps and their source links. READER can see PUBLISHED processes only.
+- `get_source_monitor_status` – inspect enabled state, last check and linked-material counts for official-source monitors.
+- `list_source_change_events` – inspect source-change events, hashes and review state. READER gets only events linked to published/active materials and never receives internal text snapshots.
+
+All tools are read-only. They do not create, update, publish, delete, acknowledge events or change legal status.
+
+### Connect an MCP client
+
+Configure the MCP transport URL as `https://<your-backend-host>/mcp` and send the existing TEKSHER HUB JWT as an HTTP bearer token. Use Streamable HTTP (not legacy SSE). A client without an authenticated JWT must be rejected by Spring Security.
+
+### TEKSHER AI
+
+For regulatory, product-group, TN VED, process and monitoring questions, the backend asks the configured Groq model to select relevant local functions using function calling. The server executes only the six allow-listed read functions, then adds the returned records to the existing grounded answer/citation pipeline. Source citations continue to use numbered references shown by the frontend. When tool selection is unavailable, ordinary TEKSHER HUB retrieval remains a fallback.
+
+Set `AI_MCP_TOOL_CALLING_ENABLED=false` to disable the additional tool-selection request while retaining the external MCP endpoint. The MCP HTTP endpoint itself remains protected by JWT.

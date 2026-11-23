@@ -71,6 +71,7 @@ public class AiAssistantService {
     private final DocumentFileRepository files;
     private final BusinessProcessGuideRepository businessProcesses;
     private final OfficialWebSearchService officialWebSearch;
+    private final McpAiToolCallingService mcpToolCalling;
 
     public AiAssistantService(
             @Value("${app.ai.groq-api-key:}") String apiKey,
@@ -80,7 +81,8 @@ public class AiAssistantService {
             DocumentRepository documents,
             DocumentFileRepository files,
             BusinessProcessGuideRepository businessProcesses,
-            OfficialWebSearchService officialWebSearch) {
+            OfficialWebSearchService officialWebSearch,
+            McpAiToolCallingService mcpToolCalling) {
         List<String> configuredKeys = new ArrayList<>();
         if (apiKeysConfig != null && !apiKeysConfig.isBlank()) {
             configuredKeys.addAll(Arrays.stream(apiKeysConfig.split("[,;\\s]+"))
@@ -102,6 +104,7 @@ public class AiAssistantService {
         this.files = files;
         this.businessProcesses = businessProcesses;
         this.officialWebSearch = officialWebSearch;
+        this.mcpToolCalling = mcpToolCalling;
         this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     }
 
@@ -145,14 +148,20 @@ public class AiAssistantService {
         }
 
         List<RankedDocument> ranked = retrieve(question, terms, role);
-        // Reserve room for business-process guides so procedural questions can use them too.
         List<Evidence> evidence = new ArrayList<>();
         if (!ranked.isEmpty()) {
-            evidence.addAll(buildEvidence(ranked.subList(0, Math.min(3, ranked.size())), terms));
+            // Reserve space for the exact records returned by selected MCP functions.
+            evidence.addAll(buildEvidence(ranked.subList(0, Math.min(2, ranked.size())), terms));
+        }
+        try {
+            List<McpKnowledgeService.ToolResult> toolResults = mcpToolCalling.collect(question, role);
+            evidence.addAll(buildMcpEvidence(toolResults, evidence.size() + 1, MAX_SOURCES - evidence.size()));
+        } catch (RuntimeException ex) {
+            log.warn("TEKSHER MCP tool selection failed; continuing with regular knowledge retrieval", ex);
         }
         if (evidence.size() < MAX_SOURCES) {
             evidence.addAll(buildBusinessProcessEvidence(question, terms, evidence.size() + 1,
-                    Math.min(2, Math.max(0, 4 - evidence.size()))));
+                    Math.min(2, MAX_SOURCES - evidence.size())));
         }
 
         // Use official public sources as a second layer after searching the hub's own knowledge.
@@ -464,6 +473,46 @@ public class AiAssistantService {
             number++;
         }
         return result;
+    }
+
+    private List<Evidence> buildMcpEvidence(List<McpKnowledgeService.ToolResult> results,
+                                            int firstNumber, int limit) {
+        if (results == null || results.isEmpty() || limit <= 0) return List.of();
+        List<Evidence> output = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        int nextNumber = firstNumber;
+        for (McpKnowledgeService.ToolResult result : results) {
+            if (output.size() >= limit) break;
+            if (result.sources() == null || result.sources().isEmpty()) {
+                String context;
+                try {
+                    context = objectMapper.writeValueAsString(result.data());
+                } catch (IOException ex) {
+                    context = String.valueOf(result.data());
+                }
+                context = "Инструмент MCP: " + result.tool() + "\nРезультат: " + result.summary()
+                        + "\nДанные: " + truncate(context, 3_000);
+                output.add(new Evidence(nextNumber++, "mcp:" + result.tool(), "MCP_RESULT",
+                        result.tool(), "TEKSHER HUB", "Результат справочного запроса",
+                        "LOOKUP", "Результат проверки", "", "", "", "",
+                        truncate(result.summary(), 360), truncate(context, 3_500), 1));
+                continue;
+            }
+            for (McpKnowledgeService.KnowledgeSource source : result.sources()) {
+                if (output.size() >= limit) break;
+                String identity = source.sourceType() + ":" + source.id();
+                if (!seen.add(identity)) continue;
+                String context = "Инструмент MCP: " + result.tool() + "\n"
+                        + "Назначение инструмента: " + result.summary() + "\n"
+                        + safe(source.context());
+                output.add(new Evidence(nextNumber++, safe(source.id()), safe(source.sourceType()),
+                        safe(source.title()), safe(source.jurisdiction()), safe(source.kind()),
+                        safe(source.status()), safe(source.statusLabel()), safe(source.sourceUrl()),
+                        safe(source.effectiveFrom()), safe(source.effectiveUntil()), safe(source.checkedAt()),
+                        truncate(safe(source.excerpt()), 500), truncate(context, 5_000), 1));
+            }
+        }
+        return output;
     }
 
     private String generateAnswer(String question, List<Evidence> evidence, List<ChatTurn> history) {

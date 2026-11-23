@@ -22,6 +22,17 @@ spring:
   jackson:
     serialization:
       write-dates-as-timestamps: false
+  ai:
+    mcp:
+      server:
+        enabled: true
+        protocol: STREAMABLE
+        name: teksher-hub
+        version: 1.0.0
+        type: SYNC
+        instructions: "Read-only knowledge tools for TEKSHER HUB. Respect jurisdiction, publication status and source references."
+        annotation-scanner:
+          enabled: true
 app:
   jwt:
     secret: ${JWT_SECRET:}
@@ -42,3 +53,4 @@ app:
     groq-api-keys: ${GROQ_API_KEYS:}
     groq-model: ${GROQ_MODEL:openai/gpt-oss-20b}
     web-search-enabled: ${AI_WEB_SEARCH_ENABLED:true}
+    mcp-tool-calling-enabled: ${AI_MCP_TOOL_CALLING_ENABLED:true}

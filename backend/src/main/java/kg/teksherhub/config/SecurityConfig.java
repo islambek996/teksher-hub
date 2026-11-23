@@ -64,8 +64,11 @@ public class SecurityConfig {
         }
         config.setAllowedOrigins(origins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
-        config.setExposedHeaders(List.of("Content-Disposition"));
+        config.setAllowedHeaders(List.of(
+                "Authorization", "Content-Type", "Accept",
+                "MCP-Protocol-Version", "Mcp-Session-Id", "Last-Event-ID"));
+        config.setExposedHeaders(List.of(
+                "Content-Disposition", "Mcp-Session-Id", "MCP-Protocol-Version"));
         config.setAllowCredentials(false);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

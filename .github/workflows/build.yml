@@ -97,6 +97,22 @@ jobs:
           TOKEN=$(echo "$LOGIN" | jq -r '.token')
           test -n "$TOKEN" && test "$TOKEN" != "null"
 
+          # The MCP endpoint must reject anonymous callers and accept an authenticated initialize request.
+          MCP_ANON_STATUS=$(curl --silent --output /dev/null --write-out '%{http_code}' -X POST http://localhost:8080/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"teksher-ci-anonymous","version":"1.0"}}}')
+          test "$MCP_ANON_STATUS" = "401" || test "$MCP_ANON_STATUS" = "403"
+          MCP_AUTH_STATUS=$(curl --silent --show-error --dump-header /tmp/teksher-hub-mcp-headers.txt --output /tmp/teksher-hub-mcp-initialize.txt --write-out '%{http_code}' -X POST http://localhost:8080/mcp -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"teksher-ci","version":"1.0"}}}')
+          test "$MCP_AUTH_STATUS" = "200"
+          grep -q 'teksher-hub' /tmp/teksher-hub-mcp-initialize.txt
+          MCP_SESSION_ID=$(grep -i '^Mcp-Session-Id:' /tmp/teksher-hub-mcp-headers.txt | tail -n 1 | cut -d: -f2- | tr -d '[:space:]')
+          test -n "$MCP_SESSION_ID"
+          MCP_INIT_STATUS=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' -X POST http://localhost:8080/mcp -H "Authorization: Bearer $TOKEN" -H "Mcp-Session-Id: $MCP_SESSION_ID" -H 'MCP-Protocol-Version: 2025-03-26' -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' --data '{"jsonrpc":"2.0","method":"notifications/initialized"}')
+          test "$MCP_INIT_STATUS" = "200" || test "$MCP_INIT_STATUS" = "202"
+          MCP_TOOLS_STATUS=$(curl --silent --show-error --output /tmp/teksher-hub-mcp-tools.txt --write-out '%{http_code}' -X POST http://localhost:8080/mcp -H "Authorization: Bearer $TOKEN" -H "Mcp-Session-Id: $MCP_SESSION_ID" -H 'MCP-Protocol-Version: 2025-03-26' -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' --data '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}')
+          test "$MCP_TOOLS_STATUS" = "200"
+          for TOOL_NAME in search_npa search_product_groups check_tnved_code get_business_process get_source_monitor_status list_source_change_events; do
+            grep -q "$TOOL_NAME" /tmp/teksher-hub-mcp-tools.txt
+          done
+
           # Seeded official legal references and source monitors must be available after Flyway migration.
           curl --silent --show-error --fail "http://localhost:8080/api/documents?q=515" -H "Authorization: Bearer $TOKEN" | jq -e 'any(.[]; .documentNumber == "№ 515" and .jurisdiction == "RU" and .status == "UNDER_REVIEW" and (.sourceUrl | startswith("https://publication.pravo.gov.ru/")))'
           curl --silent --show-error --fail "http://localhost:8080/api/documents" -H "Authorization: Bearer $TOKEN" | jq -e 'any(.[]; .id == "a1000000-0000-4000-8000-000000000004" and .sourceUrl == "https://cbd.minjust.gov.kg/7-42968/edition/34256/ru" and .status == "UNDER_REVIEW") and any(.[]; .id == "a1000000-0000-4000-8000-000000000007" and .sourceUrl == "https://docs.eaeunion.org/" and .status == "UNDER_REVIEW")'
