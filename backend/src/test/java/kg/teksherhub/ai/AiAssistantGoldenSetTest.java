@@ -75,6 +75,21 @@ class AiAssistantGoldenSetTest {
                             "When no legal source directly supports the claim, provide the relevant operational source or abstain: " + id);
                 }
 
+                if (item.path("relatedOfficialReferences").isArray()) {
+                    for (JsonNode relatedReference : item.path("relatedOfficialReferences")) {
+                        URI officialReference = URI.create(relatedReference.asText(""));
+                        assertTrue("https".equalsIgnoreCase(officialReference.getScheme()),
+                                "Related legal reference must use HTTPS for " + id);
+                        String host = officialReference.getHost() == null
+                                ? "" : officialReference.getHost().toLowerCase(Locale.ROOT);
+                        assertTrue(Set.of("cbd.minjust.gov.kg", "minjust.gov.kg", "gov.kg",
+                                        "publication.pravo.gov.ru", "eec.eaeunion.org", "docs.eaeunion.org")
+                                        .stream().anyMatch(allowed ->
+                                                host.equals(allowed) || host.endsWith("." + allowed)),
+                                "Related legal reference must use a recognised official domain for " + id);
+                    }
+                }
+
                 if (item.hasNonNull("operationalReference")) {
                     URI operationalReference = URI.create(item.path("operationalReference").asText(""));
                     assertTrue("https".equalsIgnoreCase(operationalReference.getScheme()),
