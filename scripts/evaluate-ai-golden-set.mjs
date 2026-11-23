@@ -187,9 +187,17 @@ async function evaluateCase(item, index) {
   const flaggedDocumentSources = documentSources.filter((source) =>
     staleStatuses.has(String(source.status || "").toUpperCase()),
   );
-  const requiresStatusWarning = flaggedDocumentSources.length > 0;
+  const businessProcessSources = sources.filter(
+    (source) => source.sourceType === "BUSINESS_PROCESS",
+  );
+  const flaggedBusinessProcessSources = businessProcessSources.filter(
+    (source) => String(source.status || "").toUpperCase() !== "PUBLISHED",
+  );
+  const requiresStatusWarning =
+    flaggedDocumentSources.length > 0 ||
+    flaggedBusinessProcessSources.length > 0;
   const statusWarningPresent = answer.includes(
-    "среди найденных материалов есть документы со статусом",
+    "среди найденных материалов есть материалы со статусом",
   );
   const today = new Date().toISOString().slice(0, 10);
   const activeDateConflicts = documentSources.filter((source) => {
