@@ -1,5 +1,6 @@
 package kg.teksherhub.config;
 
+import jakarta.servlet.DispatcherType;
 import kg.teksherhub.user.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -84,6 +85,11 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(provider)
                 .authorizeHttpRequests(auth -> auth
+                        // MCP Streamable HTTP uses Servlet ASYNC dispatches to finish streaming
+                        // JSON-RPC responses. The original REQUEST dispatch already passed JWT
+                        // authentication; OncePerRequestFilter intentionally does not re-authenticate
+                        // ASYNC redispatches, so do not reject that continuation as anonymous.
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         .requestMatchers("/api/health", "/api/auth/login").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
