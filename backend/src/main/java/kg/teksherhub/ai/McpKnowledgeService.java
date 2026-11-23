@@ -54,6 +54,9 @@ public class McpKnowledgeService {
         String country = normalizeJurisdiction(jurisdiction);
         String number = normalize(documentNumber);
         LocalDate date = parseOptionalDate(documentDate);
+        if (q.isBlank() && country.isBlank() && number.isBlank() && date == null) {
+            throw new IllegalArgumentException("Для поиска НПА укажите текст, юрисдикцию, номер или дату документа.");
+        }
         List<DocumentRecord> matches = visibleDocuments(role).stream()
                 .filter(d -> normalize(d.getKind()).contains("нормативный акт"))
                 .filter(d -> country.isBlank() || country.equalsIgnoreCase(d.getJurisdiction()))
