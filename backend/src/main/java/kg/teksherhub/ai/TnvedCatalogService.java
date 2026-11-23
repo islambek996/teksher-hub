@@ -11,10 +11,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
 @Service
@@ -22,14 +19,14 @@ public class TnvedCatalogService {
     private final List<TnvedEntry> entries;
 
     public TnvedCatalogService(ObjectMapper mapper) {
-        Map<String, TnvedEntry> unique = new LinkedHashMap<>();
-        loadResource(mapper, "tnved-catalog/mzkm-internal-base64.txt", "USER_EXCEL")
-                .forEach(entry -> unique.putIfAbsent(entry.scope() + ":" + entry.code(), entry));
-        loadResource(mapper, "tnved-catalog/bakaleia-base64.txt", "USER_EXCEL_BAKALEIA")
-                .forEach(entry -> unique.putIfAbsent(entry.scope() + ":" + entry.code(), entry));
-        this.entries = List.copyOf(unique.values());
+        List<TnvedEntry> loaded = new ArrayList<>();
+        loaded.addAll(loadResource(mapper, "tnved-catalog/mzkm-internal-base64.txt", "USER_EXCEL"));
+        loaded.addAll(loadResource(mapper, "tnved-catalog/bakaleia-base64.txt", "USER_EXCEL_BAKALEIA"));
+        // Preserve all 1,072 source rows. A code may legitimately occur in more than one
+        // product-group row; collapsing by scope+code would lose its separate classification.
+        this.entries = List.copyOf(loaded);
         if (this.entries.size() != 1_072) {
-            throw new IllegalStateException("TN VED catalog integrity check failed: expected 1072 unique records, found "
+            throw new IllegalStateException("TN VED catalog integrity check failed: expected 1072 source rows, found "
                     + this.entries.size());
         }
     }

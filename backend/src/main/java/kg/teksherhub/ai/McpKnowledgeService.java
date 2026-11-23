@@ -187,7 +187,7 @@ public class McpKnowledgeService {
                     + "\nНаименование ГСКП: " + entry.gskpName()
                     + "\nИсточник набора: " + entry.source()
                     + "\nОграничение: запись классификационного справочника не подтверждает обязательность маркировки.";
-            sources.add(new KnowledgeSource("tnved:" + entry.scope() + ":" + entry.code(),
+            sources.add(new KnowledgeSource("tnved:" + entry.scope() + ":" + entry.code() + ":" + entry.group(),
                     "TNVED_CATALOG", entry.code() + " – " + entry.name(), "KG",
                     scopeLabel, "USER_REFERENCE", "Справочник кодов ТН ВЭД",
                     "", "", "", "", entry.code() + " – " + entry.name(),
