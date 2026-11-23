@@ -73,28 +73,28 @@ mcp_call() {
   cat "$text_file"
 }
 
-echo "Calling search_npa..."
+echo "Calling search_npa..." >&2
 NPA=$(mcp_call 10 search_npa '{"query":"маркировка","jurisdiction":"RU","document_number":"515"}')
 printf '%s' "$NPA" | jq -e '.data.results | any(.[]; (.documentNumber // "" | contains("515")))'
 
-echo "Calling search_product_groups..."
+echo "Calling search_product_groups..." >&2
 GROUPS=$(mcp_call 11 search_product_groups '{"query":"детские игрушки"}')
 printf '%s' "$GROUPS" | jq -e '.data | has("mzkmGroups") and has("internalGroups") and has("groupDetails") and has("relatedKnowledgeCards")'
 
-echo "Calling check_tnved_code..."
+echo "Calling check_tnved_code..." >&2
 TNVED=$(mcp_call 12 check_tnved_code '{"code":"9503005500"}')
 printf '%s' "$TNVED" | jq -e '.data.matchType == "EXACT_10_DIGIT" and (.data.catalogTotalMatches > 0) and .data.legalConclusion == "NOT_DETERMINED"'
 
-echo "Calling get_business_process..."
+echo "Calling get_business_process..." >&2
 PROCESS=$(mcp_call 13 get_business_process '{"query":"регистрация"}')
 printf '%s' "$PROCESS" | jq -e '.data.processes | any(.[]; .id == "registration" and (.steps | length) > 0)'
 
-echo "Calling get_source_monitor_status..."
+echo "Calling get_source_monitor_status..." >&2
 MONITORS=$(mcp_call 14 get_source_monitor_status '{"jurisdiction":"KG"}')
 printf '%s' "$MONITORS" | jq -e '.data.monitors | type == "array" and length > 0'
 
-echo "Calling list_source_change_events..."
+echo "Calling list_source_change_events..." >&2
 EVENTS=$(mcp_call 15 list_source_change_events '{"jurisdiction":"KG","limit":5}')
 printf '%s' "$EVENTS" | jq -e '.data.events | type == "array"'
 
-echo "All six authenticated MCP tool calls passed."
+echo "All six authenticated MCP tool calls passed." >&2
