@@ -297,10 +297,25 @@ async function evaluateCase(item, index) {
 
   const cosmeticsNoBlanketClaim =
     item.id !== "KG_COSMETICS" ||
-    !/косметик.{0,80}подпада.{0,40}общ.{0,20}правил/i.test(answer) ||
-    /не вс[её]|не автоматически|не подтвержден|нельзя считать|точн.{0,40}товарн.{0,20}категор|тн вэд/i.test(
+    (!/вся косметик|всю косметик|вся косметическ/i.test(answer) &&
+      (/не вс[её]|не автоматически|не подтвержден|нельзя считать|точн.{0,40}товарн.{0,20}категор|тн вэд|конкретн.{0,30}товар/i.test(
+        answer,
+      ) ||
+        assistantAbstains));
+
+  const claimsExhaustiveYearlyAmendments =
+    item.id === "KG_AMENDMENTS" &&
+    /единствен|исчерпывающ|опубликовано только|других (?:актов|изменений) нет|все изменения за 2025/i.test(
       answer,
     );
+  const amendmentScopeCaveat =
+    /среди доступных карточек|в базе (?:знаний )?(?:найдена|имеется)|наличие (?:этой|одной) карточки.{0,100}не доказывает|поиск по (?:внутренней )?базе.{0,100}не доказывает|не позволяет (?:считать|утверждать).{0,80}(?:единствен|исчерпывающ)/i.test(
+      answer,
+    );
+  const yearlyAmendmentCoverageIsNotOverstated =
+    item.id !== "KG_AMENDMENTS" ||
+    !claimsExhaustiveYearlyAmendments ||
+    amendmentScopeCaveat;
 
   const checks = {
     validResponseSchema:
@@ -319,6 +334,8 @@ async function evaluateCase(item, index) {
       ucm385CurrentScope,
     cosmeticsAreNotTreatedAsBlanketMandatoryCategory:
       cosmeticsNoBlanketClaim,
+    yearlyAmendmentsAreNotClaimedAsExhaustive:
+      yearlyAmendmentCoverageIsNotOverstated,
     citationNumbersMapToReturnedSources:
       invalidCitations.length === 0 && !citationGuardWarning,
     noConfidentAnswerWithoutCitation: !noCitationButConfident,
