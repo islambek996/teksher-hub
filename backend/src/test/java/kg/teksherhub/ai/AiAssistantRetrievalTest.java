@@ -104,7 +104,39 @@ class AiAssistantRetrievalTest {
     }
 
     @Test
-    void assistantReturnsPersonalizedCreatorReply() {
+    void requiresJurisdictionWhenMZKMIsUsedWithoutCountry() {
+        assertTrue(AiAssistantService.requiresMzkmJurisdictionClarification(
+                "Как проверить ошибку заказа кодов в МЗКМ?"));
+        assertFalse(AiAssistantService.requiresMzkmJurisdictionClarification(
+                "Как заказать коды в МЗКМ для Кыргызской Республики?"));
+        assertFalse(AiAssistantService.requiresMzkmJurisdictionClarification(
+                "Как проверить ошибку заказа в МЗКМ в РФ?"));
+        assertFalse(AiAssistantService.requiresMzkmJurisdictionClarification(
+                "Как работает маркировка в ЕАЭС?"));
+    }
+
+    @Test
+    void identifiesOrderLimitQuestionsWithoutMatchingGeneralOrderQuestions() {
+        assertTrue(AiAssistantService.isOrderLimitQuestion(
+                "Сколько кодов маркировки можно включить в один заказ?"));
+        assertTrue(AiAssistantService.isOrderLimitQuestion(
+                "Какой максимальный лимит КМ в заказе?"));
+        assertFalse(AiAssistantService.isOrderLimitQuestion(
+                "Как проверить ошибку при заказе кодов?"));
+    }
+
+    @Test
+    void onlyPublishedBusinessProcessesAreVisibleToReaders() {
+        assertTrue(AiAssistantService.canReadBusinessProcess("ADMIN", "DRAFT"));
+        assertTrue(AiAssistantService.canReadBusinessProcess("EDITOR", "IN_REVIEW"));
+        assertTrue(AiAssistantService.canReadBusinessProcess("READER", "PUBLISHED"));
+        assertFalse(AiAssistantService.canReadBusinessProcess("READER", "DRAFT"));
+        assertFalse(AiAssistantService.canReadBusinessProcess("READER", "IN_REVIEW"));
+        assertFalse(AiAssistantService.canReadBusinessProcess("UNKNOWN", "DRAFT"));
+    }
+
+    @Test
+    void missingEvidencePhrasesAreFlaggedAsInsufficient() {
         String answer = AiAssistantService.assistantIdentityReply("кто тебя создал");
 
         assertTrue(answer != null);
