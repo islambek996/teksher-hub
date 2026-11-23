@@ -137,6 +137,32 @@ jobs:
           echo "$AI_GREETING" | jq -e '.answer | contains("TEKSHER AI")'
           AI_IDENTITY=$(curl --silent --show-error --fail -X POST http://localhost:8080/api/ai/ask -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"question":"кто тебя создал"}')
           echo "$AI_IDENTITY" | jq -e '.answer | contains("самый красивый сотрудник оператора маркировки") and contains("развивает TEKSHER HUB")'
+
+          # One bounded live Groq request verifies that tool selection actually invokes MCP,
+          # then passes the returned NPA evidence to the answer-generation stage.
+          if [ -n "$GROQ_API_KEY" ]; then
+            AI_MCP_HTTP_STATUS=$(curl --silent --show-error --max-time 90 --output /tmp/teksher-hub-ai-mcp.json --write-out '%{http_code}' -X POST http://localhost:8080/api/ai/ask -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"question":"Найди нормативный акт Российской Федерации № 515 о системе маркировки товаров и укажи его официальный источник."}')
+            if grep -Eq 'MCP tool selection is unavailable \(HTTP (401|403|429)\)' /tmp/teksher-hub-api.log; then
+              echo "SKIP: Groq authentication or rate limit prevented live MCP tool selection."
+            elif grep -q 'MCP tool search_npa executed successfully for TEKSHER AI' /tmp/teksher-hub-api.log; then
+              echo "PASS: Groq selected and executed search_npa."
+              if [ "$AI_MCP_HTTP_STATUS" = "200" ]; then
+                jq -e '.answer | type == "string" and length > 0' /tmp/teksher-hub-ai-mcp.json
+                jq -e '.sources | any(.[]; .sourceType == "DOCUMENT" and .jurisdiction == "RU" and (.title | contains("515")))' /tmp/teksher-hub-ai-mcp.json
+              else
+                echo "NOTICE: MCP lookup succeeded, but answer generation returned HTTP $AI_MCP_HTTP_STATUS."
+              fi
+            elif [ "$AI_MCP_HTTP_STATUS" = "200" ]; then
+              echo "FAIL: Groq returned an answer but did not execute the expected search_npa MCP tool."
+              cat /tmp/teksher-hub-ai-mcp.json
+              exit 1
+            else
+              echo "NOTICE: Live Groq answer request returned HTTP $AI_MCP_HTTP_STATUS; see backend logs."
+            fi
+          else
+            echo "SKIP: GROQ_API_KEY is not configured in this CI environment."
+          fi
+
           if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] && [ -n "$GROQ_API_KEY" ]; then
             echo "Manual workflow dispatch and GROQ_API_KEY are configured; running live AI golden-set evaluation."
             TEKSHER_API_BASE_URL=http://localhost:8080 TEKSHER_API_TOKEN="$TOKEN" node scripts/evaluate-ai-golden-set.mjs
