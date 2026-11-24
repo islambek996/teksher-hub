@@ -58,6 +58,10 @@ public class SecurityConfig {
         if (!origins.contains("https://teksher-hub.netlify.app")) {
             origins.add("https://teksher-hub.netlify.app");
         }
+        // Free custom domain used for the TEKSHER Hub frontend.
+        if (!origins.contains("https://teksherhub.qzz.io")) {
+            origins.add("https://teksherhub.qzz.io");
+        }
         // The Cloudflare Workers deployment is a second supported frontend.
         if (!origins.contains("https://teksher-hub.islamzhakypbekov0.workers.dev")) {
             origins.add("https://teksher-hub.islamzhakypbekov0.workers.dev");
