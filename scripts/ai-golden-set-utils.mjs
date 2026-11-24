@@ -3,6 +3,7 @@ export function normalizeGoldenAnswer(value) {
     .normalize("NFKC")
     .toLowerCase()
     .replaceAll("ё", "е")
+    .replace(/(?<=[0-9])[,.](?=[0-9]{3}(?:\\D|$))/g, "")
     .replace(/[\p{White_Space}\u200B]/gu, "");
 }
 
