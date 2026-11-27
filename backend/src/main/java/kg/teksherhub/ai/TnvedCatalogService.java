@@ -22,8 +22,8 @@ public class TnvedCatalogService {
         List<TnvedEntry> loaded = new ArrayList<>();
         loaded.addAll(loadResource(mapper, "tnved-catalog/mzkm-internal-base64.txt", "USER_EXCEL"));
         loaded.addAll(loadResource(mapper, "tnved-catalog/bakaleia-base64.txt", "USER_EXCEL_BAKALEIA"));
-        loaded.addAll(loadResource(mapper, "tnved-catalog/external-sweets-base64.txt", "USER_EXCEL_EXTERNAL_SWEETS"));
-        // Preserve all 1,302 source rows. A code may legitimately occur in more than one
+        loaded.addAll(loadResource(mapper, "tnved-catalog/external-sweets-base64.txt", "USER_EXCEL_MZKM_SWEETS"));
+        // Preserve all 1,302 source rows, with the sweets list classified under MZKM. A code may legitimately occur in more than one
         // product-group row; collapsing by scope+code would lose its separate classification.
         this.entries = List.copyOf(loaded);
         if (this.entries.size() != 1_302) {
@@ -76,8 +76,9 @@ public class TnvedCatalogService {
                 String scope = row.path("t").asText("");
                 String gskpCode = row.path("gc").asText("");
                 String gskpName = row.path("gn").asText("");
+                if ("EXTERNAL".equals(scope)) scope = "MZKM"; // Legacy label: MZKM is the external-marking contour.
                 if (!code.matches("\\d{10}") || name.isBlank() || group.isBlank()
-                        || !List.of("MZKM", "INTERNAL", "EXTERNAL").contains(scope)) {
+                        || !List.of("MZKM", "INTERNAL").contains(scope)) {
                     throw new IllegalStateException("Invalid TN VED catalog row in " + resource + ": " + code);
                 }
                 result.add(new TnvedEntry(code, name, group, scope, gskpCode, gskpName, source));
