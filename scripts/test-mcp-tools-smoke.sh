@@ -79,7 +79,7 @@ printf '%s' "$NPA" | jq -e '.data.results | any(.[]; (.documentNumber // "" | co
 
 echo "Calling search_product_groups..." >&2
 PRODUCT_GROUPS=$(mcp_call 11 search_product_groups '{"query":"детские игрушки"}')
-printf '%s' "$PRODUCT_GROUPS" | jq -e '.data | has("mzkmGroups") and has("internalGroups") and has("groupDetails") and has("relatedKnowledgeCards")'
+printf '%s' "$PRODUCT_GROUPS" | jq -e '.data | has("mzkmGroups") and has("externalGroups") and has("internalGroups") and has("groupDetails") and has("relatedKnowledgeCards")'
 
 echo "Calling check_tnved_code..." >&2
 TNVED=$(mcp_call 12 check_tnved_code '{"code":"9503005500"}')
