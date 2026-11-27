@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class TnvedCatalogServiceTest {
     @Test
-    void loadsAllValidatedCatalogRecordsFromBothCompressedReferenceFiles() {
+    void loadsAllValidatedCatalogRecordsFromAllCompressedReferenceFiles() {
         TnvedCatalogService catalog = new TnvedCatalogService(new ObjectMapper());
 
         assertEquals(1_302, catalog.totalEntries());
