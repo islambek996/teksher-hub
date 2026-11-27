@@ -23,7 +23,7 @@ public class TnvedCatalogService {
         loaded.addAll(loadResource(mapper, "tnved-catalog/mzkm-internal-base64.txt", "USER_EXCEL"));
         loaded.addAll(loadResource(mapper, "tnved-catalog/bakaleia-base64.txt", "USER_EXCEL_BAKALEIA"));
         loaded.addAll(loadResource(mapper, "tnved-catalog/external-sweets-base64.txt", "USER_EXCEL_EXTERNAL_SWEETS"));
-        // Preserve all 1,072 source rows. A code may legitimately occur in more than one
+        // Preserve all 1,302 source rows. A code may legitimately occur in more than one
         // product-group row; collapsing by scope+code would lose its separate classification.
         this.entries = List.copyOf(loaded);
         if (this.entries.size() != 1_302) {
