@@ -1865,6 +1865,9 @@ const TNVED_SEARCH_SYNONYMS = [
 
 const PRODUCT_GROUPS_STORAGE_KEY = 'teksher-hub-product-groups-v1'
 const DEFAULT_MZKM_GROUPS = ['Обувные товары', 'Белье постельное, столовое, туалетное и кухонное', 'Предметы одежды', 'Духи и туалетная вода', 'Фотокамеры (кроме кинокамер), фотовспышки и лампы-вспышки', 'Молочная продукция', 'Продукты, используемые для кормления животных', 'Косметика, бытовая химия и товары личной гигиены', 'Моторные масла, смазочные материалы, тормозные жидкости и антифризы', 'Игры и игрушки для детей', 'Бакалея']
+const DEFAULT_EXTERNAL_GROUPS = [
+ { name: 'Сладости и кондитерские изделия', description: 'Товарная группа внешней маркировки. Справочный перечень сформирован по предоставленному Excel-файлу «ТН ВЭД сладости.xlsx»: 230 уникальных десятизначных кодов ТН ВЭД. Наличие кода в справочнике само по себе не подтверждает обязательность маркировки; применимость проверяется по правилам страны назначения и действующим нормативным актам.', source: '' }
+]
 const DEFAULT_INTERNAL_GROUPS = [
  { name: 'Алкоголь', description: 'Национальная внутренняя маркировка Кыргызской Республики. Применимость и способ маркировки проверять по действующим актам КР и официальным методическим правилам.', source: 'https://main.teksher.kg/internal-marking.html' },
  { name: 'Табак', description: 'Национальная внутренняя маркировка Кыргызской Республики. Для конкретного вида продукции проверять действующие требования и методические правила.', source: 'https://main.teksher.kg/internal-marking.html' }
@@ -1873,10 +1876,10 @@ function loadProductGroups() {
  try {
   const saved = JSON.parse(window.localStorage.getItem(PRODUCT_GROUPS_STORAGE_KEY) || 'null')
   if (saved && Array.isArray(saved.mzkmGroups) && Array.isArray(saved.internalGroups)) {
-   return { ...saved, mzkmGroups: [...new Set([...DEFAULT_MZKM_GROUPS, ...saved.mzkmGroups])], mzkmDetails: saved.mzkmDetails && typeof saved.mzkmDetails === 'object' ? saved.mzkmDetails : {} }
+   return { ...saved, mzkmGroups: [...new Set([...DEFAULT_MZKM_GROUPS, ...saved.mzkmGroups])], externalGroups: Array.isArray(saved.externalGroups) ? saved.externalGroups : DEFAULT_EXTERNAL_GROUPS, mzkmDetails: saved.mzkmDetails && typeof saved.mzkmDetails === 'object' ? saved.mzkmDetails : {} }
   }
  } catch { /* defaults */ }
- return { mzkmGroups: DEFAULT_MZKM_GROUPS, internalGroups: DEFAULT_INTERNAL_GROUPS, mzkmDetails: {} }
+ return { mzkmGroups: DEFAULT_MZKM_GROUPS, externalGroups: DEFAULT_EXTERNAL_GROUPS, internalGroups: DEFAULT_INTERNAL_GROUPS, mzkmDetails: {} }
 }
 function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
  const [groupData, setGroupData] = useState(loadProductGroups)
@@ -1887,13 +1890,14 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
  const [catalogSaveState, setCatalogSaveState] = useState('')
  const mzkmGroups = groupData.mzkmGroups
  const internalGroups = groupData.internalGroups
+ const externalGroups = groupData.externalGroups || DEFAULT_EXTERNAL_GROUPS
  useEffect(() => {
   if (!API_ENABLED) return
   let cancelled = false
   apiRequest('/api/product-groups').then(result => {
    if (cancelled) return
    if (result?.payload && Array.isArray(result.payload.mzkmGroups) && Array.isArray(result.payload.internalGroups)) {
-    setGroupData({ mzkmGroups: result.payload.mzkmGroups, internalGroups: result.payload.internalGroups, mzkmDetails: result.payload.mzkmDetails || {} })
+    setGroupData({ mzkmGroups: result.payload.mzkmGroups, externalGroups: Array.isArray(result.payload.externalGroups) ? result.payload.externalGroups : DEFAULT_EXTERNAL_GROUPS, internalGroups: result.payload.internalGroups, mzkmDetails: result.payload.mzkmDetails || {} })
    }
    setCatalogLoadOk(true)
   }).catch(error => {
@@ -1915,12 +1919,12 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
   return () => { cancelled = true }
  }, [groupData, catalogReady, catalogLoadOk, canManage])
  const openGroupEditor = (scope, index = -1) => {
-  const existing = scope === 'MZKM' ? mzkmGroups[index] : internalGroups[index]
+  const existing = scope === 'MZKM' ? mzkmGroups[index] : scope === 'EXTERNAL' ? externalGroups[index] : internalGroups[index]
   const detail = scope === 'MZKM' && existing ? (groupData.mzkmDetails?.[existing] || {}) : {}
   setEditingGroup({ scope, index })
   setGroupDraft(scope === 'MZKM'
    ? { name: existing || '', description: detail.description || '', source: detail.source || '' }
-   : existing ? { ...existing } : { name: '', description: 'Национальная внутренняя маркировка Кыргызской Республики. Требования проверять по действующим нормативным актам.', source: 'https://main.teksher.kg/internal-marking.html' })
+   : scope === 'EXTERNAL' ? existing ? { ...existing } : { name: '', description: 'Товарная группа внешней маркировки. Проверяйте применимость по правилам страны назначения и действующим нормативным актам.', source: '' } : existing ? { ...existing } : { name: '', description: 'Национальная внутренняя маркировка Кыргызской Республики. Требования проверять по действующим нормативным актам.', source: 'https://main.teksher.kg/internal-marking.html' })
  }
  const saveGroup = event => {
   event.preventDefault()
@@ -1938,8 +1942,13 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
     else delete details[name]
     return { ...previous, mzkmGroups: next, mzkmDetails: details }
    }
-   const next = [...previous.internalGroups]
    const item = { name, description: groupDraft.description.trim(), source: groupDraft.source.trim() }
+   if (editingGroup.scope === 'EXTERNAL') {
+    const next = [...(previous.externalGroups || DEFAULT_EXTERNAL_GROUPS)]
+    if (editingGroup.index < 0) next.push(item); else next[editingGroup.index] = item
+    return { ...previous, externalGroups: next }
+   }
+   const next = [...previous.internalGroups]
    if (editingGroup.index < 0) next.push(item); else next[editingGroup.index] = item
    return { ...previous, internalGroups: next }
   })
@@ -1947,7 +1956,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
  }
  const deleteGroup = (scope, index) => {
   if (!window.confirm('Удалить эту товарную группу?')) return
-  setGroupData(previous => scope === 'MZKM' ? { ...previous, mzkmGroups: previous.mzkmGroups.filter((_, i) => i !== index) } : { ...previous, internalGroups: previous.internalGroups.filter((_, i) => i !== index) })
+  setGroupData(previous => scope === 'MZKM' ? { ...previous, mzkmGroups: previous.mzkmGroups.filter((_, i) => i !== index) } : scope === 'EXTERNAL' ? { ...previous, externalGroups: (previous.externalGroups || DEFAULT_EXTERNAL_GROUPS).filter((_, i) => i !== index) } : { ...previous, internalGroups: previous.internalGroups.filter((_, i) => i !== index) })
  }
 
   const [tnvedCatalog, setTnvedCatalog] = useState([])
@@ -2011,6 +2020,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
     const matches = tnvedCatalog.filter(row => {
       if (tnvedScope === 'MZKM' && row.t !== 'MZKM') return false
       if (tnvedScope === 'INTERNAL' && row.t !== 'INTERNAL') return false
+      if (tnvedScope === 'EXTERNAL' && row.t !== 'EXTERNAL') return false
       return String(row.c || '').startsWith(tnvedCodePrefix)
     })
     const unique = new Map()
@@ -2170,6 +2180,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
     const matchRank = row => {
       if (tnvedScope === 'MZKM' && row.t !== 'MZKM') return -1
       if (tnvedScope === 'INTERNAL' && row.t !== 'INTERNAL') return -1
+      if (tnvedScope === 'EXTERNAL' && row.t !== 'EXTERNAL') return -1
       if (tnvedGroupFilter && normalizeTnvedGroup(row.g) !== tnvedGroupFilter) return -1
       if (tnvedSubmitted === '__GROUP__') return 0
       if (tnvedMode === 'code') return String(row.c || '').startsWith(query.replace(/\s/g, '')) ? 0 : -1
@@ -2218,7 +2229,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
         <h1>Товарные группы</h1>
         <p>Единые группы МЗКМ, национальные товарные группы КР и поиск кодов ТН ВЭД по предоставленному перечню.</p>
       </div>
-      <div className="record-count">{mzkmGroups.length} групп МЗКМ · {internalGroups.length} внутренних</div>
+      <div className="record-count">{mzkmGroups.length} групп МЗКМ · {externalGroups.length} внешних · {internalGroups.length} внутренних</div>
     </div>
 
     <section className="tnved-checker" id="tnved-checker" aria-labelledby="tnved-checker-title">
@@ -2240,6 +2251,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
           { value: 'ALL', label: 'Все списки' },
           { value: 'MZKM', label: 'МЗКМ' },
           { value: 'INTERNAL', label: 'Внутренняя маркировка КР' },
+          { value: 'EXTERNAL', label: 'Внешняя маркировка' },
         ].map(option => <button key={option.value} type="button" className={tnvedScope === option.value ? 'active' : ''} onClick={() => { setTnvedScope(option.value); setTnvedPage(0); setShowInternalGskp('') }}>{option.label}</button>)}
       </div>
 
@@ -2395,6 +2407,32 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
             <div className="tnved-group-actions">
               <button type="button" className="tnved-group-button primary" onClick={() => selectTnvedGroup(name, 'MZKM')}>Коды ТН ВЭД ({getCount(name, 'MZKM')})</button>
               <button type="button" className="tnved-group-button" onClick={() => onSearchGroup(name)}>Материалы</button>
+            </div>
+          </div>
+        </article>)}
+      </section>
+    </section>
+
+    <section className="internal-product-group-section">
+      <div className="mzkm-section-heading">
+        <div className="mzkm-section-icon external"><Boxes size={19}/></div>
+        <div>
+          <div className="section-kicker">ВНЕШНЯЯ МАРКИРОВКА · СТРАНА НАЗНАЧЕНИЯ</div>
+          <h2>Товарные группы внешней маркировки</h2>
+          <p>Справочные перечни кодов ТН ВЭД для внешней маркировки. Применимость зависит от страны назначения и действующих правил.</p>
+        </div>
+        <span className="record-count">{externalGroups.length} групп</span>{canManage && <button type="button" className="secondary-button" onClick={() => openGroupEditor("EXTERNAL")}>＋ Добавить группу</button>}
+      </div>
+      <section className="internal-groups-grid" aria-label="Товарные группы внешней маркировки">
+        {externalGroups.map((group, index) => <article className="internal-group-card" key={group.name}>
+          <div className="internal-group-badge">{String(index + 1).padStart(2, '0')}</div>
+          <div className="internal-group-copy">
+            <h3>{group.name}</h3>
+            <p>{group.description}</p>{canManage && <div className="internal-group-actions"><button type="button" className="internal-group-find" onClick={() => openGroupEditor("EXTERNAL", index)}><Pencil size={13}/> Изменить</button><button type="button" className="internal-group-find" onClick={() => deleteGroup("EXTERNAL", index)}><Trash2 size={13}/> Удалить</button></div>}
+            <div className="internal-group-actions">
+              <button type="button" className="internal-group-find" onClick={() => onSearchGroup(group.name)}><Search size={13}/> Найти материалы</button>
+              <button type="button" className="internal-group-find" onClick={() => selectTnvedGroup(group.name, 'EXTERNAL')}>Коды ТН ВЭД ({getCount(group.name, 'EXTERNAL')})</button>
+              {group.source && <a href={group.source} target="_blank" rel="noreferrer"><ExternalLink size={13}/> Источник</a>}
             </div>
           </div>
         </article>)}
