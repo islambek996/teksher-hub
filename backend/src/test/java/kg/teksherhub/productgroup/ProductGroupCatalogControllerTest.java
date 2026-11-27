@@ -37,7 +37,6 @@ class ProductGroupCatalogControllerTest {
         ProductGroupCatalogController.CatalogPayload payload = new ProductGroupCatalogController.CatalogPayload(
                 List.of("Обувь"),
                 List.of(),
-                List.of(),
                 Map.of("Обувь", new ProductGroupCatalogController.GroupDetail(
                         "Описание", "javascript:alert(1)"))
         );
@@ -55,7 +54,7 @@ class ProductGroupCatalogControllerTest {
                 Map.of("Обувь", new ProductGroupCatalogController.GroupDetail("Описание", "//example.org/path"))
         );
         ProductGroupCatalogController.CatalogPayload credential = new ProductGroupCatalogController.CatalogPayload(
-                List.of("Обувь"), List.of(), List.of(),
+                List.of("Обувь"), List.of(),
                 Map.of("Обувь", new ProductGroupCatalogController.GroupDetail("Описание", "https://user:secret@example.org"))
         );
 
