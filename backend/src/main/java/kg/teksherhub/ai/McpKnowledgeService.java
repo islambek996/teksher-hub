@@ -180,8 +180,12 @@ public class McpKnowledgeService {
 
         List<KnowledgeSource> sources = new ArrayList<>();
         List<TnvedCatalogHit> catalogHits = catalogResult.matches().stream().map(entry -> {
-            String scopeLabel = "MZKM".equals(entry.scope())
-                    ? "Товарная группа МЗКМ" : "Внутренняя маркировка КР";
+            String scopeLabel = switch (entry.scope()) {
+                case "MZKM" -> "Товарная группа МЗКМ";
+                case "INTERNAL" -> "Внутренняя маркировка КР";
+                case "EXTERNAL" -> "Внешняя маркировка";
+                default -> entry.scope();
+            };
             String context = "Код ТН ВЭД: " + entry.code()
                     + "\nНаименование: " + entry.name()
                     + "\nГруппа: " + entry.group()
