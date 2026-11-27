@@ -10,9 +10,10 @@ class TnvedCatalogServiceTest {
     void loadsAllValidatedCatalogRecordsFromBothCompressedReferenceFiles() {
         TnvedCatalogService catalog = new TnvedCatalogService(new ObjectMapper());
 
-        assertEquals(1_072, catalog.totalEntries());
+        assertEquals(1_302, catalog.totalEntries());
         assertEquals(869, catalog.countByScope("MZKM"));
         assertEquals(203, catalog.countByScope("INTERNAL"));
+        assertEquals(230, catalog.countByScope("EXTERNAL"));
     }
 
     @Test
@@ -28,6 +29,17 @@ class TnvedCatalogServiceTest {
         assertEquals("PREFIX_MATCH", prefix.matchType());
         assertTrue(prefix.totalMatches() > exact.totalMatches());
         assertTrue(prefix.matches().stream().allMatch(row -> row.code().startsWith("9503")));
+    }
+
+    @Test
+    void findsExternalSweetsCodes() {
+        TnvedCatalogService catalog = new TnvedCatalogService(new ObjectMapper());
+
+        TnvedCatalogService.SearchResult result = catalog.search("2008805000");
+        assertTrue(result.matches().stream().anyMatch(row ->
+                row.scope().equals("EXTERNAL")
+                        && row.group().equals("Сладости и кондитерские изделия")
+                        && row.name().contains("земляника")));
     }
 
     @Test
