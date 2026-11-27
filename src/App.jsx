@@ -2170,7 +2170,6 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
     const matchRank = row => {
       if (tnvedScope === 'MZKM' && row.t !== 'MZKM') return -1
       if (tnvedScope === 'INTERNAL' && row.t !== 'INTERNAL') return -1
-      if (tnvedScope === 'EXTERNAL' && row.t !== 'EXTERNAL') return -1
       if (tnvedGroupFilter && normalizeTnvedGroup(row.g) !== tnvedGroupFilter) return -1
       if (tnvedSubmitted === '__GROUP__') return 0
       if (tnvedMode === 'code') return String(row.c || '').startsWith(query.replace(/\s/g, '')) ? 0 : -1
@@ -2219,7 +2218,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
         <h1>Товарные группы</h1>
         <p>Единые группы МЗКМ, национальные товарные группы КР и поиск кодов ТН ВЭД по предоставленному перечню.</p>
       </div>
-      <div className="record-count">{mzkmGroups.length} групп МЗКМ · {externalGroups.length} внешних · {internalGroups.length} внутренних</div>
+      <div className="record-count">{mzkmGroups.length} групп МЗКМ (внешняя маркировка) · {internalGroups.length} внутренних</div>
     </div>
 
     <section className="tnved-checker" id="tnved-checker" aria-labelledby="tnved-checker-title">
