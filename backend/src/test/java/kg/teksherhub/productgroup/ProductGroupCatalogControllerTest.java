@@ -57,7 +57,7 @@ class ProductGroupCatalogControllerTest {
                 Map.of("Обувь", new ProductGroupCatalogController.GroupDetail("Описание", "//example.org/path"))
         );
         ProductGroupCatalogController.CatalogPayload credential = new ProductGroupCatalogController.CatalogPayload(
-                List.of("Обувь"), List.of(),
+                List.of("Обувь"), List.of(), List.of(),
                 Map.of("Обувь", new ProductGroupCatalogController.GroupDetail("Описание", "https://user:secret@example.org"))
         );
 
