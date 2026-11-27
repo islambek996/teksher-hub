@@ -57,5 +57,5 @@ export async function loadTnvedCatalog() {
     .stream()
     .pipeThrough(new DecompressionStream("gzip"));
   const externalSweetsRows = JSON.parse(await new Response(externalStream).text());
-  return [...rows, ...bakaleiaRows, ...externalSweetsRows];
+  return [...rows, ...bakaleiaRows, ...externalSweetsRows.map((row) => ({ ...row, t: 'MZKM' }))];
 }
