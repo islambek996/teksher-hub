@@ -94,6 +94,7 @@ public class McpKnowledgeService {
                 (rs, rowNum) -> rs.getString("payload_json"));
         JsonNode payload = payloadRows.isEmpty() ? mapper.createObjectNode() : readJson(payloadRows.getFirst());
         List<Map<String, Object>> mzkm = new ArrayList<>();
+        List<Map<String, Object>> external = new ArrayList<>();
         List<Map<String, Object>> internal = new ArrayList<>();
         List<Map<String, Object>> details = new ArrayList<>();
         List<KnowledgeSource> sources = new ArrayList<>();
@@ -107,6 +108,25 @@ public class McpKnowledgeService {
                     sources.add(catalogSource("mzkm", name,
                             "Товарная группа МЗКМ: " + name,
                             "Каталог товарных групп МЗКМ. Само включение в каталог не устанавливает юридическую обязанность маркировки."));
+                }
+            }
+        }
+
+        JsonNode externalGroups = payload.path("externalGroups");
+        if (externalGroups.isArray()) {
+            for (JsonNode group : externalGroups) {
+                String name = group.path("name").asText("");
+                String description = group.path("description").asText("");
+                String source = group.path("source").asText("");
+                if (contains(name + " " + description, q)) {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("name", name);
+                    row.put("description", description);
+                    row.put("source", source);
+                    external.add(row);
+                    sources.add(catalogSource("external", name,
+                            "Внешняя товарная группа: " + name,
+                            description + (source.isBlank() ? "" : "\nИсточник: " + source)));
                 }
             }
         }
@@ -158,6 +178,7 @@ public class McpKnowledgeService {
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("mzkmGroups", mzkm);
+        data.put("externalGroups", external);
         data.put("internalGroups", internal);
         data.put("groupDetails", details);
         data.put("relatedKnowledgeCards", related.stream().map(d -> new NpaHit(
@@ -166,7 +187,7 @@ public class McpKnowledgeService {
                 string(d.getEffectiveUntil()), statusLabel(d), d.getSourceUrl(),
                 string(d.getOfficialSourceCheckedAt()), d.getSourceCheckNote())).toList());
 
-        int hitCount = mzkm.size() + internal.size() + details.size() + related.size();
+        int hitCount = mzkm.size() + external.size() + internal.size() + details.size() + related.size();
         String summary = hitCount == 0
                 ? "Подходящие товарные группы и карточки в доступном каталоге не найдены."
                 : "Найдены записи каталога и связанные карточки: " + hitCount
