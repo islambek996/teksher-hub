@@ -158,7 +158,6 @@ public class McpKnowledgeService {
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("mzkmGroups", mzkm);
-        data.put("externalGroups", external);
         data.put("internalGroups", internal);
         data.put("groupDetails", details);
         data.put("relatedKnowledgeCards", related.stream().map(d -> new NpaHit(
