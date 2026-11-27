@@ -11,9 +11,8 @@ class TnvedCatalogServiceTest {
         TnvedCatalogService catalog = new TnvedCatalogService(new ObjectMapper());
 
         assertEquals(1_302, catalog.totalEntries());
-        assertEquals(869, catalog.countByScope("MZKM"));
+        assertEquals(1_099, catalog.countByScope("MZKM"));
         assertEquals(203, catalog.countByScope("INTERNAL"));
-        assertEquals(230, catalog.countByScope("EXTERNAL"));
     }
 
     @Test
@@ -37,7 +36,7 @@ class TnvedCatalogServiceTest {
 
         TnvedCatalogService.SearchResult result = catalog.search("2008805000");
         assertTrue(result.matches().stream().anyMatch(row ->
-                row.scope().equals("EXTERNAL")
+                row.scope().equals("MZKM")
                         && row.group().equals("Сладости и кондитерские изделия")
                         && row.name().contains("земляника")));
     }
