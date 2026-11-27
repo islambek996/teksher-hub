@@ -65,12 +65,6 @@ public class ProductGroupCatalogController {
         if (payload == null) {
             throw new IllegalArgumentException("Не передан каталог товарных групп.");
         }
-        if (payload.externalGroups() != null) {
-            for (int i = 0; i < payload.externalGroups().size(); i++) {
-                ExternalGroup group = payload.externalGroups().get(i);
-                if (group != null) validateOptionalSourceUrl(group.source(), "Внешняя группа " + (i + 1));
-            }
-        }
         if (payload.internalGroups() != null) {
             for (int i = 0; i < payload.internalGroups().size(); i++) {
                 InternalGroup group = payload.internalGroups().get(i);
@@ -113,11 +107,9 @@ public class ProductGroupCatalogController {
 
     public record CatalogPayload(
             @NotNull @Size(max = 200) List<@NotBlankGroup String> mzkmGroups,
-            @NotNull @Size(max = 200) List<@Valid ExternalGroup> externalGroups,
             @NotNull @Size(max = 200) List<@Valid InternalGroup> internalGroups,
             @NotNull Map<String, @Valid GroupDetail> mzkmDetails
     ) {}
-    public record ExternalGroup(@NotBlankGroup String name, @Size(max = 4000) String description, @Size(max = 2000) String source) {}
     public record InternalGroup(@NotBlankGroup String name, @Size(max = 4000) String description, @Size(max = 2000) String source) {}
     public record GroupDetail(@Size(max = 4000) String description, @Size(max = 2000) String source) {}
     public record CatalogResponse(CatalogPayload payload, String updatedBy, Instant updatedAt) {}
