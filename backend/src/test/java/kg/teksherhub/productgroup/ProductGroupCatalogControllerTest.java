@@ -12,7 +12,6 @@ class ProductGroupCatalogControllerTest {
     void allowsHttpAndHttpsSourceUrls() {
         ProductGroupCatalogController.CatalogPayload payload = new ProductGroupCatalogController.CatalogPayload(
                 List.of("Обувь"),
-                List.of(new ProductGroupCatalogController.ExternalGroup("Сладости", "Описание", "")),
                 List.of(new ProductGroupCatalogController.InternalGroup(
                         "Алкоголь", "Описание", "https://main.teksher.kg/internal-marking.html")),
                 Map.of("Обувь", new ProductGroupCatalogController.GroupDetail(
@@ -26,7 +25,6 @@ class ProductGroupCatalogControllerTest {
     void allowsMissingOptionalSourceUrl() {
         ProductGroupCatalogController.CatalogPayload payload = new ProductGroupCatalogController.CatalogPayload(
                 List.of("Обувь"),
-                List.of(),
                 List.of(new ProductGroupCatalogController.InternalGroup("Алкоголь", "Описание", "")),
                 Map.of("Обувь", new ProductGroupCatalogController.GroupDetail("Описание", null))
         );
@@ -53,7 +51,7 @@ class ProductGroupCatalogControllerTest {
     @Test
     void rejectsRelativeAndCredentialBearingUrls() {
         ProductGroupCatalogController.CatalogPayload relative = new ProductGroupCatalogController.CatalogPayload(
-                List.of("Обувь"), List.of(), List.of(),
+                List.of("Обувь"), List.of(),
                 Map.of("Обувь", new ProductGroupCatalogController.GroupDetail("Описание", "//example.org/path"))
         );
         ProductGroupCatalogController.CatalogPayload credential = new ProductGroupCatalogController.CatalogPayload(
