@@ -12,6 +12,7 @@ import part07 from "./tnved-parts/07.txt?raw";
 import part08 from "./tnved-parts/08.txt?raw";
 import part09 from "./tnved-parts/09.txt?raw";
 import bakaleiaPart from "./tnved-parts/bakaleia.txt?raw";
+import externalSweetsPart from "./tnved-parts/external-sweets.txt?raw";
 
 export const TNVED_CATALOG_GZIP_BASE64 = [
   part01a,
@@ -48,5 +49,13 @@ export async function loadTnvedCatalog() {
     .stream()
     .pipeThrough(new DecompressionStream("gzip"));
   const bakaleiaRows = JSON.parse(await new Response(extraStream).text());
-  return [...rows, ...bakaleiaRows];
+  const externalBinary = atob(externalSweetsPart.trim());
+  const externalBytes = Uint8Array.from(externalBinary, (character) =>
+    character.charCodeAt(0),
+  );
+  const externalStream = new Blob([externalBytes])
+    .stream()
+    .pipeThrough(new DecompressionStream("gzip"));
+  const externalSweetsRows = JSON.parse(await new Response(externalStream).text());
+  return [...rows, ...bakaleiaRows, ...externalSweetsRows];
 }
