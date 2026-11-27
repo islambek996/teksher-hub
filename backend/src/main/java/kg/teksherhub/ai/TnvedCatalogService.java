@@ -22,11 +22,12 @@ public class TnvedCatalogService {
         List<TnvedEntry> loaded = new ArrayList<>();
         loaded.addAll(loadResource(mapper, "tnved-catalog/mzkm-internal-base64.txt", "USER_EXCEL"));
         loaded.addAll(loadResource(mapper, "tnved-catalog/bakaleia-base64.txt", "USER_EXCEL_BAKALEIA"));
+        loaded.addAll(loadResource(mapper, "tnved-catalog/external-sweets-base64.txt", "USER_EXCEL_EXTERNAL_SWEETS"));
         // Preserve all 1,072 source rows. A code may legitimately occur in more than one
         // product-group row; collapsing by scope+code would lose its separate classification.
         this.entries = List.copyOf(loaded);
-        if (this.entries.size() != 1_072) {
-            throw new IllegalStateException("TN VED catalog integrity check failed: expected 1072 source rows, found "
+        if (this.entries.size() != 1_302) {
+            throw new IllegalStateException("TN VED catalog integrity check failed: expected 1302 source rows, found "
                     + this.entries.size());
         }
     }
@@ -76,7 +77,7 @@ public class TnvedCatalogService {
                 String gskpCode = row.path("gc").asText("");
                 String gskpName = row.path("gn").asText("");
                 if (!code.matches("\\d{10}") || name.isBlank() || group.isBlank()
-                        || !List.of("MZKM", "INTERNAL").contains(scope)) {
+                        || !List.of("MZKM", "INTERNAL", "EXTERNAL").contains(scope)) {
                     throw new IllegalStateException("Invalid TN VED catalog row in " + resource + ": " + code);
                 }
                 result.add(new TnvedEntry(code, name, group, scope, gskpCode, gskpName, source));
