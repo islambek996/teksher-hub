@@ -2479,7 +2479,7 @@ function ProductGroupsSection({ onOpen, onSearchGroup, canManage = false }) {
     <section className="contour-reference mzkm-groups-sources">
       <div className="section-kicker">ИСТОЧНИКИ И ПРОВЕРКА</div>
       <h2>Источники справочника</h2>
-      <p className="mzkm-groups-source-note">Справочник формируется из файла «Список ТН ВЭД.xlsx»: лист «Полный список ТН ВЭД внешки» для МЗКМ и лист «Полный список ТН ВЭД внутренней» для алкоголя/табака. Дубликаты по одинаковому коду и описанию сгруппированы; разные связи с ГСКП сохранены. Файл загружен пользователем, дата актуальности исходного перечня в нём отдельно не подтверждена.</p>
+      <p className="mzkm-groups-source-note">Справочник использует пользовательские файлы: «Список ТН ВЭД.xlsx» для перечней МЗКМ и внутренней маркировки, а также «ТН ВЭД сладости.xlsx» для внешней группы «Сладости и кондитерские изделия» (230 кодов). Дубликаты по одинаковому коду и описанию сгруппированы; разные связи с ГСКП сохранены. Дата актуальности исходных перечней отдельно не подтверждена.</p>
       <div className="reference-links">
         <a href="https://xn--80ajghhoc2aj1c8b.xn--p1ai/checking_codes/" target="_blank" rel="noreferrer"><b>Пример проверки кода</b><span>Принцип поиска по коду ТН ВЭД или наименованию</span><ExternalLink size={16}/></a>
         <a href="https://main.teksher.kg/news.html" target="_blank" rel="noreferrer"><b>Новости «Текшер»</b><span>Опубликованные оператором перечни и изменения</span><ExternalLink size={16}/></a>
