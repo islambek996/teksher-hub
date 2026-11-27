@@ -103,7 +103,7 @@ The endpoint is protected by the same stateless JWT authentication as the rest o
 
 - `search_npa` – search normative documents by query, jurisdiction, document number and/or document date.
 - `search_product_groups` – search the saved MZKM/internal product-group catalog and related knowledge cards.
-- `check_tnved_code` – search the complete 1,072-entry TN VED reference dataset already used by the frontend (869 MZKM and 203 internal-marking entries), plus separately identify matches in operator/reference cards. Exact 10-digit matches and shorter prefixes are distinguished; a hit is not a legal determination that marking is mandatory. The imported workbook is a classification reference, not a normative act.
+- `check_tnved_code` – search the complete 1,302-entry TN VED reference dataset already used by the frontend (869 MZKM, 203 internal-marking and 230 external-marking sweets/confectionery entries), plus separately identify matches in operator/reference cards. Exact 10-digit matches and shorter prefixes are distinguished; a hit is not a legal determination that marking is mandatory. The imported workbook is a classification reference, not a normative act.
 - `get_business_process` – read matching business processes, steps and their source links. READER can see PUBLISHED processes only.
 - `get_source_monitor_status` – inspect enabled state, last check and linked-material counts for official-source monitors.
 - `list_source_change_events` – inspect source-change events, hashes and review state. READER gets only events linked to published/active materials and never receives internal text snapshots.
